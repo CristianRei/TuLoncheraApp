@@ -1,6 +1,9 @@
 # ADR 0002 — Ventas y recargas sin `evento` (por ahora)
 
-**Estado:** Aceptado
+**Estado:** Aceptado, parcialmente superado por
+[ADR 0003](0003-stock-de-bodega.md) — el punto sobre el origen `NULL` de
+`RECARGA` ya no aplica: el cargue ahora sale de un stock de bodega real. El
+resto de este documento (ventas y recargas sin `evento_id`) sigue vigente.
 
 ## Contexto
 
@@ -25,10 +28,12 @@ no capas").
   se asocian a ningún evento por ahora. El saldo de cada promotor vive
   directamente contra su propia fila en `ubicaciones` (tipo `PROMOTOR`),
   consistente con R4: el saldo es del promotor, no de un evento puntual.
-- El origen de una `RECARGA` queda en `NULL`, no en una ubicación de bodega:
-  hoy no se contabiliza el stock propio de la bodega (eso es Fase 4,
+- ~~El origen de una `RECARGA` queda en `NULL`, no en una ubicación de
+  bodega: hoy no se contabiliza el stock propio de la bodega (eso es Fase 4,
   "alistamiento por escáner"). El cargue de un admin a un promotor es, por
-  ahora, una inyección administrativa al saldo del promotor.
+  ahora, una inyección administrativa al saldo del promotor.~~ **Corregido
+  en ADR 0003:** el cliente aclaró que el cargue sí debe depender de stock
+  de bodega real. Ver ese ADR.
 
 ## Consecuencias
 
@@ -39,7 +44,5 @@ no capas").
   exigir `evento_id` (y migrar los datos históricos con un evento "genérico"
   o dejarlos sin asociar) o si se queda opcional para siempre y los reportes
   simplemente toleran ventas sin evento.
-- El stock de la bodega sigue sin rastrearse. Cuando se construya Fase 4,
-  las recargas van a necesitar un origen real (una `ubicacion` de tipo
-  `BODEGA`) en vez de `NULL`, y probablemente un chequeo de que la bodega sí
-  tenga el producto antes de dejar hacer el cargue.
+- ~~El stock de la bodega sigue sin rastrearse...~~ **Ya no aplica** — ver
+  ADR 0003.

@@ -1,24 +1,19 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { Producto, UsuarioSesion } from '@/core/tipos';
-import { registrarCargue, StockInsuficienteError } from '@/db/cargue';
+import type { Producto } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { obtenerSaldosBodega } from '@/db/inventario';
+import { registrarEntradaBodega } from '@/db/entradasBodega';
 import { listarProductos } from '@/db/productos';
-import { listarPromotores } from '@/db/usuarios';
 import { COLORES } from '@/ui/colores';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
-export default function Cargue() {
+export default function EntradaBodega() {
   const usuario = useRequiereSesion(['ADMIN']);
-  const [promotores, setPromotores] = useState<UsuarioSesion[]>([]);
-  const [promotor, setPromotor] = useState<UsuarioSesion | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [disponibles, setDisponibles] = useState<Record<string, number>>({});
   const [cantidades, setCantidades] = useState<Record<string, number>>({});
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
@@ -27,14 +22,7 @@ export default function Cargue() {
   useEffect(() => {
     (async () => {
       const db = await getDb();
-      const [listaPromotores, listaProductos, saldosBodega] = await Promise.all([
-        listarPromotores(db),
-        listarProductos(db),
-        obtenerSaldosBodega(db),
-      ]);
-      setPromotores(listaPromotores);
-      setProductos(listaProductos);
-      setDisponibles(Object.fromEntries(saldosBodega));
+      setProductos(await listarProductos(db));
       setCargando(false);
     })();
   }, []);
@@ -44,8 +32,7 @@ export default function Cargue() {
 
   function cambiarCantidad(productoId: string, delta: number) {
     setCantidades((actual) => {
-      const disponible = disponibles[productoId] ?? 0;
-      const nueva = Math.min(disponible, Math.max(0, (actual[productoId] ?? 0) + delta));
+      const nueva = Math.max(0, (actual[productoId] ?? 0) + delta);
       return { ...actual, [productoId]: nueva };
     });
   }
@@ -53,7 +40,7 @@ export default function Cargue() {
   const totalUnidades = Object.values(cantidades).reduce((suma, c) => suma + c, 0);
 
   async function confirmar() {
-    if (!promotor || totalUnidades === 0) return;
+    if (totalUnidades === 0) return;
     setGuardando(true);
     try {
       const db = await getDb();
@@ -62,27 +49,10 @@ export default function Cargue() {
         .filter(([, cantidad]) => cantidad > 0)
         .map(([productoId, cantidad]) => ({ productoId, cantidad }));
 
-      await registrarCargue(
-        db,
-        {
-          promotorId: promotor.id,
-          promotorNombre: promotor.nombre,
-          adminId: usuarioActual.id,
-          items,
-        },
-        dispositivoId
-      );
+      await registrarEntradaBodega(db, { adminId: usuarioActual.id, items }, dispositivoId);
 
-      Alert.alert('Cargue asignado', `Se le asignó el cargue a ${promotor.nombre}.`);
-      setCantidades({});
-      setPromotor(null);
-      setDisponibles(Object.fromEntries(await obtenerSaldosBodega(db)));
-    } catch (error) {
-      if (error instanceof StockInsuficienteError) {
-        Alert.alert('Stock insuficiente', error.message);
-      } else {
-        throw error;
-      }
+      Alert.alert('Entrada registrada', 'El stock de bodega quedó actualizado.');
+      router.back();
     } finally {
       setGuardando(false);
     }
@@ -91,42 +61,21 @@ export default function Cargue() {
   return (
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
-        <Pressable onPress={() => (promotor ? setPromotor(null) : router.back())}>
-          <Text style={styles.volver}>‹ {promotor ? 'Elegir otro promotor' : 'Admin'}</Text>
+        <Pressable onPress={() => router.back()}>
+          <Text style={styles.volver}>‹ Inventario</Text>
         </Pressable>
-        <Text style={styles.titulo}>
-          {promotor ? `Cargue para ${promotor.nombre}` : 'Cargue a promotor'}
-        </Text>
+        <Text style={styles.titulo}>Agregar entrada</Text>
       </View>
 
       {cargando ? (
         <View style={styles.centrado}>
           <ActivityIndicator size="large" color={COLORES.oscuro} />
         </View>
-      ) : !promotor ? (
-        promotores.length === 0 ? (
-          <View style={styles.centrado}>
-            <Text style={styles.vacio}>No hay promotores activos.</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={promotores}
-            keyExtractor={(p) => p.id}
-            contentContainerStyle={styles.lista}
-            renderItem={({ item }) => (
-              <Pressable style={styles.filaPromotor} onPress={() => setPromotor(item)}>
-                <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
-                <Text style={styles.filaPromotorFlecha}>›</Text>
-              </Pressable>
-            )}
-          />
-        )
       ) : (
         <>
           <SelectorProductosConCantidad
             productos={productos}
             cantidades={cantidades}
-            disponibles={disponibles}
             onCambiarCantidad={cambiarCantidad}
             busqueda={busqueda}
             onCambiarBusqueda={setBusqueda}
@@ -146,7 +95,7 @@ export default function Cargue() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.botonConfirmarTexto}>
-                  Confirmar cargue{totalUnidades > 0 ? ` (${totalUnidades} unidades)` : ''}
+                  Confirmar entrada{totalUnidades > 0 ? ` (${totalUnidades} unidades)` : ''}
                 </Text>
               )}
             </Pressable>
@@ -184,31 +133,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
-  },
-  lista: {
-    padding: 20,
-    gap: 10,
-  },
-  filaPromotor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-  },
-  filaPromotorNombre: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
-  },
-  filaPromotorFlecha: {
-    fontSize: 20,
-    color: COLORES.oscuro,
   },
   pie: {
     padding: 20,

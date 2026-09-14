@@ -254,7 +254,7 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 | 1 | Base local: SQLite, migraciones, catálogo de productos, usuarios y roles, escáner funcionando | ✅ |
 | 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | 🔄 Recarga y saldos listos; falta conteo de cierre |
 | 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta y recibo interno listos; falta arqueo |
-| 4 | Bodega: alistamiento por escáner, niveles objetivo, alertas de vencimiento | ⬜ |
+| 4 | Bodega: alistamiento por escáner, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega y entrada de inventario listos (ver ADR 0003); falta alistamiento por escáner, niveles objetivo, alertas de vencimiento, y pantalla propia del rol Bodega |
 | 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | ⬜ |
 | 6 | Reportes administrativos. Recomendador de recarga afinado | ⬜ |
 

@@ -12,19 +12,19 @@ const MODULOS = [
     descripcion: 'Agregar, editar y eliminar productos y precios.',
   },
   {
-    ruta: '/admin/ventas',
-    titulo: 'Ventas',
-    descripcion: 'Ver las ventas registradas por los promotores.',
+    ruta: '/admin/inventario',
+    titulo: 'Inventario',
+    descripcion: 'Ver el stock de bodega y registrar entradas.',
   },
   {
     ruta: '/admin/cargue',
     titulo: 'Cargue a promotor',
-    descripcion: 'Asignar productos al inventario de un promotor.',
+    descripcion: 'Asignar productos del stock de bodega a un promotor.',
   },
   {
-    ruta: '/admin/inventario',
-    titulo: 'Inventario',
-    descripcion: 'Próximamente.',
+    ruta: '/admin/ventas',
+    titulo: 'Ventas',
+    descripcion: 'Ver las ventas registradas por los promotores.',
   },
 ] as const;
 
