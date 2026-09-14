@@ -18,3 +18,10 @@ export async function buscarUsuarioPorPin(
   );
   return fila ?? null;
 }
+
+/** Promotores activos — para elegir a quién asignarle cargue. */
+export async function listarPromotores(db: SQLiteDatabase): Promise<UsuarioSesion[]> {
+  return db.getAllAsync<UsuarioSesion>(
+    "SELECT id, nombre, rol FROM usuarios WHERE rol = 'PROMOTOR' AND activo = 1 ORDER BY nombre ASC"
+  );
+}

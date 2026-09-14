@@ -5,6 +5,8 @@ import { migracion0002IdentidadDispositivo } from './0002_identidad_dispositivo'
 import { migracion0003PinUnico } from './0003_pin_unico';
 import { migracion0004CatalogoEditable } from './0004_catalogo_editable';
 import { migracion0005CargaCatalogoInicial } from './0005_carga_catalogo_inicial';
+import { migracion0006VentasSinEvento } from './0006_ventas_sin_evento';
+import { migracion0007CodigoBarrasUnico } from './0007_codigo_barras_unico';
 
 export interface Migracion {
   version: number;
@@ -21,6 +23,8 @@ const migraciones: Migracion[] = [
   migracion0003PinUnico,
   migracion0004CatalogoEditable,
   migracion0005CargaCatalogoInicial,
+  migracion0006VentasSinEvento,
+  migracion0007CodigoBarrasUnico,
 ];
 
 /**

@@ -20,7 +20,7 @@ export type EstadoEvento = 'PLANEADO' | 'EN_CURSO' | 'CERRADO';
 
 export type EstadoConteo = 'ABIERTO' | 'PENDIENTE_APROBACION' | 'CERRADO';
 
-export type MetodoPago = 'EFECTIVO' | 'NEQUI' | 'DAVIPLATA' | 'DATAFONO';
+export type MetodoPago = 'EFECTIVO' | 'TRANSFERENCIA' | 'LIBRANZA';
 
 /**
  * Pesos colombianos, siempre entero. Nunca float — ver CLAUDE.md sección 8.
@@ -79,4 +79,21 @@ export interface Movimiento {
   motivo: string | null;
   tsCliente: string;
   dispositivoId: string;
+}
+
+export interface Venta {
+  id: string;
+  numeroRecibo: string;
+  promotorId: string;
+  promotorNombre: string;
+  tsCliente: string;
+  metodoPago: MetodoPago;
+  total: Pesos;
+}
+
+export interface VentaItem {
+  productoId: string;
+  productoNombre: string;
+  cantidad: number;
+  precioUnitario: Pesos;
 }

@@ -5,6 +5,29 @@ import { COLORES } from '@/ui/colores';
 import { useSesion } from '@/ui/SesionContext';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
+const MODULOS = [
+  {
+    ruta: '/admin/catalogo',
+    titulo: 'Catálogo de productos',
+    descripcion: 'Agregar, editar y eliminar productos y precios.',
+  },
+  {
+    ruta: '/admin/ventas',
+    titulo: 'Ventas',
+    descripcion: 'Ver las ventas registradas por los promotores.',
+  },
+  {
+    ruta: '/admin/cargue',
+    titulo: 'Cargue a promotor',
+    descripcion: 'Asignar productos al inventario de un promotor.',
+  },
+  {
+    ruta: '/admin/inventario',
+    titulo: 'Inventario',
+    descripcion: 'Próximamente.',
+  },
+] as const;
+
 export default function HomeAdmin() {
   const usuario = useRequiereSesion(['ADMIN']);
   const { cerrarSesion } = useSesion();
@@ -28,15 +51,19 @@ export default function HomeAdmin() {
         </Pressable>
       </View>
       <View style={styles.cuerpo}>
-        <Pressable style={styles.tarjeta} onPress={() => router.push('/admin/catalogo')}>
-          <View style={styles.tarjetaTexto}>
-            <Text style={styles.tarjetaTitulo}>Catálogo de productos</Text>
-            <Text style={styles.tarjetaDescripcion}>
-              Agregar, editar y eliminar productos y precios.
-            </Text>
-          </View>
-          <Text style={styles.tarjetaFlecha}>›</Text>
-        </Pressable>
+        {MODULOS.map((modulo) => (
+          <Pressable
+            key={modulo.ruta}
+            style={styles.tarjeta}
+            onPress={() => router.push(modulo.ruta)}
+          >
+            <View style={styles.tarjetaTexto}>
+              <Text style={styles.tarjetaTitulo}>{modulo.titulo}</Text>
+              <Text style={styles.tarjetaDescripcion}>{modulo.descripcion}</Text>
+            </View>
+            <Text style={styles.tarjetaFlecha}>›</Text>
+          </Pressable>
+        ))}
       </View>
     </View>
   );

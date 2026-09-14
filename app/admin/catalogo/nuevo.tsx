@@ -40,7 +40,7 @@ export default function NuevoProducto() {
         <Text style={styles.titulo}>Nuevo producto</Text>
       </View>
       <FormularioProducto
-        valorInicial={{ nombre: '', precio: 0, fotoUri: null }}
+        valorInicial={{ nombre: '', precio: 0, fotoUri: null, codigoBarras: null }}
         colorAcento={COLORES.oscuro}
         guardando={guardando}
         onGuardar={guardar}

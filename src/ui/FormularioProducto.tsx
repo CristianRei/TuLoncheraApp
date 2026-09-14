@@ -14,10 +14,13 @@ import {
 import { formatearPesos, parsearPesos } from '@/core/dinero';
 import type { Pesos } from '@/core/tipos';
 
+import { EscanerCodigoBarras } from './EscanerCodigoBarras';
+
 export interface ValoresProducto {
   nombre: string;
   precio: Pesos;
   fotoUri: string | null;
+  codigoBarras: string | null;
 }
 
 interface Props {
@@ -45,6 +48,8 @@ export function FormularioProducto({
   );
   const [fotoUri, setFotoUri] = useState(valorInicial.fotoUri);
   const [procesandoFoto, setProcesandoFoto] = useState(false);
+  const [codigoBarras, setCodigoBarras] = useState(valorInicial.codigoBarras ?? '');
+  const [escaneando, setEscaneando] = useState(false);
 
   const precio = parsearPesos(precioTexto);
   const puedeGuardar = nombre.trim().length > 0 && !guardando && !procesandoFoto;
@@ -125,6 +130,25 @@ export function FormularioProducto({
         />
       </View>
 
+      <View style={styles.campo}>
+        <Text style={styles.etiqueta}>Código de barras</Text>
+        <View style={styles.filaCodigoBarras}>
+          <TextInput
+            style={[styles.input, styles.inputCodigoBarras]}
+            value={codigoBarras}
+            onChangeText={setCodigoBarras}
+            placeholder="Sin código — escanéalo o escríbelo"
+            placeholderTextColor="#999"
+          />
+          <Pressable
+            style={[styles.botonEscanear, { borderColor: colorAcento }]}
+            onPress={() => setEscaneando(true)}
+          >
+            <Text style={[styles.botonEscanearTexto, { color: colorAcento }]}>Escanear</Text>
+          </Pressable>
+        </View>
+      </View>
+
       <Pressable
         style={[
           styles.botonGuardar,
@@ -132,7 +156,14 @@ export function FormularioProducto({
           !puedeGuardar && styles.botonDeshabilitado,
         ]}
         disabled={!puedeGuardar}
-        onPress={() => onGuardar({ nombre: nombre.trim(), precio, fotoUri })}
+        onPress={() =>
+          onGuardar({
+            nombre: nombre.trim(),
+            precio,
+            fotoUri,
+            codigoBarras: codigoBarras.trim() || null,
+          })
+        }
       >
         {guardando ? (
           <ActivityIndicator color="#fff" />
@@ -142,6 +173,17 @@ export function FormularioProducto({
       </Pressable>
 
       {extra}
+
+      <EscanerCodigoBarras
+        visible={escaneando}
+        colorAcento={colorAcento}
+        titulo="Escanear código del producto"
+        onCerrar={() => setEscaneando(false)}
+        onDetectado={(codigo) => {
+          setCodigoBarras(codigo);
+          setEscaneando(false);
+        }}
+      />
     </ScrollView>
   );
 }
@@ -211,6 +253,25 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     backgroundColor: '#FFF',
+  },
+  filaCodigoBarras: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'stretch',
+  },
+  inputCodigoBarras: {
+    flex: 1,
+  },
+  botonEscanear: {
+    borderWidth: 1.5,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  botonEscanearTexto: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   botonGuardar: {
     borderRadius: 12,

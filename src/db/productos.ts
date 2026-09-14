@@ -63,7 +63,7 @@ function generarSku(): string {
 
 export async function crearProducto(
   db: SQLiteDatabase,
-  datos: { nombre: string; precio: Pesos; fotoUri?: string | null },
+  datos: { nombre: string; precio: Pesos; fotoUri?: string | null; codigoBarras?: string | null },
   dispositivoId: string,
   idPredefinido?: string
 ): Promise<Producto> {
@@ -73,9 +73,18 @@ export async function crearProducto(
   const id = idPredefinido ?? Crypto.randomUUID();
   const ahora = new Date().toISOString();
   await db.runAsync(
-    `INSERT INTO productos (id, sku, nombre, precio, foto_uri, activo, ts_cliente, dispositivo_id)
-     VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
-    [id, generarSku(), datos.nombre, datos.precio, datos.fotoUri ?? null, ahora, dispositivoId]
+    `INSERT INTO productos (id, sku, nombre, precio, foto_uri, codigo_barras, activo, ts_cliente, dispositivo_id)
+     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+    [
+      id,
+      generarSku(),
+      datos.nombre,
+      datos.precio,
+      datos.fotoUri ?? null,
+      datos.codigoBarras ?? null,
+      ahora,
+      dispositivoId,
+    ]
   );
   const creado = await obtenerProducto(db, id);
   if (!creado) throw new Error('No se pudo crear el producto');
@@ -85,7 +94,12 @@ export async function crearProducto(
 export async function actualizarProducto(
   db: SQLiteDatabase,
   id: string,
-  cambios: { nombre?: string; precio?: Pesos; fotoUri?: string | null }
+  cambios: {
+    nombre?: string;
+    precio?: Pesos;
+    fotoUri?: string | null;
+    codigoBarras?: string | null;
+  }
 ): Promise<void> {
   if (cambios.nombre !== undefined) {
     await db.runAsync('UPDATE productos SET nombre = ? WHERE id = ?', [cambios.nombre, id]);
@@ -96,6 +110,27 @@ export async function actualizarProducto(
   if (cambios.fotoUri !== undefined) {
     await db.runAsync('UPDATE productos SET foto_uri = ? WHERE id = ?', [cambios.fotoUri, id]);
   }
+  if (cambios.codigoBarras !== undefined) {
+    await db.runAsync('UPDATE productos SET codigo_barras = ? WHERE id = ?', [
+      cambios.codigoBarras,
+      id,
+    ]);
+  }
+}
+
+/**
+ * Busca un producto por su código de barras (para el escáner). `null` si no
+ * hay ninguno con ese código o el producto está desactivado.
+ */
+export async function buscarProductoPorCodigoBarras(
+  db: SQLiteDatabase,
+  codigoBarras: string
+): Promise<Producto | null> {
+  const fila = await db.getFirstAsync<FilaProducto>(
+    `SELECT ${COLUMNAS} FROM productos WHERE codigo_barras = ? AND activo = 1`,
+    [codigoBarras]
+  );
+  return fila ? aProducto(fila) : null;
 }
 
 export async function eliminarProducto(db: SQLiteDatabase, id: string): Promise<void> {

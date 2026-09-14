@@ -247,13 +247,13 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 
 ## 10. Roadmap
 
-**Estado: Fase 1.**
+**Estado: Fase 2-3 en curso (Fase 1 completa).**
 
 | Fase | Alcance | Estado |
 |---|---|---|
-| 1 | Base local: SQLite, migraciones, catálogo de productos, usuarios y roles, escáner funcionando | 🔄 En curso |
-| 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | ⬜ |
-| 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | ⬜ |
+| 1 | Base local: SQLite, migraciones, catálogo de productos, usuarios y roles, escáner funcionando | ✅ |
+| 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | 🔄 Recarga y saldos listos; falta conteo de cierre |
+| 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta y recibo interno listos; falta arqueo |
 | 4 | Bodega: alistamiento por escáner, niveles objetivo, alertas de vencimiento | ⬜ |
 | 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | ⬜ |
 | 6 | Reportes administrativos. Recomendador de recarga afinado | ⬜ |
@@ -270,14 +270,23 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [ ] ¿Cuál es el umbral en pesos para aprobación de descuadres?
 - [ ] ¿Los promotores rotan entre empresas o cada uno tiene ruta fija?
       Determina si el nivel objetivo se calcula por promotor o por empresa.
-- [ ] ¿Qué medios de pago se aceptan? (efectivo, Nequi, Daviplata, datáfono)
 - [ ] ¿El recibo se imprime, se muestra en pantalla, o se envía por WhatsApp?
-      Si se imprime, hace falta impresora Bluetooth y development build.
-- [ ] ¿Todos los productos tienen código de barras legible, o hay que generar
-      etiquetas para algunos?
+      Si se imprime, hace falta impresora Bluetooth y development build. Hoy
+      el recibo interno solo existe como registro en la base de datos,
+      visible para el admin.
+- [ ] Para una venta por libranza, ¿hace falta capturar nombre/cédula del
+      comprador para poder procesar el descuento de nómina más adelante? Por
+      ahora no se captura (decisión explícita del cliente, ver
+      `docs/03-decisiones/0002-ventas-sin-evento.md`).
 
 **Resuelto:** autenticación por PIN de 4 dígitos, sin contraseña en ningún
 rol. Ver `docs/03-decisiones/0001-metodo-autenticacion.md`.
+
+**Resuelto:** medios de pago = Efectivo, Transferencia, Libranza.
+
+**Resuelto (parcial):** no todos los productos tienen código de barras
+legible todavía — el catálogo permite escribirlo a mano si escanear la
+etiqueta no funciona.
 
 ---
 
