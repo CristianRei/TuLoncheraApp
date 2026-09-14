@@ -64,6 +64,46 @@
     \item \textbf{App web progresiva (PWA):} se instala directamente desde el navegador, sin pasar por una tienda de aplicaciones. El uso de cámara y el funcionamiento sin internet dependen del celular de cada promotor.
 \end{itemize}
 
+\section{Diagnóstico del proceso actual y caso de negocio}
+
+El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf{secuencial}, no simultáneo. Bodega no puede avanzar hasta que Administración termine, y Administración no puede empezar hasta que el promotor envíe su foto. Cada fase espera a la anterior, y ese encadenamiento es lo que la app elimina al dar visibilidad en tiempo real a los tres roles a la vez.
+
+\subsection*{Los cuatro cuellos de botella}
+
+\begin{enumerate}
+    \item \textbf{Cierre del promotor (el detonante):} conteo manual en papel de 30--40 minutos al terminar el turno. Muchos promotores no liquidan de inmediato sino que envían la foto del reporte desde su casa, 2--3 horas después. Mientras esa foto no llega, Administración no puede calcular qué recargar para el día siguiente.
+    \item \textbf{Administración (cuello de botella de datos):} Andrea transcribe a mano cada hoja de papel a Excel: saldos para armar el recargue y cuentas de cobro de libranzas (cédula, nombre, valor) para facturación. Un error de tipeo aquí retrasa cobros reales a las empresas cliente.
+    \item \textbf{Bodega (efecto dominó):} Martica solo puede empezar a alistar cuando le llega la hoja de recargue. Si llega a las 4:00 p.m., empieza tarde; si llega a las 7:00 p.m., la jornada se extiende de noche. Al alistar leyendo un papel impreso, el error humano es alto, así que separa el pedido y luego lo vuelve a contar completo antes de subirlo al camión --- doble trabajo por falta de confianza en el papel.
+    \item \textbf{Transporte (tiempos ocultos):} sin visibilidad del estado real de cada promotor, los conductores no tienen incentivo para volver antes a bodega, y si el promotor no tiene su cierre listo cuando el camión llega, el recorrido completo se retrasa.
+\end{enumerate}
+
+\subsection*{Cómo lo resuelve la app}
+
+El conteo de cierre pasa de papel a un flujo guiado en el celular del promotor, visible para Administración y Bodega en el mismo instante en que se guarda --- sin esperar una foto por WhatsApp. Los saldos y las libranzas ya están en el sistema, no hay que transcribirlos: la hoja de recargue se genera, no se redacta.
+
+\subsection*{Traducción a tiempo y dinero: solo el cierre del promotor}
+
+Esta cifra es deliberadamente conservadora: cuantifica \textbf{únicamente} el conteo manual del promotor, uno de los cuatro cuellos de botella. No incluye el tiempo de transcripción de Andrea, la doble verificación de Martica en bodega, ni las horas de camión ocioso por retrasos en cadena --- todos ahorros adicionales que la app también genera, pero que dependen de datos operativos que se van a medir en la Fase 1.
+
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+\textbf{Variable} & \textbf{Valor} \\
+\midrule
+Ahorro estimado por promotor y por jornada & 30 minutos \\
+Promotores activos por día (promedio) & 7.5 \\
+Jornadas de venta al mes (aprox.) & [XX] días \\
+Valor de la hora de un promotor & \$[XX] COP \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\textit{Ahorro mensual = 7.5 promotores × 0.5 h × [XX] días × \$[XX]/h = \$[XX] COP/mes}
+\end{center}
+
+Ese tiempo no es solo costo de nómina evitado: son 30 minutos por promotor por día que la empresa recupera para vender más en el mismo turno, o para que el promotor salga antes sin sacrificar el control del inventario. A esto se suma que, al eliminar el reenvío nocturno del reporte, Administración puede empezar a armar el recargue el mismo día en que cierra el evento --- no al día siguiente.
+
 \section{Alcance por fases}
 
 \begin{center}
