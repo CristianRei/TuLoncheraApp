@@ -3,7 +3,10 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { getDb } from '@/db/client';
+import { getDispositivoId } from '@/db/dispositivo';
 import { aplicarMigracionesPendientes } from '@/db/migraciones';
+import { sembrarUsuariosDePrueba } from '@/db/seed';
+import { SesionProvider } from '@/ui/SesionContext';
 
 interface EstadoDb {
   listo: boolean;
@@ -19,6 +22,10 @@ export default function RootLayout() {
       try {
         const db = await getDb();
         await aplicarMigracionesPendientes(db);
+        const dispositivoId = await getDispositivoId(db);
+        if (__DEV__) {
+          await sembrarUsuariosDePrueba(db, dispositivoId);
+        }
         if (!cancelado) setEstado({ listo: true });
       } catch (error) {
         if (!cancelado) {
@@ -51,7 +58,11 @@ export default function RootLayout() {
     );
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <SesionProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </SesionProvider>
+  );
 }
 
 const styles = StyleSheet.create({

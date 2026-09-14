@@ -34,6 +34,16 @@ export interface Usuario {
   activo: boolean;
 }
 
+/**
+ * Usuario autenticado en la sesión actual. Subconjunto de Usuario — solo lo
+ * que la UI necesita una vez hizo login.
+ */
+export interface UsuarioSesion {
+  id: string;
+  nombre: string;
+  rol: Rol;
+}
+
 export interface Ubicacion {
   id: string;
   tipo: TipoUbicacion;

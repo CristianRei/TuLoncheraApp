@@ -273,9 +273,11 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [ ] ¿Qué medios de pago se aceptan? (efectivo, Nequi, Daviplata, datáfono)
 - [ ] ¿El recibo se imprime, se muestra en pantalla, o se envía por WhatsApp?
       Si se imprime, hace falta impresora Bluetooth y development build.
-- [ ] ¿Autenticación por PIN, usuario/contraseña, o biométrica?
 - [ ] ¿Todos los productos tienen código de barras legible, o hay que generar
       etiquetas para algunos?
+
+**Resuelto:** autenticación por PIN de 4 dígitos, sin contraseña en ningún
+rol. Ver `docs/03-decisiones/0001-metodo-autenticacion.md`.
 
 ---
 
@@ -289,3 +291,12 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - No instalar `expo-barcode-scanner`. Está deprecado.
 - No añadir dependencias pesadas sin justificarlo. Cada librería es peso en el APK
   y riesgo de incompatibilidad con el SDK de Expo.
+
+---
+
+## 13. Marca
+
+| Color | Hex | Uso |
+|---|---|---|
+| Primario | `#F3A712` | Dorado/mostaza. Pantallas de promotor. |
+| Oscuro | `#541212` | Vinotinto. Pantallas de administración y bodega. |

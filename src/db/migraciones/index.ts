@@ -1,6 +1,8 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { migracion0001EsquemaInicial } from './0001_esquema_inicial';
+import { migracion0002IdentidadDispositivo } from './0002_identidad_dispositivo';
+import { migracion0003PinUnico } from './0003_pin_unico';
 
 export interface Migracion {
   version: number;
@@ -11,7 +13,11 @@ export interface Migracion {
 // Nuevas migraciones se agregan aquí, en orden. Nunca editar una ya aplicada
 // en producción — ver CLAUDE.md sección 8 ("toda evolución pasa por archivos
 // de migración versionados").
-const migraciones: Migracion[] = [migracion0001EsquemaInicial];
+const migraciones: Migracion[] = [
+  migracion0001EsquemaInicial,
+  migracion0002IdentidadDispositivo,
+  migracion0003PinUnico,
+];
 
 /**
  * Aplica las migraciones pendientes, en orden, dentro de una transacción cada

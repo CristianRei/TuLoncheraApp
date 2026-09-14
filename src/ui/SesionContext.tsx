@@ -1,0 +1,35 @@
+import { createContext, useContext, useState, type ReactNode } from 'react';
+
+import type { UsuarioSesion } from '@/core/tipos';
+
+interface SesionContextValor {
+  usuario: UsuarioSesion | null;
+  iniciarSesion: (usuario: UsuarioSesion) => void;
+  cerrarSesion: () => void;
+}
+
+const SesionContext = createContext<SesionContextValor | null>(null);
+
+/**
+ * Sesión en memoria — no se persiste entre reinicios de la app (decisión
+ * deliberada, ver docs/03-decisiones/0001-metodo-autenticacion.md).
+ */
+export function SesionProvider({ children }: { children: ReactNode }) {
+  const [usuario, setUsuario] = useState<UsuarioSesion | null>(null);
+
+  const valor: SesionContextValor = {
+    usuario,
+    iniciarSesion: setUsuario,
+    cerrarSesion: () => setUsuario(null),
+  };
+
+  return <SesionContext.Provider value={valor}>{children}</SesionContext.Provider>;
+}
+
+export function useSesion(): SesionContextValor {
+  const contexto = useContext(SesionContext);
+  if (!contexto) {
+    throw new Error('useSesion debe usarse dentro de SesionProvider');
+  }
+  return contexto;
+}
