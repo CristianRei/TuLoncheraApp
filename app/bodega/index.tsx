@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { COLORES } from '@/ui/colores';
+import { PantallaIngresarPedido } from '@/ui/PantallaIngresarPedido';
 import { useSesion } from '@/ui/SesionContext';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -27,9 +28,7 @@ export default function HomeBodega() {
           <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
         </Pressable>
       </View>
-      <View style={styles.cuerpo}>
-        <Text style={styles.mensaje}>Todavía no hay alistamiento de recargas disponible.</Text>
-      </View>
+      <PantallaIngresarPedido usuarioId={usuario.id} />
     </View>
   );
 }
@@ -63,12 +62,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FFFFFF',
     textDecorationLine: 'underline',
-  },
-  cuerpo: {
-    padding: 20,
-  },
-  mensaje: {
-    fontSize: 14,
-    color: '#666',
   },
 });

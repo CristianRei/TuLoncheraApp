@@ -59,11 +59,13 @@
 No hay stock de "todo lo que hay". Hay saldos por ubicación, calculados al
 vuelo:
 
-1. **Entra a bodega:** admin registra una entrada
-   (`app/admin/inventario/entrada.tsx` → `registrarEntradaBodega`) → un
-   `COMPRA_PROVEEDOR` por producto, `ubicacion_origen_id = NULL`,
-   `ubicacion_destino_id` = la ubicación de bodega (se crea sola la primera
-   vez).
+1. **Entra a bodega:** "ingresar pedido" — escanear el producto y teclear la
+   cantidad (`src/ui/PantallaIngresarPedido.tsx`, compartido entre Bodega
+   `app/bodega/index.tsx` y Admin `app/admin/inventario/pedido.tsx` →
+   `registrarEntradaBodega`) → un `COMPRA_PROVEEDOR` por producto,
+   `ubicacion_origen_id = NULL`, `ubicacion_destino_id` = la ubicación de
+   bodega (se crea sola la primera vez). Es la única forma de que entre
+   stock — la pantalla de Inventario en sí es de solo lectura.
 2. **Bodega → promotor:** admin arma un cargue
    (`app/admin/cargue/index.tsx` → `registrarCargue`) → un `RECARGA` por
    producto, origen = bodega, destino = la ubicación de ese promotor (se

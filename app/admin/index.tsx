@@ -14,7 +14,7 @@ const MODULOS = [
   {
     ruta: '/admin/inventario',
     titulo: 'Inventario',
-    descripcion: 'Ver el stock de bodega y registrar entradas.',
+    descripcion: 'Ver el stock de bodega e ingresar pedidos.',
   },
   {
     ruta: '/admin/cargue',

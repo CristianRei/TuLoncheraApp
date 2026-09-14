@@ -9,13 +9,14 @@ interface ItemEntrada {
 }
 
 /**
- * Entrada de inventario a bodega: un COMPRA_PROVEEDOR por producto. Es la
- * única forma en que aparece stock de bodega — el cargue (ver
- * src/db/cargue.ts) solo puede salir de lo que entró por aquí.
+ * Entrada de inventario a bodega ("ingresar pedido"): un COMPRA_PROVEEDOR
+ * por producto. Es la única forma en que aparece stock de bodega — el
+ * cargue (ver src/db/cargue.ts) solo puede salir de lo que entró por aquí.
+ * La usan tanto Bodega como Admin (src/ui/PantallaIngresarPedido.tsx).
  */
 export async function registrarEntradaBodega(
   db: SQLiteDatabase,
-  datos: { adminId: string; items: ItemEntrada[] },
+  datos: { usuarioId: string; items: ItemEntrada[] },
   dispositivoId: string
 ): Promise<void> {
   const itemsConCantidad = datos.items.filter((item) => item.cantidad > 0);
@@ -33,7 +34,7 @@ export async function registrarEntradaBodega(
           cantidad: item.cantidad,
           ubicacionOrigenId: null,
           ubicacionDestinoId: ubicacionBodega,
-          usuarioId: datos.adminId,
+          usuarioId: datos.usuarioId,
         },
         dispositivoId
       );

@@ -35,8 +35,8 @@ export default function Inventario() {
           <Text style={styles.volver}>‹ Admin</Text>
         </Pressable>
         <Text style={styles.titulo}>Inventario de bodega</Text>
-        <Pressable style={styles.botonNuevo} onPress={() => router.push('/admin/inventario/entrada')}>
-          <Text style={styles.botonNuevoTexto}>+</Text>
+        <Pressable style={styles.botonNuevo} onPress={() => router.push('/admin/inventario/pedido')}>
+          <Text style={styles.botonNuevoTexto}>+ Pedido</Text>
         </Pressable>
       </View>
 
@@ -47,7 +47,7 @@ export default function Inventario() {
       ) : items.length === 0 ? (
         <View style={styles.centrado}>
           <Text style={styles.vacio}>
-            Todavía no hay stock en bodega. Toca "+" para registrar una entrada.
+            Todavía no hay stock en bodega. Toca "Ingresar pedido" para registrar lo que llegó.
           </Text>
         </View>
       ) : (
@@ -94,18 +94,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   botonNuevo: {
-    width: 32,
-    height: 32,
     borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: COLORES.primario,
     alignItems: 'center',
     justifyContent: 'center',
   },
   botonNuevoTexto: {
     color: '#3A2400',
-    fontSize: 20,
+    fontSize: 13,
     fontWeight: '700',
-    lineHeight: 22,
   },
   centrado: {
     flex: 1,

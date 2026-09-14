@@ -299,9 +299,15 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 - **Catálogo** (`app/admin/catalogo/`): alta, edición (nombre, precio, foto,
   código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
   Catálogo real del cliente ya cargado (123 productos, migración 0005).
-- **Stock de bodega** (`app/admin/inventario/`): entradas de inventario
-  (`COMPRA_PROVEEDOR`) y saldo de bodega por producto. Sin captura de costo
-  todavía.
+- **Stock de bodega** (`app/admin/inventario/`): vista de solo lectura del
+  saldo por producto. La única forma de que entre stock es "Ingresar
+  pedido" (`src/ui/PantallaIngresarPedido.tsx`, compartida con Bodega):
+  escanear el producto y teclear la cantidad (suelen ser +60 unidades, por
+  eso teclear y no un contador +/-) → `COMPRA_PROVEEDOR`. Sin captura de
+  costo todavía.
+- **Bodega** (`app/bodega/index.tsx`): su pantalla de inicio *es*
+  "Ingresar pedido" directamente — hoy es su única función, así que no hay
+  un menú intermedio como en Admin.
 - **Cargue** (`app/admin/cargue/`): admin asigna productos del stock de
   bodega a un promotor (`RECARGA`, bodega → promotor); no deja asignar más
   de lo disponible.
@@ -354,9 +360,14 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [ ] ¿Hace falta capturar el costo por unidad al registrar una entrada de
       inventario a bodega? Hoy `productos.costo` sigue vacío — sin eso no se
       puede calcular margen (sección 4: "ver costos y márgenes"). Ver ADR 0003.
-- [ ] ¿El rol Bodega va a tener pantallas propias (registrar entradas,
-      preparar cargue), o el admin sigue haciendo todo eso? Hoy
-      `app/bodega/index.tsx` es un placeholder sin funcionalidad.
+- [ ] ¿Bodega va a necesitar más funciones (preparar cargue, alistamiento
+      por escáner) o "ingresar pedido" es su única función por ahora? Si se
+      agrega otra, `app/bodega/index.tsx` va a necesitar un menú como el de
+      Admin en vez de ir directo a una sola pantalla.
+
+**Resuelto:** Bodega ya tiene función propia — "ingresar pedido" (escanear
++ teclear cantidad). Ver `app/bodega/index.tsx` y
+`src/ui/PantallaIngresarPedido.tsx`.
 
 **Resuelto:** autenticación por PIN de 4 dígitos, sin contraseña en ningún
 rol. Ver `docs/03-decisiones/0001-metodo-autenticacion.md`.
