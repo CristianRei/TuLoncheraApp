@@ -70,12 +70,27 @@ El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf
 
 \subsection*{Los cuatro cuellos de botella}
 
-\begin{enumerate}
-    \item \textbf{Cierre del promotor (el detonante):} conteo manual en papel de 30--40 minutos al terminar el turno. Muchos promotores no liquidan de inmediato sino que envían la foto del reporte desde su casa, 2--3 horas después. Mientras esa foto no llega, Administración no puede calcular qué recargar para el día siguiente.
-    \item \textbf{Administración (cuello de botella de datos):} Andrea transcribe a mano cada hoja de papel a Excel: saldos para armar el recargue y cuentas de cobro de libranzas (cédula, nombre, valor) para facturación. Un error de tipeo aquí retrasa cobros reales a las empresas cliente.
-    \item \textbf{Bodega (efecto dominó):} Martica solo puede empezar a alistar cuando le llega la hoja de recargue. Si llega a las 4:00 p.m., empieza tarde; si llega a las 7:00 p.m., la jornada se extiende de noche. Al alistar leyendo un papel impreso, el error humano es alto, así que separa el pedido y luego lo vuelve a contar completo antes de subirlo al camión --- doble trabajo por falta de confianza en el papel.
-    \item \textbf{Transporte (tiempos ocultos):} sin visibilidad del estado real de cada promotor, los conductores no tienen incentivo para volver antes a bodega, y si el promotor no tiene su cierre listo cuando el camión llega, el recorrido completo se retrasa.
-\end{enumerate}
+\begin{center}
+\begin{tikzpicture}[
+    node distance=0.35cm,
+    caja/.style={rectangle, draw=accent, fill=accent!8, rounded corners, minimum width=2.5cm, minimum height=2.8cm, align=center, font=\footnotesize, text width=2.3cm},
+    tiempo/.style={font=\bfseries\footnotesize, color=accent},
+    total/.style={rectangle, draw=accent, fill=accent, rounded corners, minimum width=2.9cm, minimum height=1.6cm, align=center, font=\small, text=white},
+    >={Stealth[length=2mm]}
+]
+\node[caja] (c1) {\textbf{Promotor}\\[2pt]Conteo manual en papel\\[4pt]\tiempo{30--40 min}\\+2--3h en enviar};
+\node[caja, right=of c1] (c2) {\textbf{Administración}\\[2pt]Transcribir papel a Excel\\[4pt]\tiempo{[XX] min}};
+\node[caja, right=of c2] (c3) {\textbf{Bodega}\\[2pt]Alistar y volver a contar todo\\[4pt]\tiempo{[XX] min}};
+\node[caja, right=of c3] (c4) {\textbf{Transporte}\\[2pt]Recorrido retrasado por cierre tardío\\[4pt]\tiempo{[XX] min}};
+\draw[->, accent, thick] (c1) -- (c2);
+\draw[->, accent, thick] (c2) -- (c3);
+\draw[->, accent, thick] (c3) -- (c4);
+\node[total, below=0.5cm of c2, xshift=1.4cm] (ct) {Total por evento: \textbf{[XX] minutos}};
+\draw[->, accent, thick] (c4.south) -- ++(0,-0.3) -| (ct.north);
+\end{tikzpicture}
+\end{center}
+
+\textit{Cada casilla espera a que termine la anterior --- por eso el tiempo no se reparte entre roles, se acumula.}
 
 \subsection*{Cómo lo resuelve la app}
 
