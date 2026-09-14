@@ -154,58 +154,88 @@ emuladores no tienen cámara real.
 
 ## 6. Estructura del proyecto
 
+`app/` sigue expo-router: cada archivo es una pantalla, cada carpeta un
+segmento de ruta. Este árbol es el real (no un sketch) — revisar con
+`find app src -type f` si vuelve a quedar desactualizado.
+
 ```
 tulonchera/
   CLAUDE.md
   docs/
-    01-proceso-actual.md      ← mapeo AS-IS
+    01-proceso-actual.md      ← todavía no existe: falta mapeo AS-IS real del negocio
     02-modelo-datos.md        ← esquema completo y razonamiento
-    03-decisiones/            ← ADRs numerados
-  app/                        ← expo-router (pantallas)
+    03-decisiones/            ← ADRs numerados (índice en sección 10)
+  app/
+    index.tsx                  ← login: un solo PIN, sin contraseña
+    promotor/index.tsx          ← venta: grilla de inventario + ticket + escáner + cobrar
+    admin/
+      index.tsx                  ← menú de módulos
+      catalogo/                   ← alta / edición / baja de productos
+      inventario/                  ← stock de bodega + registrar entradas
+      cargue/                       ← asignar cargue a un promotor (sale de bodega)
+      ventas/                        ← listado + detalle de ventas registradas
+    bodega/index.tsx             ← placeholder: el rol Bodega no tiene pantallas propias todavía
+    _layout.tsx                 ← migra la DB al arrancar, envuelve todo en SesionProvider
   src/
-    core/                     ← lógica de dominio, SIN dependencias de React
-      inventario/             ← cálculo de saldos, validación de movimientos
-      tipos/
-    db/                       ← SQLite: esquema, migraciones, queries
-    ui/                       ← componentes compartidos
+    core/                       ← lógica de dominio, SIN dependencias de React ni Expo
+      auth/                       ← modo de login (promotor/admin/bodega) → roles permitidos
+      dinero/                      ← formatearPesos / parsearPesos
+      inventario/                   ← calcularSaldosPorProducto + su property test
+      tipos/                         ← tipos de dominio compartidos
+    db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
+      migraciones/                ← 0001 a 0007, versionadas, nunca se editan una vez aplicadas
+    ui/                         ← componentes y hooks compartidos (sí usan React/Expo)
   assets/
 ```
 
-**`src/core` no importa React ni nada de Expo.** Es TypeScript puro. Así se puede
-testear sin emulador y reutilizar en el panel web el día que exista.
+**`src/core` no importa React ni nada de Expo.** Es TypeScript puro. Se puede
+testear sin emulador (`npm test`, corre con `node --test`) y reutilizar en el
+panel web el día que exista.
 
 ---
 
 ## 7. Modelo de datos (resumen)
 
-Detalle completo en `docs/02-modelo-datos.md`.
+Estado real después de las migraciones 0001-0007. Detalle completo y
+razonamiento en `docs/02-modelo-datos.md`.
 
 ```
 usuarios          (id, nombre, rol, activo, pin)
 ubicaciones       (id, tipo[BODEGA|CAMION|PROMOTOR], nombre, responsable_id)
-productos         (id, sku, codigo_barras, nombre, categoria,
-                   es_licor, es_perecedero, precio, costo, unidad_empaque)
-lotes             (id, producto_id, fecha_vencimiento)
-empresas          (id, nombre, direccion, sector, contacto)
+                  ← BODEGA es una sola fila (singleton); cada promotor tiene
+                    la suya. Ambas se crean perezosamente, no por migración.
+productos         (id, sku, codigo_barras, nombre, categoria[opcional],
+                   es_licor, es_perecedero, precio, costo[opcional],
+                   unidad_empaque, foto_uri[opcional], activo)
+                  ← categoria/costo opcionales: no vinieron en la carga
+                    inicial. "Eliminar" = activo=0, nunca DELETE.
+lotes             (id, producto_id, fecha_vencimiento)         ← sin usar todavía
+empresas          (id, nombre, direccion, sector, contacto)     ← sin usar todavía
 eventos           (id, empresa_id, fecha, promotor_id, conductor_id,
-                   camion_id, estado)
+                   camion_id, estado)                             ← sin usar todavía
 movimientos       (id UUID PK, tipo, producto_id, lote_id, cantidad,
-                   ubicacion_origen, ubicacion_destino, evento_id,
+                   ubicacion_origen_id, ubicacion_destino_id, evento_id[opcional],
                    usuario_id, motivo, ts_cliente, dispositivo_id)
-ventas            (id UUID PK, numero_recibo, evento_id, promotor_id,
-                   ts_cliente, metodo_pago, total, dispositivo_id)
-venta_items       (venta_id, producto_id, cantidad, precio_unitario)
-conteos           (id UUID PK, evento_id, ts_cliente, estado, firmado_por)
+                  ← el libro contable real. Ver ADR 0002/0003 para el porqué
+                    de evento_id opcional y de que RECARGA tenga origen real.
+ventas            (id UUID PK, numero_recibo, evento_id[opcional], promotor_id,
+                   ts_cliente, metodo_pago[EFECTIVO|TRANSFERENCIA|LIBRANZA],
+                   total, dispositivo_id)
+venta_items       (venta_id, producto_id, cantidad, precio_unitario,
+                   ts_cliente, dispositivo_id)
+conteos           (id UUID PK, evento_id, ts_cliente, estado, firmado_por)  ← sin usar todavía
 conteo_lineas     (conteo_id, producto_id, teorico, contado,
-                   diferencia, motivo, aprobado_por)
-niveles_objetivo  (promotor_id, producto_id, cantidad, actualizado_ts)
+                   diferencia, motivo, aprobado_por)                         ← sin usar todavía
+niveles_objetivo  (promotor_id, producto_id, cantidad, actualizado_ts)        ← sin usar todavía
 ```
 
 **Tipos de movimiento:**
 `COMPRA_PROVEEDOR`, `RECARGA`, `VENTA`, `TRASLADO`, `RETIRO_ADMIN`,
-`AJUSTE_CONTEO`, `AVERIA`, `DEGUSTACION`, `OBSEQUIO`, `DEVOLUCION_VENCIMIENTO`
+`AJUSTE_CONTEO`, `AVERIA`, `DEGUSTACION`, `OBSEQUIO`, `DEVOLUCION_VENCIMIENTO`.
+Hoy en uso: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega →
+promotor) y `VENTA` (promotor → afuera). El resto sigue sin implementarse.
 
-**Reposición por nivel objetivo:**
+**Reposición por nivel objetivo** (Fase 6, sin construir):
 ```
 recarga_sugerida = nivel_objetivo − saldo_actual
 nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_servicio)
@@ -247,16 +277,53 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 
 ## 10. Roadmap
 
-**Estado: Fase 2-3 en curso (Fase 1 completa).**
+**Estado: Fase 2-3 en curso (Fase 1 completa, Fase 4 empezada).**
 
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | Base local: SQLite, migraciones, catálogo de productos, usuarios y roles, escáner funcionando | ✅ |
 | 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | 🔄 Recarga y saldos listos; falta conteo de cierre |
 | 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta y recibo interno listos; falta arqueo |
-| 4 | Bodega: alistamiento por escáner, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega y entrada de inventario listos (ver ADR 0003); falta alistamiento por escáner, niveles objetivo, alertas de vencimiento, y pantalla propia del rol Bodega |
+| 4 | Bodega: alistamiento por escáner, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega y entrada de inventario listos; falta alistamiento por escáner, niveles objetivo, alertas de vencimiento, y pantalla propia del rol Bodega |
 | 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | ⬜ |
 | 6 | Reportes administrativos. Recomendador de recarga afinado | ⬜ |
+
+### Qué existe hoy, concretamente
+
+- **Login** (`app/index.tsx`): un PIN de 4 dígitos, sin contraseña en ningún
+  rol; modo promotor por defecto, botones para entrar como administrador o
+  bodega. Usuarios de prueba solo en `__DEV__` (`src/db/seed.ts`): Admin
+  `0000`, Cristian/promotor `8509`, Bodega `1234`.
+- **Catálogo** (`app/admin/catalogo/`): alta, edición (nombre, precio, foto,
+  código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
+  Catálogo real del cliente ya cargado (123 productos, migración 0005).
+- **Stock de bodega** (`app/admin/inventario/`): entradas de inventario
+  (`COMPRA_PROVEEDOR`) y saldo de bodega por producto. Sin captura de costo
+  todavía.
+- **Cargue** (`app/admin/cargue/`): admin asigna productos del stock de
+  bodega a un promotor (`RECARGA`, bodega → promotor); no deja asignar más
+  de lo disponible.
+- **Venta del promotor** (`app/promotor/index.tsx`): grilla de su propio
+  inventario con buscador, escáner de código de barras, ticket (carrito) y
+  cobro con los 3 medios de pago. No bloquea vender más de lo que el saldo
+  calculado indica al tocar la grilla (sí al escanear algo que no tiene) —
+  los descuadres reales se resuelven en el conteo de cierre, que todavía no
+  existe.
+- **Ventas del admin** (`app/admin/ventas/`): listado (promotor + total) y
+  detalle (líneas) de cada venta.
+
+Lo que falta de cada fase (conteo de cierre, arqueo, alistamiento por
+escáner, niveles objetivo, gestión de empresas/eventos, sincronización,
+reportes) sigue sin construirse — no asumir que existe.
+
+### Decisiones registradas (`docs/03-decisiones/`)
+
+- **0001 — Método de autenticación.** PIN único, sin contraseña en ningún rol.
+- **0002 — Ventas y recargas sin `evento`.** `evento_id` opcional; no se
+  pidió gestión de empresas/eventos todavía. (El punto sobre el origen de
+  `RECARGA` quedó superado por el ADR 0003.)
+- **0003 — Stock de bodega real.** Corrige el 0002: el cargue depende de
+  stock de bodega real y lo descuenta; nueva forma de entrada de inventario.
 
 **Regla de despliegue:** ningún promotor deja de usar su método actual sin dos
 semanas de operación en paralelo. Si la app falla en un evento, ese día no se vende.
@@ -278,6 +345,12 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
       comprador para poder procesar el descuento de nómina más adelante? Por
       ahora no se captura (decisión explícita del cliente, ver
       `docs/03-decisiones/0002-ventas-sin-evento.md`).
+- [ ] ¿Hace falta capturar el costo por unidad al registrar una entrada de
+      inventario a bodega? Hoy `productos.costo` sigue vacío — sin eso no se
+      puede calcular margen (sección 4: "ver costos y márgenes"). Ver ADR 0003.
+- [ ] ¿El rol Bodega va a tener pantallas propias (registrar entradas,
+      preparar cargue), o el admin sigue haciendo todo eso? Hoy
+      `app/bodega/index.tsx` es un placeholder sin funcionalidad.
 
 **Resuelto:** autenticación por PIN de 4 dígitos, sin contraseña en ningún
 rol. Ver `docs/03-decisiones/0001-metodo-autenticacion.md`.

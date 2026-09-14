@@ -1,8 +1,9 @@
 # Modelo de datos
 
-> Detalle completo del esquema resumido en `CLAUDE.md` sección 7. La fuente de
-> verdad ejecutable es la migración `src/db/migraciones/0001_esquema_inicial.ts`;
-> este documento explica el razonamiento, no lo duplica en detalle exhaustivo.
+> Resumido en `CLAUDE.md` sección 7. La fuente de verdad ejecutable son las
+> migraciones en `src/db/migraciones/` (0001 a 0007 al momento de escribir
+> esto) — este documento explica el razonamiento y el estado real, no
+> reemplaza leer el SQL cuando haga falta precisión exacta.
 
 ## Principios que moldean cada tabla
 
@@ -14,48 +15,80 @@
   haga `UPDATE` o `DELETE` sobre esa tabla. Un error se corrige con un
   movimiento compensatorio (`AJUSTE_CONTEO` u otro), nunca borrando.
 - **Ningún `stock` mutable** (R1). El saldo de cualquier ubicación —
-  bodega, camión o promotor — es siempre `SUM(movimientos)` agregado, calculado
-  en `src/core/inventario` (Fase 2). No hay columna `stock` en ninguna tabla.
+  bodega o promotor — es siempre `SUM(movimientos)` agregado, calculado por
+  `calcularSaldosPorProducto` (`src/core/inventario/index.ts`, TypeScript
+  puro con property test). No hay columna `stock` en ninguna tabla.
 - **`ts_cliente` + `dispositivo_id` en cada fila** (R6), para que la
   sincronización futura pueda ordenar y deduplicar sin depender del reloj del
   servidor ni del orden de inserción.
+- **`productos` y `usuarios` son mutables** (nombre, precio, foto, activo) —
+  a diferencia de `movimientos`, no son un libro contable, son catálogo/
+  maestro. R1/R2 no aplican ahí.
 
-## Tablas
+## Historial de migraciones
 
-| Tabla | Rol en el negocio |
-|---|---|
-| `usuarios` | Personas: promotores, conductores, bodega, admin. `rol` fija el actor (sección 4 de `CLAUDE.md`). |
-| `ubicaciones` | Bodega, cada camión, y el inventario "virtual" de cada promotor. Todo saldo vive contra una ubicación. |
-| `productos` | Catálogo: ponqués y licor. `precio`/`costo` en pesos enteros. |
-| `lotes` | Agrupa unidades de un producto por fecha de vencimiento (relevante para perecederos). |
-| `empresas` | Cliente donde ocurre un evento/feria. |
-| `eventos` | Una jornada de venta: empresa + fecha + promotor + conductor + camión. |
-| `movimientos` | El libro contable del inventario. Cada fila es un hecho inmutable: qué producto, cuánto, de dónde a dónde, por qué tipo de movimiento. |
-| `ventas` | Cabecera de una venta (recibo interno, sin valor fiscal). |
-| `venta_items` | Líneas de una venta. |
-| `conteos` / `conteo_lineas` | Conteo de cierre: teórico vs. contado, con motivo y aprobación cuando hay descuadre (R7). |
-| `niveles_objetivo` | Insumo para la recarga sugerida (ver fórmula en `CLAUDE.md` sección 7). Es configuración, no un movimiento — sí se actualiza in place. |
+| # | Nombre | Qué hizo |
+|---|---|---|
+| 0001 | `esquema_inicial` | Crea todas las tablas de la sección 7, con las columnas originales del diseño. |
+| 0002 | `identidad_dispositivo` | Tabla `_dispositivo` (una fila): UUID del dispositivo, generado una vez y reutilizado — lo usa todo lo que necesita `dispositivo_id`. |
+| 0003 | `pin_unico` | Índice `UNIQUE` sobre `usuarios.pin` — ver ADR 0001. |
+| 0004 | `catalogo_editable` | Recrea `productos`: agrega `activo` y `foto_uri`; `categoria` y `costo` pasan a opcionales (la hoja de cálculo del cliente no los traía). |
+| 0005 | `carga_catalogo_inicial` | Inserta los 123 productos reales del cliente (nombre + precio; `es_licor=true` solo en los 2 vinos y la cerveza). |
+| 0006 | `ventas_sin_evento` | Recrea `ventas`: `evento_id` pasa a opcional; el `CHECK` de `metodo_pago` cambia a `EFECTIVO`/`TRANSFERENCIA`/`LIBRANZA` (ver ADR 0002). |
+| 0007 | `codigo_barras_unico` | Índice `UNIQUE` sobre `productos.codigo_barras` (los `NULL` no chocan entre sí en SQLite). |
 
-## Tipos de movimiento
+## Tablas (estado real, no el diseño original)
 
-`COMPRA_PROVEEDOR`, `RECARGA`, `VENTA`, `TRASLADO`, `RETIRO_ADMIN`,
-`AJUSTE_CONTEO`, `AVERIA`, `DEGUSTACION`, `OBSEQUIO`, `DEVOLUCION_VENCIMIENTO`.
+| Tabla | Rol en el negocio | Estado |
+|---|---|---|
+| `usuarios` | Personas: promotores, conductores, bodega, admin. `rol` fija el actor. `pin` es el único mecanismo de login (ADR 0001). | En uso |
+| `ubicaciones` | Bodega (una sola fila, singleton) y el inventario "virtual" de cada promotor. Todo saldo vive contra una ubicación. Se crean perezosamente (`src/db/ubicaciones.ts`), no por migración ni seed. | En uso (solo tipos `BODEGA` y `PROMOTOR`; `CAMION` sin usar) |
+| `productos` | Catálogo: ponqués y licor. `precio` en pesos enteros; `categoria`/`costo` opcionales, sin dato todavía. `foto_uri` apunta a un archivo local (no un blob en SQLite). `activo=0` = "eliminado" (nunca `DELETE`). | En uso |
+| `lotes` | Agrupar unidades por fecha de vencimiento. | Sin usar — nada escribe aquí todavía |
+| `empresas` | Cliente donde ocurre un evento/feria. | Sin usar |
+| `eventos` | Una jornada de venta: empresa + fecha + promotor + conductor + camión. | Sin usar — ver ADR 0002, no se pidió gestión de eventos |
+| `movimientos` | El libro contable del inventario. Cada fila es un hecho inmutable. Tipos en uso hoy: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega → promotor), `VENTA` (promotor → afuera). | En uso (parcial) |
+| `ventas` | Cabecera de una venta (recibo interno, sin valor fiscal). `numero_recibo` = primeros 4 caracteres del UUID de dispositivo + consecutivo (`src/db/ventas.ts`). `evento_id` opcional (ADR 0002). | En uso |
+| `venta_items` | Líneas de una venta. | En uso |
+| `conteos` / `conteo_lineas` | Conteo de cierre: teórico vs. contado, con motivo y aprobación cuando hay descuadre (R7). | Sin usar — Fase 2, no construido |
+| `niveles_objetivo` | Insumo para la recarga sugerida. | Sin usar — Fase 6 |
 
-`RETIRO_ADMIN` es la única salida que no es una venta, y solo la ejecuta un
-admin con motivo obligatorio (R4) — es el punto de auditoría más sensible del
-sistema.
+## Cómo se mueve el inventario, en la práctica
 
-## Pendiente para cuando se construya cada feature
+No hay stock de "todo lo que hay". Hay saldos por ubicación, calculados al
+vuelo:
 
-Estas decisiones no se tomaron en el esquema inicial porque dependen de
-respuestas de negocio que siguen abiertas (`CLAUDE.md` sección 11):
+1. **Entra a bodega:** admin registra una entrada
+   (`app/admin/inventario/entrada.tsx` → `registrarEntradaBodega`) → un
+   `COMPRA_PROVEEDOR` por producto, `ubicacion_origen_id = NULL`,
+   `ubicacion_destino_id` = la ubicación de bodega (se crea sola la primera
+   vez).
+2. **Bodega → promotor:** admin arma un cargue
+   (`app/admin/cargue/index.tsx` → `registrarCargue`) → un `RECARGA` por
+   producto, origen = bodega, destino = la ubicación de ese promotor (se
+   crea sola la primera vez). Se valida que la cantidad no supere el saldo
+   de bodega — si no alcanza, `StockInsuficienteError` y no se escribe nada
+   (ver ADR 0003).
+3. **Promotor → afuera:** al cobrar una venta
+   (`app/promotor/index.tsx` → `registrarVenta`) → un `VENTA` por producto,
+   origen = la ubicación del promotor, destino `NULL`.
 
-- Umbral en pesos para aprobación de descuadres (R7) — probablemente una fila
-  de configuración, no una constante hardcodeada.
+`calcularSaldosPorProducto(movimientos, ubicacionId)` sirve para cualquier
+ubicación (bodega o promotor) — es la misma función, sin distinguir tipos.
+
+## Pendiente para cuando se resuelvan las preguntas abiertas
+
+Ver `CLAUDE.md` sección 11 para la lista completa. Las que tocan
+directamente el esquema:
+
+- Umbral en pesos para aprobación de descuadres (R7) — probablemente una
+  fila de configuración, no una constante hardcodeada. Bloqueado hasta que
+  se construya conteo de cierre.
 - Si el nivel objetivo se calcula por promotor o por empresa, según si los
   promotores rotan de empresa.
-- Medios de pago exactos a aceptar (la columna `metodo_pago` ya tiene un
-  `CHECK` con las 4 opciones mencionadas en la sección 11, pero podría cambiar).
-- Formato exacto del número de recibo con prefijo de dispositivo
-  (`P01-000142`, R6) — el esquema ya reserva `numero_recibo TEXT UNIQUE`, pero
-  la lógica de generación del consecutivo vive en `src/core`, no en la DB.
+- Costo por unidad en la entrada de inventario — sin eso, `productos.costo`
+  sigue vacío y no hay cómo calcular margen.
+- Formato exacto del número de recibo: el prefijo de dispositivo ya está
+  implementado (ver arriba), pero el ejemplo `P01-000142` de `CLAUDE.md`
+  sección 3 (R6) es solo ilustrativo del patrón general, no el formato
+  literal usado.
