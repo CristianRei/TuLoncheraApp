@@ -9,6 +9,8 @@ import { listarVentas } from '@/db/ventas';
 import { COLORES } from '@/ui/colores';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
+type Filtro = 'ACTIVAS' | 'ANULADAS';
+
 function formatearFecha(tsCliente: string): string {
   const fecha = new Date(tsCliente);
   return fecha.toLocaleString('es-CO', {
@@ -20,20 +22,23 @@ function formatearFecha(tsCliente: string): string {
 export default function Ventas() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [ventas, setVentas] = useState<Venta[]>([]);
+  const [filtro, setFiltro] = useState<Filtro>('ACTIVAS');
   const [cargando, setCargando] = useState(true);
+
+  const cargar = useCallback(async (filtroActual: Filtro) => {
+    setCargando(true);
+    try {
+      const db = await getDb();
+      setVentas(await listarVentas(db, { incluirAnuladas: filtroActual === 'ANULADAS' }));
+    } finally {
+      setCargando(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      (async () => {
-        setCargando(true);
-        try {
-          const db = await getDb();
-          setVentas(await listarVentas(db));
-        } finally {
-          setCargando(false);
-        }
-      })();
-    }, [])
+      cargar(filtro);
+    }, [cargar, filtro])
   );
 
   if (!usuario) return null;
@@ -48,13 +53,36 @@ export default function Ventas() {
         <View style={{ width: 40 }} />
       </View>
 
+      <View style={styles.tabs}>
+        <Pressable
+          style={[styles.tab, filtro === 'ACTIVAS' && styles.tabActivo]}
+          onPress={() => setFiltro('ACTIVAS')}
+        >
+          <Text style={[styles.tabTexto, filtro === 'ACTIVAS' && styles.tabTextoActivo]}>
+            Activas
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, filtro === 'ANULADAS' && styles.tabActivo]}
+          onPress={() => setFiltro('ANULADAS')}
+        >
+          <Text style={[styles.tabTexto, filtro === 'ANULADAS' && styles.tabTextoActivo]}>
+            Anuladas
+          </Text>
+        </Pressable>
+      </View>
+
       {cargando ? (
         <View style={styles.centrado}>
           <ActivityIndicator size="large" color={COLORES.oscuro} />
         </View>
       ) : ventas.length === 0 ? (
         <View style={styles.centrado}>
-          <Text style={styles.vacio}>Todavía no se ha registrado ninguna venta.</Text>
+          <Text style={styles.vacio}>
+            {filtro === 'ACTIVAS'
+              ? 'Todavía no se ha registrado ninguna venta.'
+              : 'No hay ventas anuladas.'}
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -64,13 +92,22 @@ export default function Ventas() {
           renderItem={({ item }) => (
             <Pressable style={styles.fila} onPress={() => router.push(`/admin/ventas/${item.id}`)}>
               <View style={styles.filaTexto}>
-                <Text style={styles.filaPromotor}>{item.promotorNombre}</Text>
+                <View style={styles.filaPromotorFila}>
+                  <Text style={styles.filaPromotor}>{item.promotorNombre}</Text>
+                  {item.anulada && (
+                    <View style={styles.insigniaAnulada}>
+                      <Text style={styles.insigniaAnuladaTexto}>Anulada</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.filaDetalle}>
                   {item.numeroRecibo} · {formatearFecha(item.tsCliente)} ·{' '}
                   {item.metodoPago.charAt(0) + item.metodoPago.slice(1).toLowerCase()}
                 </Text>
               </View>
-              <Text style={styles.filaTotal}>{formatearPesos(item.total)}</Text>
+              <Text style={[styles.filaTotal, item.anulada && styles.filaTotalAnulada]}>
+                {formatearPesos(item.total)}
+              </Text>
             </Pressable>
           )}
         />
@@ -102,6 +139,32 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  tabs: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  tab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBD3D3',
+  },
+  tabActivo: {
+    backgroundColor: COLORES.oscuro,
+    borderColor: COLORES.oscuro,
+  },
+  tabTexto: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  tabTextoActivo: {
+    color: '#FFFFFF',
   },
   centrado: {
     flex: 1,
@@ -135,10 +198,26 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  filaPromotorFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   filaPromotor: {
     fontSize: 14,
     fontWeight: '700',
     color: '#333',
+  },
+  insigniaAnulada: {
+    backgroundColor: '#B00020',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  insigniaAnuladaTexto: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFF',
   },
   filaDetalle: {
     fontSize: 12,
@@ -148,5 +227,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: COLORES.oscuro,
+  },
+  filaTotalAnulada: {
+    color: '#999',
+    textDecorationLine: 'line-through',
   },
 });

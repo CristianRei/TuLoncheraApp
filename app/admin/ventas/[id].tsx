@@ -1,11 +1,22 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { formatearPesos } from '@/core/dinero';
 import type { Venta, VentaItem } from '@/core/tipos';
 import { getDb } from '@/db/client';
-import { obtenerVenta } from '@/db/ventas';
+import { getDispositivoId } from '@/db/dispositivo';
+import { anularVenta, obtenerVenta, VentaYaAnuladaError } from '@/db/ventas';
 import { COLORES } from '@/ui/colores';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -26,18 +37,52 @@ export default function DetalleVenta() {
   const [venta, setVenta] = useState<Venta | null>(null);
   const [items, setItems] = useState<VentaItem[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [anulando, setAnulando] = useState(false);
+
+  async function cargar() {
+    const db = await getDb();
+    const resultado = await obtenerVenta(db, id);
+    setVenta(resultado?.venta ?? null);
+    setItems(resultado?.items ?? []);
+    setCargando(false);
+  }
 
   useEffect(() => {
-    (async () => {
-      const db = await getDb();
-      const resultado = await obtenerVenta(db, id);
-      setVenta(resultado?.venta ?? null);
-      setItems(resultado?.items ?? []);
-      setCargando(false);
-    })();
+    cargar();
   }, [id]);
 
   if (!usuario) return null;
+  const usuarioActual = usuario;
+
+  async function confirmarAnulacion() {
+    if (motivo.trim().length === 0) return;
+    setAnulando(true);
+    try {
+      const db = await getDb();
+      const dispositivoId = await getDispositivoId(db);
+      await anularVenta(
+        db,
+        { ventaId: id, adminId: usuarioActual.id, motivo: motivo.trim() },
+        dispositivoId
+      );
+      setModalVisible(false);
+      setMotivo('');
+      await cargar();
+      Alert.alert('Venta anulada', 'El producto volvió al inventario del promotor.');
+    } catch (error) {
+      if (error instanceof VentaYaAnuladaError) {
+        Alert.alert('Ya estaba anulada', error.message);
+        setModalVisible(false);
+        await cargar();
+      } else {
+        throw error;
+      }
+    } finally {
+      setAnulando(false);
+    }
+  }
 
   return (
     <View style={styles.contenedor}>
@@ -68,6 +113,13 @@ export default function DetalleVenta() {
             </Text>
           </View>
 
+          {venta.anulada && (
+            <View style={styles.avisoAnulada}>
+              <Text style={styles.avisoAnuladaTitulo}>Venta anulada</Text>
+              <Text style={styles.avisoAnuladaMotivo}>{venta.motivoAnulacion}</Text>
+            </View>
+          )}
+
           <FlatList
             data={items}
             keyExtractor={(item) => item.productoId}
@@ -90,11 +142,63 @@ export default function DetalleVenta() {
           />
 
           <View style={styles.pie}>
-            <Text style={styles.totalEtiqueta}>Total</Text>
-            <Text style={styles.totalValor}>{formatearPesos(venta.total)}</Text>
+            <View style={styles.totalFila}>
+              <Text style={styles.totalEtiqueta}>Total</Text>
+              <Text style={styles.totalValor}>{formatearPesos(venta.total)}</Text>
+            </View>
+            {!venta.anulada && (
+              <Pressable style={styles.botonAnular} onPress={() => setModalVisible(true)}>
+                <Text style={styles.botonAnularTexto}>Anular venta</Text>
+              </Pressable>
+            )}
           </View>
         </>
       )}
+
+      <Modal visible={modalVisible} animationType="fade" transparent>
+        <View style={styles.fondoModal}>
+          <View style={styles.tarjetaModal}>
+            <Text style={styles.modalTitulo}>Anular venta</Text>
+            <Text style={styles.modalTexto}>
+              El producto vuelve al inventario del promotor. Esta acción queda registrada.
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Motivo (obligatorio)"
+              placeholderTextColor="#999"
+              value={motivo}
+              onChangeText={setMotivo}
+              multiline
+              editable={!anulando}
+            />
+            <View style={styles.modalAcciones}>
+              <Pressable
+                onPress={() => {
+                  setModalVisible(false);
+                  setMotivo('');
+                }}
+                disabled={anulando}
+              >
+                <Text style={styles.modalCancelar}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.modalConfirmar,
+                  (motivo.trim().length === 0 || anulando) && styles.botonDeshabilitado,
+                ]}
+                disabled={motivo.trim().length === 0 || anulando}
+                onPress={confirmarAnulacion}
+              >
+                {anulando ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalConfirmarTexto}>Confirmar</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -148,6 +252,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#777',
   },
+  avisoAnulada: {
+    backgroundColor: '#FBE4E4',
+    borderWidth: 1,
+    borderColor: '#B00020',
+    marginHorizontal: 20,
+    marginTop: 12,
+    borderRadius: 12,
+    padding: 14,
+    gap: 4,
+  },
+  avisoAnuladaTitulo: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#B00020',
+  },
+  avisoAnuladaMotivo: {
+    fontSize: 13,
+    color: '#7A1420',
+  },
   lista: {
     padding: 20,
     gap: 10,
@@ -178,14 +301,17 @@ const styles = StyleSheet.create({
     color: COLORES.oscuro,
   },
   pie: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 16,
     borderRadius: 14,
+    gap: 12,
+  },
+  totalFila: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   totalEtiqueta: {
     fontSize: 15,
@@ -196,5 +322,77 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     color: COLORES.oscuro,
+  },
+  botonAnular: {
+    borderWidth: 1.5,
+    borderColor: '#B00020',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  botonAnularTexto: {
+    color: '#B00020',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  fondoModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  tarjetaModal: {
+    width: '100%',
+    maxWidth: 360,
+    backgroundColor: '#FFF',
+    borderRadius: 18,
+    padding: 22,
+    gap: 12,
+  },
+  modalTitulo: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#333',
+  },
+  modalTexto: {
+    fontSize: 13,
+    color: '#777',
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    minHeight: 70,
+    textAlignVertical: 'top',
+  },
+  modalAcciones: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 20,
+  },
+  modalCancelar: {
+    fontSize: 14,
+    color: '#888',
+  },
+  modalConfirmar: {
+    backgroundColor: '#B00020',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  modalConfirmarTexto: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  botonDeshabilitado: {
+    opacity: 0.5,
   },
 });

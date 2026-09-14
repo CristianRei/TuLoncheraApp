@@ -14,7 +14,8 @@ export type TipoMovimiento =
   | 'AVERIA'
   | 'DEGUSTACION'
   | 'OBSEQUIO'
-  | 'DEVOLUCION_VENCIMIENTO';
+  | 'DEVOLUCION_VENCIMIENTO'
+  | 'ANULACION_VENTA';
 
 export type EstadoEvento = 'PLANEADO' | 'EN_CURSO' | 'CERRADO';
 
@@ -89,6 +90,8 @@ export interface Venta {
   tsCliente: string;
   metodoPago: MetodoPago;
   total: Pesos;
+  anulada: boolean;
+  motivoAnulacion: string | null;
 }
 
 export interface VentaItem {

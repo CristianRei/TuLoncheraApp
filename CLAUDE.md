@@ -231,9 +231,11 @@ niveles_objetivo  (promotor_id, producto_id, cantidad, actualizado_ts)        �
 
 **Tipos de movimiento:**
 `COMPRA_PROVEEDOR`, `RECARGA`, `VENTA`, `TRASLADO`, `RETIRO_ADMIN`,
-`AJUSTE_CONTEO`, `AVERIA`, `DEGUSTACION`, `OBSEQUIO`, `DEVOLUCION_VENCIMIENTO`.
+`AJUSTE_CONTEO`, `AVERIA`, `DEGUSTACION`, `OBSEQUIO`, `DEVOLUCION_VENCIMIENTO`,
+`ANULACION_VENTA`.
 Hoy en uso: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega →
-promotor) y `VENTA` (promotor → afuera). El resto sigue sin implementarse.
+promotor), `VENTA` (promotor → afuera) y `ANULACION_VENTA` (revierte una
+venta: afuera → promotor, ver ADR 0004). El resto sigue sin implementarse.
 
 **Reposición por nivel objetivo** (Fase 6, sin construir):
 ```
@@ -309,8 +311,10 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   calculado indica al tocar la grilla (sí al escanear algo que no tiene) —
   los descuadres reales se resuelven en el conteo de cierre, que todavía no
   existe.
-- **Ventas del admin** (`app/admin/ventas/`): listado (promotor + total) y
-  detalle (líneas) de cada venta.
+- **Ventas del admin** (`app/admin/ventas/`): listado (promotor + total,
+  pestañas Activas/Anuladas) y detalle (líneas) de cada venta. Se puede
+  anular una venta con motivo obligatorio — nunca se borra, se marca y se
+  revierte con un movimiento compensatorio (ver ADR 0004).
 
 Lo que falta de cada fase (conteo de cierre, arqueo, alistamiento por
 escáner, niveles objetivo, gestión de empresas/eventos, sincronización,
@@ -324,6 +328,8 @@ reportes) sigue sin construirse — no asumir que existe.
   `RECARGA` quedó superado por el ADR 0003.)
 - **0003 — Stock de bodega real.** Corrige el 0002: el cargue depende de
   stock de bodega real y lo descuenta; nueva forma de entrada de inventario.
+- **0004 — Anulación de ventas.** Nunca se borra: se marca y se revierte
+  con un movimiento compensatorio (`ANULACION_VENTA`), motivo obligatorio.
 
 **Regla de despliegue:** ningún promotor deja de usar su método actual sin dos
 semanas de operación en paralelo. Si la app falla en un evento, ese día no se vende.

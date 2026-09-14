@@ -1,7 +1,7 @@
 # Modelo de datos
 
 > Resumido en `CLAUDE.md` sección 7. La fuente de verdad ejecutable son las
-> migraciones en `src/db/migraciones/` (0001 a 0007 al momento de escribir
+> migraciones en `src/db/migraciones/` (0001 a 0008 al momento de escribir
 > esto) — este documento explica el razonamiento y el estado real, no
 > reemplaza leer el SQL cuando haga falta precisión exacta.
 
@@ -36,6 +36,7 @@
 | 0005 | `carga_catalogo_inicial` | Inserta los 123 productos reales del cliente (nombre + precio; `es_licor=true` solo en los 2 vinos y la cerveza). |
 | 0006 | `ventas_sin_evento` | Recrea `ventas`: `evento_id` pasa a opcional; el `CHECK` de `metodo_pago` cambia a `EFECTIVO`/`TRANSFERENCIA`/`LIBRANZA` (ver ADR 0002). |
 | 0007 | `codigo_barras_unico` | Índice `UNIQUE` sobre `productos.codigo_barras` (los `NULL` no chocan entre sí en SQLite). |
+| 0008 | `anulacion_ventas` | `ventas` gana `anulada`/`motivo_anulacion`. Recrea `movimientos` para agregar `ANULACION_VENTA` al `CHECK` de `tipo` (ver ADR 0004). |
 
 ## Tablas (estado real, no el diseño original)
 
@@ -47,8 +48,8 @@
 | `lotes` | Agrupar unidades por fecha de vencimiento. | Sin usar — nada escribe aquí todavía |
 | `empresas` | Cliente donde ocurre un evento/feria. | Sin usar |
 | `eventos` | Una jornada de venta: empresa + fecha + promotor + conductor + camión. | Sin usar — ver ADR 0002, no se pidió gestión de eventos |
-| `movimientos` | El libro contable del inventario. Cada fila es un hecho inmutable. Tipos en uso hoy: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega → promotor), `VENTA` (promotor → afuera). | En uso (parcial) |
-| `ventas` | Cabecera de una venta (recibo interno, sin valor fiscal). `numero_recibo` = primeros 4 caracteres del UUID de dispositivo + consecutivo (`src/db/ventas.ts`). `evento_id` opcional (ADR 0002). | En uso |
+| `movimientos` | El libro contable del inventario. Cada fila es un hecho inmutable. Tipos en uso hoy: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega → promotor), `VENTA` (promotor → afuera), `ANULACION_VENTA` (afuera → promotor, revierte una venta anulada — ADR 0004). | En uso (parcial) |
+| `ventas` | Cabecera de una venta (recibo interno, sin valor fiscal). `numero_recibo` = primeros 4 caracteres del UUID de dispositivo + consecutivo (`src/db/ventas.ts`). `evento_id` opcional (ADR 0002). `anulada`/`motivo_anulacion`: nunca se borra una venta, se anula (ADR 0004). | En uso |
 | `venta_items` | Líneas de una venta. | En uso |
 | `conteos` / `conteo_lineas` | Conteo de cierre: teórico vs. contado, con motivo y aprobación cuando hay descuadre (R7). | Sin usar — Fase 2, no construido |
 | `niveles_objetivo` | Insumo para la recarga sugerida. | Sin usar — Fase 6 |
@@ -72,6 +73,11 @@ vuelo:
 3. **Promotor → afuera:** al cobrar una venta
    (`app/promotor/index.tsx` → `registrarVenta`) → un `VENTA` por producto,
    origen = la ubicación del promotor, destino `NULL`.
+4. **Afuera → promotor (anulación):** al anular una venta
+   (`app/admin/ventas/[id].tsx` → `anularVenta`) → un `ANULACION_VENTA` por
+   producto, origen `NULL`, destino = la ubicación del promotor — revierte
+   exactamente el `VENTA` original. La venta se marca `anulada`, nunca se
+   borra (ver ADR 0004).
 
 `calcularSaldosPorProducto(movimientos, ubicacionId)` sirve para cualquier
 ubicación (bodega o promotor) — es la misma función, sin distinguir tipos.
