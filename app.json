@@ -39,6 +39,13 @@
         {
           "cameraPermission": "Tu Lonchera usa la cámara para escanear códigos de barras."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Tu Lonchera usa tus fotos para ponerle imagen a los productos del catálogo.",
+          "cameraPermission": "Tu Lonchera usa la cámara para tomarle foto a los productos del catálogo."
+        }
       ]
     ],
     "experiments": {

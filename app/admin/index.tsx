@@ -28,7 +28,15 @@ export default function HomeAdmin() {
         </Pressable>
       </View>
       <View style={styles.cuerpo}>
-        <Text style={styles.mensaje}>Todavía no hay módulos de administración disponibles.</Text>
+        <Pressable style={styles.tarjeta} onPress={() => router.push('/admin/catalogo')}>
+          <View style={styles.tarjetaTexto}>
+            <Text style={styles.tarjetaTitulo}>Catálogo de productos</Text>
+            <Text style={styles.tarjetaDescripcion}>
+              Agregar, editar y eliminar productos y precios.
+            </Text>
+          </View>
+          <Text style={styles.tarjetaFlecha}>›</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -66,9 +74,36 @@ const styles = StyleSheet.create({
   },
   cuerpo: {
     padding: 20,
+    gap: 12,
   },
-  mensaje: {
-    fontSize: 14,
-    color: '#666',
+  tarjeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  tarjetaTexto: {
+    flex: 1,
+    gap: 4,
+  },
+  tarjetaTitulo: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  tarjetaDescripcion: {
+    fontSize: 13,
+    color: '#777',
+  },
+  tarjetaFlecha: {
+    fontSize: 22,
+    color: COLORES.oscuro,
   },
 });

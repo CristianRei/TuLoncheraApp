@@ -56,12 +56,14 @@ export interface Producto {
   sku: string;
   codigoBarras: string | null;
   nombre: string;
-  categoria: string;
+  categoria: string | null;
   esLicor: boolean;
   esPerecedero: boolean;
   precio: Pesos;
-  costo: Pesos;
+  costo: Pesos | null;
   unidadEmpaque: number;
+  fotoUri: string | null;
+  activo: boolean;
 }
 
 export interface Movimiento {
