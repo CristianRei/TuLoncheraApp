@@ -1,0 +1,200 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage[margin=2.2cm,headheight=22.2pt]{geometry}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, babel}
+
+\definecolor{accent}{HTML}{1F4E5F}
+\definecolor{graytxt}{HTML}{6B6B6B}
+
+\titleformat{\section}{\large\bfseries\color{accent}}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalsize\bfseries\color{accent}}{\thesubsection}{0.6em}{}
+\setlist[itemize]{leftmargin=1.4em, itemsep=2pt, topsep=2pt}
+\setlist[enumerate]{leftmargin=1.6em, itemsep=2pt, topsep=2pt}
+\hypersetup{colorlinks=true, linkcolor=accent, urlcolor=accent}
+
+% ---- Encabezado en cada página ----
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\includegraphics[height=0.6cm]{logo.png}\hspace{4pt}\textbf{\small Three Bounds SAS}}
+\fancyhead[R]{\small\color{graytxt} Bogotá, \today}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\headrule}{{\color{accent}\hrule width\textwidth height\headrulewidth}}
+
+\begin{document}
+
+% ---- Membrete de primera página (estilo carta) ----
+\noindent
+\begin{minipage}[c]{0.10\textwidth}
+\includegraphics[width=\linewidth]{logo.png}
+\end{minipage}
+\begin{minipage}[c]{0.62\textwidth}
+{\LARGE\bfseries\color{accent} Three Bounds SAS}\\[3pt]
+{\small\color{graytxt} Consultoría Tecnológica $\cdot$ Automatización $\cdot$ Inteligencia Artificial}
+\end{minipage}
+\hfill
+\begin{minipage}[c]{0.24\textwidth}
+\raggedleft\small\color{graytxt} Bogotá, \today
+\end{minipage}
+
+\vspace{6pt}
+{\color{accent}\hrule height 1pt}
+\vspace{22pt}
+
+\begin{center}
+{\Large\bfseries\color{accent} Propuesta Técnico-Comercial}\\[4pt]
+{\large Sistema de Inventario y Ventas --- Tu Lonchera}
+\end{center}
+\vspace{18pt}
+
+\section{Modalidad de la solución}
+\begin{itemize}
+    \item \textbf{App nativa (Android):} mejor desempeño con el escáner de productos, funciona sin conexión a internet. Requiere instalación del archivo de la app en cada celular.
+    \item \textbf{App web progresiva (PWA):} se instala directamente desde el navegador, sin pasar por una tienda de aplicaciones. El uso de cámara y el funcionamiento sin internet dependen del celular de cada promotor.
+\end{itemize}
+
+\section{Alcance por fases}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=2.6cm,
+    fase/.style={rectangle, rounded corners, draw=accent, fill=accent!8, minimum width=2.4cm, minimum height=1cm, align=center, font=\small},
+    >={Stealth[length=2mm]}
+]
+\node[fase] (f1) {1. Planeación};
+\node[fase, right=of f1] (f2) {2. MVP};
+\node[fase, right=of f2] (f3) {3. Sincronización};
+\node[fase, right=of f3] (f4) {4. Testeo y\\Garantía};
+\draw[->, accent, thick] (f1) -- (f2);
+\draw[->, accent, thick] (f2) -- (f3);
+\draw[->, accent, thick] (f3) -- (f4);
+\end{tikzpicture}
+\end{center}
+
+\subsection*{Fase 1 --- Planeación}
+\textbf{Precio: \$[XX] COP}
+\begin{itemize}
+    \item Entendimiento del proceso actual (bodega, camiones, eventos con promotores).
+    \item Diagrama de cómo funcionará la solución.
+    \item Vista previa navegable de las pantallas (sin funciones reales todavía).
+\end{itemize}
+\textit{Criterio de aceptación:} el cliente aprueba por escrito el diagrama y la vista previa antes de pasar a la Fase 2.
+
+\subsection*{Fase 2 --- MVP}
+\textbf{Precio: \$[XX] COP}
+\begin{itemize}
+    \item App funcionando en un celular: registro de inventario, ventas y escaneo de productos.
+    \item Funciona sin internet; cada celular guarda su propia información.
+    \item Capacitación básica a Martica y Andrea.
+\end{itemize}
+\textit{Criterio de aceptación:} el 100\% de las ventas de un día real de prueba quedan registradas correctamente, comparado contra el conteo físico.
+
+\subsection*{Fase 3 --- Sincronización (Implementación)}
+\textbf{Precio: \$[XX] COP}
+\begin{itemize}
+    \item Conexión entre los celulares de los promotores y la bodega (los datos se unifican).
+    \item Reportes de ventas e inventario, en reemplazo del Excel administrativo.
+    \item Perfiles de usuario: promotor, bodega, administración.
+\end{itemize}
+\textit{Criterio de aceptación:} el inventario consolidado en el reporte coincide con el conteo físico con un margen de error menor al 1\%, durante dos días seguidos de prueba.
+
+\subsection*{Fase 4 --- Testeo y Garantía}
+\textbf{Precio: \$[XX] COP}
+\begin{itemize}
+    \item Pruebas completas del sistema en condiciones reales.
+    \item Corrida en paralelo con Loyverse/Excel (ver Sección 7).
+    \item Ajustes finales y entrega definitiva.
+\end{itemize}
+\textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves durante [XX] jornadas; el cliente aprueba por escrito el paso a producción.
+
+\section{Estructura de costos}
+
+\begin{longtable}{p{4cm}p{9cm}p{2cm}}
+\toprule
+\textbf{Rubro} & \textbf{Incluye} & \textbf{\%} \\
+\midrule
+\endhead
+Desarrollo de software & Análisis, diseño, programación, pruebas y despliegue de cada fase. & [XX]\% \\
+Infraestructura y licencias & Hosting/backend (desde Fase 3), cuenta de desarrollador Play Store si aplica, dominios. & [XX]\% \\
+Soporte y mantenimiento & Corrección de errores post-entrega y acompañamiento durante la corrida en paralelo. & [XX]\% \\
+\bottomrule
+\end{longtable}
+
+\textit{Nota:} los pagos recurrentes de infraestructura (hosting, cuentas de tienda) corren por cuenta del cliente desde su activación; Three Bounds SAS solo se encarga de configurarlos.
+
+\section{Supuestos y dependencias del cliente}
+\begin{itemize}
+    \item El cliente entrega la lista actual de productos y precios en un Excel antes de iniciar la Fase 2.
+    \item El cliente nombra una sola persona responsable de revisar y aprobar cada entrega, en un plazo máximo de [XX] días hábiles.
+    \item Los celulares o tablets donde se instalará la app son responsabilidad del cliente; Three Bounds SAS indicará antes de la Fase 2 qué características mínimas deben tener.
+    \item Cualquier función nueva que no esté descrita en el alcance de una fase se cotiza y se cobra aparte.
+\end{itemize}
+
+\section{Propiedad intelectual}
+El código fuente, la base de datos y los diseños desarrollados específicamente para Tu Lonchera son propiedad exclusiva de Tu Lonchera una vez cancelado el 100\% del valor de la fase correspondiente. Three Bounds SAS conserva el derecho de reutilizar componentes genéricos y no específicos del negocio del cliente (librerías, patrones de arquitectura) en otros proyectos.
+
+\section{Manejo de datos personales}
+El tratamiento de los datos personales de clientes finales y empleados capturados por el sistema se realizará conforme a la Ley 1581 de 2012 y su decreto reglamentario. Tu Lonchera actúa como responsable del tratamiento; Three Bounds SAS actúa como encargado durante el desarrollo y mantenimiento, y se compromete a no usar dichos datos para fines distintos a la prestación del servicio contratado.
+
+\section{Plan de migración y corrida en paralelo}
+
+\begin{center}
+\begin{tikzpicture}[
+    node distance=0cm,
+    hito/.style={circle, draw=accent, fill=accent, minimum size=8pt, inner sep=0pt},
+    etq/.style={font=\footnotesize, align=center, text width=2.6cm}
+]
+\draw[accent, thick] (0,0) -- (12,0);
+\foreach \x/\txt/\lbl in {
+    0/{Fase 2--3}/{Sistema nuevo\\opera en paralelo},
+    4/{Corrida paralela}/{Mínimo [XX]\\jornadas reales},
+    8/{Validación}/{Se cumplen los\\criterios de Fase 4},
+    12/{Migración}/{Loyverse se\\da de baja}
+}{
+    \node[hito] at (\x,0) {};
+    \node[etq, below=6pt] at (\x,0) {\txt \\ \lbl};
+}
+\end{tikzpicture}
+\end{center}
+
+\begin{enumerate}
+    \item Durante las Fases 2 y 3, el sistema nuevo opera en paralelo con Loyverse/Excel, sin reemplazarlos todavía.
+    \item La corrida en paralelo dura mínimo [XX] jornadas de venta reales.
+    \item La migración definitiva solo ocurre cuando los criterios de la Fase 4 se cumplen de forma consistente.
+    \item La cancelación de la licencia de Loyverse queda a decisión y cargo del cliente, una vez confirmada la migración.
+\end{enumerate}
+
+\section{Forma de pago y garantía}
+\begin{itemize}
+    \item Pago por fase: [XX]\% al iniciar la fase, [XX]\% al aprobar el entregable.
+    \item Ninguna fase inicia sin el pago inicial correspondiente ni sin la aprobación por escrito de la fase anterior.
+    \item Garantía de [XX] días después de aprobada cada fase, cubriendo únicamente errores del alcance entregado (no funciones nuevas).
+\end{itemize}
+
+\section{Riesgos declarados}
+\begin{itemize}
+    \item Conectividad limitada en los puntos de venta puede afectar los tiempos de sincronización de la Fase 3.
+    \item Cambios en el catálogo de productos durante el desarrollo pueden generar trabajo adicional no incluido en el precio de la fase.
+    \item La adopción por parte de los promotores depende de la capacitación y puede afectar los tiempos de la corrida en paralelo.
+    \item Retrasos del cliente en entregar información (Sección 4) desplazan el cronograma proporcionalmente.
+\end{itemize}
+
+\vspace{1cm}
+\noindent
+\begin{tabularx}{\textwidth}{XX}
+\underline{\hspace{5cm}} & \underline{\hspace{5cm}} \\
+Por Three Bounds SAS & Por Tu Lonchera \\
+\end{tabularx}
+
+\end{document}
