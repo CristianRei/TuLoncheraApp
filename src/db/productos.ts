@@ -57,6 +57,19 @@ export async function obtenerProducto(db: SQLiteDatabase, id: string): Promise<P
   return fila ? aProducto(fila) : null;
 }
 
+export async function obtenerProductosPorIds(
+  db: SQLiteDatabase,
+  ids: string[]
+): Promise<Map<string, Producto>> {
+  if (ids.length === 0) return new Map();
+  const marcadores = ids.map(() => '?').join(', ');
+  const filas = await db.getAllAsync<FilaProducto>(
+    `SELECT ${COLUMNAS} FROM productos WHERE id IN (${marcadores})`,
+    ids
+  );
+  return new Map(filas.map((fila) => [fila.id, aProducto(fila)]));
+}
+
 function generarSku(): string {
   return `TL-${Crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
@@ -101,21 +114,28 @@ export async function actualizarProducto(
     codigoBarras?: string | null;
   }
 ): Promise<void> {
+  const columnas: string[] = [];
+  const valores: (string | number | null)[] = [];
+
   if (cambios.nombre !== undefined) {
-    await db.runAsync('UPDATE productos SET nombre = ? WHERE id = ?', [cambios.nombre, id]);
+    columnas.push('nombre = ?');
+    valores.push(cambios.nombre);
   }
   if (cambios.precio !== undefined) {
-    await db.runAsync('UPDATE productos SET precio = ? WHERE id = ?', [cambios.precio, id]);
+    columnas.push('precio = ?');
+    valores.push(cambios.precio);
   }
   if (cambios.fotoUri !== undefined) {
-    await db.runAsync('UPDATE productos SET foto_uri = ? WHERE id = ?', [cambios.fotoUri, id]);
+    columnas.push('foto_uri = ?');
+    valores.push(cambios.fotoUri);
   }
   if (cambios.codigoBarras !== undefined) {
-    await db.runAsync('UPDATE productos SET codigo_barras = ? WHERE id = ?', [
-      cambios.codigoBarras,
-      id,
-    ]);
+    columnas.push('codigo_barras = ?');
+    valores.push(cambios.codigoBarras);
   }
+  if (columnas.length === 0) return;
+
+  await db.runAsync(`UPDATE productos SET ${columnas.join(', ')} WHERE id = ?`, [...valores, id]);
 }
 
 /**

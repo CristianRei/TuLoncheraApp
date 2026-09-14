@@ -77,6 +77,18 @@ export default function HomePromotor() {
       Alert.alert('Sin inventario', `No tienes "${producto.nombre}" en tu inventario.`);
       return;
     }
+    agregarAlCarritoConTope(producto, saldo);
+  }
+
+  function agregarAlCarritoConTope(
+    producto: { id: string; nombre: string; precio: number; fotoUri: string | null },
+    saldo: number
+  ) {
+    const enCarrito = carrito.items.find((item) => item.productoId === producto.id)?.cantidad ?? 0;
+    if (enCarrito >= saldo) {
+      Alert.alert('Sin inventario', `No tienes más "${producto.nombre}" disponible.`);
+      return;
+    }
     carrito.agregar({
       id: producto.id,
       nombre: producto.nombre,
@@ -175,14 +187,7 @@ export default function HomePromotor() {
               fotoUri={item.producto.fotoUri}
               saldo={item.saldo}
               colorAcento={COLORES.primario}
-              onPress={() =>
-                carrito.agregar({
-                  id: item.producto.id,
-                  nombre: item.producto.nombre,
-                  precio: item.producto.precio,
-                  fotoUri: item.producto.fotoUri,
-                })
-              }
+              onPress={() => agregarAlCarritoConTope(item.producto, item.saldo)}
             />
           )}
         />

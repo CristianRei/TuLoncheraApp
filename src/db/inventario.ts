@@ -4,7 +4,7 @@ import { calcularSaldosPorProducto } from '@/core/inventario';
 import type { Producto } from '@/core/tipos';
 
 import { listarMovimientosPorUbicacion } from './movimientos';
-import { obtenerProducto } from './productos';
+import { obtenerProductosPorIds } from './productos';
 import { buscarUbicacionBodega, buscarUbicacionPromotor } from './ubicaciones';
 
 export interface ItemInventario {
@@ -25,11 +25,13 @@ async function listarInventarioUbicacion(
   ubicacionId: string
 ): Promise<ItemInventario[]> {
   const saldos = await calcularSaldosUbicacion(db, ubicacionId);
+  const idsConSaldo = [...saldos.entries()].filter(([, saldo]) => saldo > 0).map(([id]) => id);
+  const productos = await obtenerProductosPorIds(db, idsConSaldo);
 
   const items: ItemInventario[] = [];
   for (const [productoId, saldo] of saldos) {
     if (saldo <= 0) continue;
-    const producto = await obtenerProducto(db, productoId);
+    const producto = productos.get(productoId);
     if (!producto) continue;
     items.push({ producto, saldo });
   }

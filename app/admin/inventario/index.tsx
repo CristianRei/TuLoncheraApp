@@ -47,7 +47,7 @@ export default function Inventario() {
       ) : items.length === 0 ? (
         <View style={styles.centrado}>
           <Text style={styles.vacio}>
-            Todavía no hay stock en bodega. Toca "Ingresar pedido" para registrar lo que llegó.
+            Todavía no hay stock en bodega. Toca &ldquo;Ingresar pedido&rdquo; para registrar lo que llegó.
           </Text>
         </View>
       ) : (

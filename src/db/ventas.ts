@@ -188,6 +188,12 @@ export async function anularVenta(
   if (encontrada.venta.anulada) throw new VentaYaAnuladaError();
 
   await db.withTransactionAsync(async () => {
+    const resultado = await db.runAsync(
+      'UPDATE ventas SET anulada = 1, motivo_anulacion = ? WHERE id = ? AND anulada = 0',
+      [datos.motivo, datos.ventaId]
+    );
+    if (resultado.changes === 0) throw new VentaYaAnuladaError();
+
     const ubicacionPromotor = await obtenerOCrearUbicacionPromotor(
       db,
       encontrada.venta.promotorId,
@@ -210,10 +216,5 @@ export async function anularVenta(
         dispositivoId
       );
     }
-
-    await db.runAsync('UPDATE ventas SET anulada = 1, motivo_anulacion = ? WHERE id = ?', [
-      datos.motivo,
-      datos.ventaId,
-    ]);
   });
 }
