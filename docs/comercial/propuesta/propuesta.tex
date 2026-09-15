@@ -13,7 +13,7 @@
 \usepackage{graphicx}
 \usepackage{fancyhdr}
 \usepackage{tikz}
-\usetikzlibrary{arrows.meta, positioning, babel}
+\usetikzlibrary{arrows.meta, positioning, babel, calc}
 
 \definecolor{accent}{HTML}{1F4E5F}
 \definecolor{graytxt}{HTML}{6B6B6B}
@@ -157,7 +157,7 @@ Al ahorro de horas se suma la licencia del POS actual (\$200.000 a \$250.000 COP
 \end{tabular}
 \end{center}
 
-\subsection*{Módulo adicional: Asistente por WhatsApp}
+\subsection*{Asistente por WhatsApp}
 
 \begin{center}
 \begin{tabular}{p{10.5cm}p{3.9cm}}
@@ -169,28 +169,24 @@ Al ahorro de horas se suma la licencia del POS actual (\$200.000 a \$250.000 COP
 \end{tabular}
 \end{center}
 
-Opcional y posterior: \textbf{requiere que la Fase 3 esté en producción}, porque las alertas dependen del servidor central. Tiene además un costo recurrente de mensajería a cargo del cliente.
+Va después de la Fase 3 porque las alertas dependen del servidor central. Tiene además un costo recurrente de mensajería a cargo del cliente.
 
-\subsection*{Totales según lo que se elija}
+\subsection*{Totales}
 
 \begin{center}
 \begin{tabular}{lrr}
 \toprule
 \textbf{Configuración} & \textbf{Inversión única} & \textbf{Se recupera en} \\
 \midrule
-App Web Progresiva & \$8.000.000 COP & 5,2 meses \\
 App Web Progresiva + Asistente & \$10.000.000 COP & 6,5 meses \\
-App Nativa & \$12.000.000 COP & 7,8 meses \\
-App Nativa + Asistente & \$14.000.000 COP & 9,1 meses \\
+\textbf{App Nativa + Asistente} \small(recomendada) & \textbf{\$14.000.000 COP} & \textbf{9,1 meses} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \small\textit{Calculado sobre \$1.546.085 COP/mes: horas recuperadas más la licencia que deja de pagarse. No incluye el descuadre de inventario, que está sin medir y solo mejora estas cifras.}\normalsize
 
-\subsection*{No partimos de cero}
-
-Ya existe un \textbf{prototipo funcional} con los 123 productos reales de Tu Lonchera cargados: escanea código de barras, registra ventas por promotor y asigna cargue desde bodega. \textbf{Disponible para verlo funcionando antes de firmar.}
+\small\textit{Ya existe un prototipo funcional con los 123 productos reales cargados --- escanea código de barras, registra ventas y asigna cargue. Disponible para verlo antes de firmar.}\normalsize
 
 \section{Alcance por fases}\label{sec:fases}
 
@@ -198,18 +194,18 @@ Ya existe un \textbf{prototipo funcional} con los 123 productos reales de Tu Lon
 \begin{tikzpicture}[
     node distance=0.75cm,
     fase/.style={rectangle, rounded corners, draw=accent, fill=accent!8, minimum width=2.45cm, minimum height=1.15cm, align=center, font=\footnotesize},
-    opcional/.style={fase, fill=white, draw=graytxt, dashed},
+    posterior/.style={fase, fill=white},
     >={Stealth[length=2mm]}
 ]
 \node[fase] (f1) {1. Planeación\\{\scriptsize 2 sem}};
 \node[fase, right=of f1] (f2) {2. MVP\\{\scriptsize 4 sem}};
 \node[fase, right=of f2] (f3) {3. Sincroniz.\\{\scriptsize 4 sem}};
 \node[fase, right=of f3] (f4) {4. Testeo y\\Garantía\\{\scriptsize 2 sem}};
-\node[opcional, right=of f4] (f5) {5. WhatsApp\\{\scriptsize opcional}};
+\node[posterior, right=of f4] (f5) {5. WhatsApp\\{\scriptsize 2 sem}};
 \draw[->, accent, thick] (f1) -- (f2);
 \draw[->, accent, thick] (f2) -- (f3);
 \draw[->, accent, thick] (f3) -- (f4);
-\draw[->, graytxt, thick, dashed] (f4) -- (f5);
+\draw[->, accent, thick] (f4) -- (f5);
 \end{tikzpicture}
 \end{center}
 
@@ -255,17 +251,50 @@ Cada fase cobra un porcentaje del total contratado (modalidad elegida + módulos
 \end{itemize}
 \textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves durante 10 jornadas de venta reales; el cliente aprueba por escrito el paso a producción.
 
-\section{Asistente por WhatsApp (opcional --- Fase 5)}\label{sec:whatsapp}
+\section{Asistente por WhatsApp --- Fase 5}\label{sec:whatsapp}
 
-Se cotiza y se contrata por separado. \textbf{Depende de que la Fase 3 esté en producción}, porque las alertas requieren un servidor central que conozca el estado de cada promotor.
+Solicitado por Tu Lonchera. \textbf{Va después de la Fase 3 por una razón técnica:} las alertas necesitan un servidor central que sepa qué está pasando con cada promotor, y ese servidor nace en la Fase 3. Antes de eso no hay contra qué comparar.
 
 \subsection*{Tres funciones}
 
-\textbf{1. Soporte operativo al promotor.} Responde por chat las dudas frecuentes: cómo registrar una venta, cómo hacer el conteo de cierre, qué hacer si un producto no escanea, cómo se maneja una libranza. Reduce las llamadas a Administración durante el evento y acorta la inducción de personal nuevo.
-
-\textbf{2. Retroalimentación de desempeño durante la jornada.} En momentos definidos (media mañana, mediodía y antes del cierre), el promotor recibe su venta acumulada, el porcentaje de meta alcanzado y la comparación con su propio promedio. La idea es que pueda corregir durante el evento, no enterarse al día siguiente.
-
-\textbf{3. Alertas de información pendiente de sincronizar.} Cuando un evento programado no registra su cierre a la hora esperada, o la app reporta datos pendientes al recuperar señal, el sistema le recuerda al promotor conectarse. Administración recibe la misma alerta si no hay respuesta dentro de un plazo configurable.
+\begin{center}
+\begin{tikzpicture}[
+    tarjeta/.style={rectangle, draw=accent, fill=accent!6, rounded corners, minimum width=4.35cm, minimum height=4cm, align=center, font=\footnotesize, text width=3.9cm},
+    node distance=0.4cm,
+]
+% --- Tarjeta 1: globo de chat ---
+\node[tarjeta] (t1) {\\[1.05cm]{\bfseries\small Resuelve dudas}\\[4pt]
+Cómo registrar una venta, hacer el cierre, qué hacer si un producto no escanea, cómo va una libranza.\\[4pt]
+{\itshape Menos llamadas a Administración.}};
+\begin{scope}[shift={($(t1.north)+(0,-0.72)$)}]
+  \draw[accent, thick, fill=white, rounded corners=3pt] (-0.42,-0.26) rectangle (0.42,0.26);
+  \draw[accent, thick, fill=white] (-0.12,-0.26) -- (-0.02,-0.46) -- (0.08,-0.26) -- cycle;
+  \draw[accent, line width=0.7pt] (-0.26,0.08) -- (0.26,0.08);
+  \draw[accent, line width=0.7pt] (-0.26,-0.06) -- (0.12,-0.06);
+\end{scope}
+% --- Tarjeta 2: barras ---
+\node[tarjeta, right=of t1] (t2) {\\[1.05cm]{\bfseries\small Muestra cómo va}\\[4pt]
+Tres veces al día: venta acumulada, \% de la meta y comparación con su propio promedio.\\[4pt]
+{\itshape Corrige durante el evento, no al día siguiente.}};
+\begin{scope}[shift={($(t2.north)+(0,-0.72)$)}]
+  \draw[accent, line width=0.8pt] (-0.45,-0.34) -- (0.45,-0.34);
+  \fill[accent!45] (-0.34,-0.34) rectangle (-0.14,-0.02);
+  \fill[accent!70] (-0.07,-0.34) rectangle (0.13,0.16);
+  \fill[accent] (0.2,-0.34) rectangle (0.4,0.36);
+\end{scope}
+% --- Tarjeta 3: campana ---
+\node[tarjeta, right=of t2] (t3) {\\[1.05cm]{\bfseries\small Avisa lo pendiente}\\[4pt]
+Si un cierre no llegó a la hora esperada, le recuerda conectarse. Administración recibe el mismo aviso.\\[4pt]
+{\itshape Nadie se queda esperando datos.}};
+\begin{scope}[shift={($(t3.north)+(0,-0.72)$)}]
+  \draw[accent, thick, fill=white] (-0.3,-0.2) .. controls (-0.3,0.2) and (-0.16,0.3) .. (0,0.3)
+      .. controls (0.16,0.3) and (0.3,0.2) .. (0.3,-0.2) -- cycle;
+  \draw[accent, thick] (-0.38,-0.2) -- (0.38,-0.2);
+  \fill[accent] (0,-0.32) circle (0.07);
+  \draw[accent, thick] (0,0.3) -- (0,0.4);
+\end{scope}
+\end{tikzpicture}
+\end{center}
 
 \subsection*{Qué incluye}
 \begin{itemize}
@@ -273,13 +302,6 @@ Se cotiza y se contrata por separado. \textbf{Depende de que la Fase 3 esté en 
     \item Redacción y gestión de aprobación de las plantillas ante Meta.
     \item Base de conocimiento del asistente, construida sobre el manual operativo validado por el cliente.
     \item Panel de configuración de horarios, metas y umbrales de alerta.
-\end{itemize}
-
-\subsection*{Qué no incluye}
-\begin{itemize}
-    \item Encuestas de satisfacción a empresas cliente.
-    \item Atención al consumidor final.
-    \item Campañas comerciales o de mercadeo por WhatsApp.
 \end{itemize}
 
 \subsection*{Condiciones específicas}
@@ -342,8 +364,8 @@ Si se contrata el asistente por WhatsApp, los mensajes de retroalimentación de 
 
 \section{Forma de pago y garantía}
 \begin{itemize}
-    \item Dentro de cada fase (Sección~\ref{sec:fases}): 50\% al iniciarla, 50\% al aprobar su entregable.
-    \item Ninguna fase inicia sin el pago inicial correspondiente ni sin la aprobación por escrito de la fase anterior.
+    \item Cada fase se paga completa al aprobarse su entregable, según el porcentaje que le corresponde (Sección~\ref{sec:fases}).
+    \item Ninguna fase inicia sin que la anterior esté aprobada por escrito y pagada.
     \item Garantía de 30 días después de aprobada cada fase, cubriendo únicamente errores del alcance entregado (no funciones nuevas).
     \item \textbf{Soporte y mantenimiento posterior:} terminada la garantía, Tu Lonchera puede contratar un plan de soporte mensual (correcciones, ajustes menores y acompañamiento). Se cotiza aparte según el alcance que se acuerde.
 \end{itemize}
