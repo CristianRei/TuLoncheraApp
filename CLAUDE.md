@@ -162,9 +162,11 @@ segmento de ruta. Este árbol es el real (no un sketch) — revisar con
 tulonchera/
   CLAUDE.md
   docs/
+    README.md                  ← índice de toda la documentación
     01-proceso-actual.md      ← todavía no existe: falta mapeo AS-IS real del negocio
     02-modelo-datos.md        ← esquema completo y razonamiento
-    03-decisiones/            ← ADRs numerados (índice en sección 10)
+    03-decisiones/            ← ADRs numerados, índice en README.md (también sección 10 aquí)
+    comercial/propuesta/     ← propuesta técnico-comercial (negocio, no arquitectura)
   app/
     index.tsx                  ← login: un solo PIN, sin contraseña
     promotor/index.tsx          ← venta: grilla de inventario + ticket + escáner + cobrar
@@ -326,7 +328,7 @@ Lo que falta de cada fase (conteo de cierre, arqueo, alistamiento por
 escáner, niveles objetivo, gestión de empresas/eventos, sincronización,
 reportes) sigue sin construirse — no asumir que existe.
 
-### Decisiones registradas (`docs/03-decisiones/`)
+### Decisiones registradas (`docs/03-decisiones/`, [índice completo](docs/03-decisiones/README.md))
 
 - **0001 — Método de autenticación.** PIN único, sin contraseña en ningún rol.
 - **0002 — Ventas y recargas sin `evento`.** `evento_id` opcional; no se
