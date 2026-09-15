@@ -7,6 +7,7 @@ import type { TipoMovimiento } from '@/core/tipos';
 interface DatosMovimiento {
   tipo: TipoMovimiento;
   productoId: string;
+  loteId?: string | null;
   cantidad: number;
   ubicacionOrigenId: string | null;
   ubicacionDestinoId: string | null;
@@ -25,13 +26,14 @@ export async function registrarMovimiento(
 ): Promise<void> {
   await db.runAsync(
     `INSERT INTO movimientos (
-       id, tipo, producto_id, cantidad, ubicacion_origen_id, ubicacion_destino_id,
+       id, tipo, producto_id, lote_id, cantidad, ubicacion_origen_id, ubicacion_destino_id,
        usuario_id, motivo, ts_cliente, dispositivo_id
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       Crypto.randomUUID(),
       datos.tipo,
       datos.productoId,
+      datos.loteId ?? null,
       datos.cantidad,
       datos.ubicacionOrigenId,
       datos.ubicacionDestinoId,

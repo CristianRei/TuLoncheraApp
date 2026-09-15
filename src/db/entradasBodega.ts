@@ -1,11 +1,14 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { crearLote } from './lotes';
 import { registrarMovimiento } from './movimientos';
 import { obtenerOCrearUbicacionBodega } from './ubicaciones';
 
 interface ItemEntrada {
   productoId: string;
   cantidad: number;
+  /** ISO 8601 (solo fecha). Si no viene, el producto entra sin lote. */
+  fechaVencimiento?: string | null;
 }
 
 /**
@@ -26,11 +29,16 @@ export async function registrarEntradaBodega(
     const ubicacionBodega = await obtenerOCrearUbicacionBodega(db, dispositivoId);
 
     for (const item of itemsConCantidad) {
+      const loteId = item.fechaVencimiento
+        ? await crearLote(db, item.productoId, item.fechaVencimiento, dispositivoId)
+        : null;
+
       await registrarMovimiento(
         db,
         {
           tipo: 'COMPRA_PROVEEDOR',
           productoId: item.productoId,
+          loteId,
           cantidad: item.cantidad,
           ubicacionOrigenId: null,
           ubicacionDestinoId: ubicacionBodega,

@@ -26,6 +26,16 @@ interface LineaPedido {
   productoId: string;
   nombre: string;
   cantidad: number;
+  fechaVencimiento: string | null;
+}
+
+const PATRON_FECHA = /^\d{4}-\d{2}-\d{2}$/;
+
+/** "20260315" tecleado en number-pad → "2026-03-15", insertando guiones. */
+function formatearEntradaFecha(texto: string): string {
+  const digitos = texto.replace(/\D/g, '').slice(0, 8);
+  const partes = [digitos.slice(0, 4), digitos.slice(4, 6), digitos.slice(6, 8)].filter(Boolean);
+  return partes.join('-');
 }
 
 /**
@@ -43,6 +53,7 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
     nombre: string;
   } | null>(null);
   const [cantidadTexto, setCantidadTexto] = useState('');
+  const [fechaTexto, setFechaTexto] = useState('');
   const [guardando, setGuardando] = useState(false);
 
   async function manejarCodigoEscaneado(codigo: string) {
@@ -58,30 +69,37 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
     }
     setProductoPendiente({ id: producto.id, nombre: producto.nombre });
     setCantidadTexto('');
+    setFechaTexto('');
   }
 
   function confirmarCantidad() {
     if (!productoPendiente) return;
     const cantidad = parseInt(cantidadTexto, 10);
     if (!Number.isFinite(cantidad) || cantidad <= 0) return;
+    if (fechaTexto && !PATRON_FECHA.test(fechaTexto)) return;
+    const fechaVencimiento = fechaTexto || null;
 
     setItems((actual) => {
-      const existente = actual.find((item) => item.productoId === productoPendiente.id);
+      const existente = actual.find(
+        (item) => item.productoId === productoPendiente.id && item.fechaVencimiento === fechaVencimiento
+      );
       if (existente) {
         return actual.map((item) =>
-          item.productoId === productoPendiente.id
-            ? { ...item, cantidad: item.cantidad + cantidad }
-            : item
+          item === existente ? { ...item, cantidad: item.cantidad + cantidad } : item
         );
       }
-      return [...actual, { productoId: productoPendiente.id, nombre: productoPendiente.nombre, cantidad }];
+      return [
+        ...actual,
+        { productoId: productoPendiente.id, nombre: productoPendiente.nombre, cantidad, fechaVencimiento },
+      ];
     });
     setProductoPendiente(null);
     setCantidadTexto('');
+    setFechaTexto('');
   }
 
-  function quitarLinea(productoId: string) {
-    setItems((actual) => actual.filter((item) => item.productoId !== productoId));
+  function quitarLinea(indice: number) {
+    setItems((actual) => actual.filter((_, i) => i !== indice));
   }
 
   const totalUnidades = items.reduce((suma, item) => suma + item.cantidad, 0);
@@ -96,7 +114,11 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
         db,
         {
           usuarioId,
-          items: items.map(({ productoId, cantidad }) => ({ productoId, cantidad })),
+          items: items.map(({ productoId, cantidad, fechaVencimiento }) => ({
+            productoId,
+            cantidad,
+            fechaVencimiento,
+          })),
         },
         dispositivoId
       );
@@ -120,17 +142,20 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
       ) : (
         <FlatList
           data={items}
-          keyExtractor={(item) => item.productoId}
+          keyExtractor={(item, indice) => `${item.productoId}-${item.fechaVencimiento ?? 'sin-fecha'}-${indice}`}
           contentContainerStyle={styles.lista}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <View style={styles.fila}>
               <View style={styles.filaTexto}>
                 <Text style={styles.filaNombre} numberOfLines={2}>
                   {item.nombre}
                 </Text>
                 <Text style={styles.filaCantidad}>{item.cantidad} unidades</Text>
+                {item.fechaVencimiento && (
+                  <Text style={styles.filaVencimiento}>Vence: {item.fechaVencimiento}</Text>
+                )}
               </View>
-              <Pressable style={styles.botonQuitar} onPress={() => quitarLinea(item.productoId)}>
+              <Pressable style={styles.botonQuitar} onPress={() => quitarLinea(index)}>
                 <Text style={styles.botonQuitarTexto}>×</Text>
               </Pressable>
             </View>
@@ -178,11 +203,25 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
               keyboardType="number-pad"
               autoFocus
             />
+            <Text style={styles.modalTexto}>Fecha de vencimiento (opcional)</Text>
+            <TextInput
+              style={styles.modalInputFecha}
+              placeholder="AAAA-MM-DD"
+              placeholderTextColor="#999"
+              value={fechaTexto}
+              onChangeText={(texto) => setFechaTexto(formatearEntradaFecha(texto))}
+              keyboardType="number-pad"
+              maxLength={10}
+            />
+            {fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto) && (
+              <Text style={styles.modalErrorFecha}>Formato: AAAA-MM-DD</Text>
+            )}
             <View style={styles.modalAcciones}>
               <Pressable
                 onPress={() => {
                   setProductoPendiente(null);
                   setCantidadTexto('');
+                  setFechaTexto('');
                 }}
               >
                 <Text style={styles.modalCancelar}>Cancelar</Text>
@@ -190,10 +229,16 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
               <Pressable
                 style={[
                   styles.modalConfirmar,
-                  (!cantidadTexto || parseInt(cantidadTexto, 10) <= 0) &&
+                  (!cantidadTexto ||
+                    parseInt(cantidadTexto, 10) <= 0 ||
+                    (fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto))) &&
                     styles.botonDeshabilitado,
                 ]}
-                disabled={!cantidadTexto || parseInt(cantidadTexto, 10) <= 0}
+                disabled={
+                  !cantidadTexto ||
+                  parseInt(cantidadTexto, 10) <= 0 ||
+                  (fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto))
+                }
                 onPress={confirmarCantidad}
               >
                 <Text style={styles.modalConfirmarTexto}>Agregar</Text>
@@ -262,6 +307,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORES.oscuro,
   },
+  filaVencimiento: {
+    fontSize: 12,
+    color: '#888',
+  },
   botonQuitar: {
     width: 28,
     height: 28,
@@ -325,6 +374,21 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 22,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  modalInputFecha: {
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  modalErrorFecha: {
+    fontSize: 12,
+    color: '#B00020',
     textAlign: 'center',
   },
   modalAcciones: {
