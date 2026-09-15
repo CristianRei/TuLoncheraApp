@@ -89,6 +89,12 @@ El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf
 
 El conteo de cierre pasa de papel a un flujo guiado en el celular del promotor, visible para Administración y Bodega en el mismo instante en que se guarda --- sin esperar una foto por WhatsApp. Los saldos y las libranzas ya están en el sistema, no hay que transcribirlos: la hoja de recargue se genera, no se redacta.
 
+\subsection*{El segundo problema: el papel no deja rastro}
+
+Una hoja de cargue escrita a mano no permite saber, semanas después, qué se vendió realmente, a qué precio y quién lo registró. Con el sistema cada movimiento de inventario queda registrado con usuario, fecha y hora, y \textbf{no se puede borrar ni editar}: un error se corrige con un movimiento de ajuste que también queda registrado. Los precios los define Administración en el catálogo, no se teclean en cada venta.
+
+Esto no es desconfianza del equipo: es que hoy \textbf{no existe forma de verificar un descuadre} aunque se quiera. Con trazabilidad, un faltante deja de ser una discusión de memoria y pasa a ser un dato consultable.
+
 \subsection*{Traducción a tiempo y dinero: los cuatro roles juntos}
 
 Promotor × 7.5/día; Administración, Bodega y Transporte una sola vez al día. Costo hora = costo empleador con salario mínimo 2026 (\$12.344 COP/h, incluye prestaciones).
@@ -114,7 +120,28 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 
 \small\textit{Piso conservador (extremo bajo del rango, salario mínimo). Se confirma con el cliente en Fase 1.}\normalsize
 
-\section{Solución propuesta y modalidades tecnológicas}
+\subsection*{Lo que cuesta no hacer nada}
+
+Al tiempo perdido se suma la licencia del POS actual. Ambos son costos recurrentes que desaparecen con la migración:
+
+\begin{center}
+\begin{tikzpicture}[
+    caja/.style={rectangle, draw=accent, rounded corners, minimum width=7.2cm, minimum height=1.5cm, align=center, font=\small},
+    hoy/.style={caja, fill=accent!8},
+    despues/.style={caja, fill=accent, text=white},
+    node distance=0.45cm
+]
+\node[hoy] (h) {{\bfseries Hoy, cada año}\\[3pt] Tiempo perdido \$15.553.020 + Loyverse \$3.244.032\\[2pt] {\bfseries\large \$18.797.052 COP/año}};
+\node[despues, below=of h] (d) {{\bfseries Inversión única}\\[3pt] Desde \$1.000.000 hasta \$4.000.000 COP\\[2pt] {\bfseries se recupera entre 0,6 y 2,6 meses}};
+\draw[->, accent, very thick] (h) -- (d);
+\end{tikzpicture}
+\end{center}
+
+\textbf{Incluso la configuración más completa (App Nativa + Chatbot, \$4.000.000 COP) se paga sola en menos de tres meses.} A partir de ahí, cada mes que pasa el sistema genera caja en vez de consumirla --- y a diferencia de la licencia de Loyverse, el sistema queda en propiedad de Tu Lonchera (Sección~\ref{sec:propiedad}).
+
+\small\textit{Loyverse estimado en US\$88/mes a TRM \$3.072 COP (14 de septiembre de 2026).}\normalsize
+
+\section{Solución propuesta y modalidades tecnológicas}\label{sec:modalidades}
 
 \subsection*{Dos alternativas, no dos entregables}
 
@@ -127,7 +154,7 @@ La app se puede construir de dos formas distintas. \textbf{Son alternativas tecn
 \midrule
 \textbf{Instalación} & Desde el navegador, sin pasar por Play Store / App Store. & Archivo instalable (Android) o publicación en tienda (iOS).\\
 \textbf{Cámara / escáner} & Depende del navegador y el celular de cada promotor; puede variar entre dispositivos. & Acceso directo y consistente a la cámara en todos los dispositivos.\\
-\textbf{Sin conexión} & Funciona sin internet, con algunas limitaciones según el navegador. & Funciona sin internet de forma más confiable (R5).\\
+\textbf{Sin conexión} & Funciona sin internet, con algunas limitaciones según el navegador. & Funciona sin internet de forma más confiable.\\
 \textbf{Precio} & \textbf{\$1.000.000 COP} & \textbf{\$2.000.000 COP} \\
 \bottomrule
 \end{tabular}
@@ -147,7 +174,11 @@ La app se puede construir de dos formas distintas. \textbf{Son alternativas tecn
 
 Este módulo es opcional y se suma al precio de la modalidad elegida (AWP o Nativa) — no reemplaza ni depende de cuál de las dos se escoja.
 
-\section{Alcance por fases}
+\subsection*{No partimos de cero}
+
+Existe ya un \textbf{prototipo funcional} con el catálogo real de Tu Lonchera cargado (123 productos con sus precios), que hoy permite escanear código de barras, registrar ventas por promotor, asignar cargue desde bodega y consultar el inventario resultante. Está disponible para demostración en vivo antes de firmar. Lo que esta propuesta cotiza es llevar ese prototipo a un sistema completo, sincronizado y listo para operar todos los días.
+
+\section{Alcance por fases}\label{sec:fases}
 
 \begin{center}
 \begin{tikzpicture}[
@@ -155,20 +186,24 @@ Este módulo es opcional y se suma al precio de la modalidad elegida (AWP o Nati
     fase/.style={rectangle, rounded corners, draw=accent, fill=accent!8, minimum width=2.4cm, minimum height=1cm, align=center, font=\small},
     >={Stealth[length=2mm]}
 ]
-\node[fase] (f1) {1. Planeación};
-\node[fase, right=of f1] (f2) {2. MVP};
-\node[fase, right=of f2] (f3) {3. Sincronización};
-\node[fase, right=of f3] (f4) {4. Testeo y\\Garantía};
+\node[fase] (f1) {1. Planeación\\{\scriptsize 2 semanas}};
+\node[fase, right=of f1] (f2) {2. MVP\\{\scriptsize 4 semanas}};
+\node[fase, right=of f2] (f3) {3. Sincronización\\{\scriptsize 4 semanas}};
+\node[fase, right=of f3] (f4) {4. Testeo y\\Garantía\\{\scriptsize 2 semanas}};
 \draw[->, accent, thick] (f1) -- (f2);
 \draw[->, accent, thick] (f2) -- (f3);
 \draw[->, accent, thick] (f3) -- (f4);
 \end{tikzpicture}
 \end{center}
 
-El precio de cada fase es un porcentaje del \textbf{total de la modalidad elegida} (AWP o Nativa, Sección 2) más los módulos adicionales contratados (ej. Chatbot de WhatsApp) --- no un valor fijo independiente de esa elección.
+\begin{center}
+\textbf{Duración total estimada: 12 semanas (aproximadamente 3 meses)}
+\end{center}
+
+El precio de cada fase es un porcentaje del \textbf{total de la modalidad elegida} (AWP o Nativa, Sección~\ref{sec:modalidades}) más los módulos adicionales contratados (ej. Chatbot de WhatsApp) --- no un valor fijo independiente de esa elección. Los tiempos corren desde la aprobación de la fase anterior y asumen que el cliente cumple los plazos de revisión de la Sección~\ref{sec:supuestos}.
 
 \subsection*{Fase 1 --- Planeación}
-\textbf{Precio: 15\% del total contratado}
+\textbf{15\% del total contratado \quad$\cdot$\quad 2 semanas}
 \begin{itemize}
     \item Entendimiento del proceso actual (bodega, camiones, eventos con promotores).
     \item Diagrama de cómo funcionará la solución.
@@ -177,16 +212,16 @@ El precio de cada fase es un porcentaje del \textbf{total de la modalidad elegid
 \textit{Criterio de aceptación:} el cliente aprueba por escrito el diagrama y la vista previa antes de pasar a la Fase 2.
 
 \subsection*{Fase 2 --- MVP}
-\textbf{Precio: 35\% del total contratado}
+\textbf{35\% del total contratado \quad$\cdot$\quad 4 semanas}
 \begin{itemize}
     \item App funcionando en un celular: registro de inventario, ventas y escaneo de productos.
     \item Funciona sin internet; cada celular guarda su propia información.
-    \item Capacitación básica a Martica y Andrea.
+    \item Capacitación al equipo de bodega y administración.
 \end{itemize}
 \textit{Criterio de aceptación:} el 100\% de las ventas de un día real de prueba quedan registradas correctamente, comparado contra el conteo físico.
 
 \subsection*{Fase 3 --- Sincronización (Implementación)}
-\textbf{Precio: 35\% del total contratado}
+\textbf{35\% del total contratado \quad$\cdot$\quad 4 semanas}
 \begin{itemize}
     \item Conexión entre los celulares de los promotores y la bodega (los datos se unifican).
     \item Reportes de ventas e inventario, en reemplazo del Excel administrativo.
@@ -195,46 +230,30 @@ El precio de cada fase es un porcentaje del \textbf{total de la modalidad elegid
 \textit{Criterio de aceptación:} el inventario consolidado en el reporte coincide con el conteo físico con un margen de error menor al 1\%, durante dos días seguidos de prueba.
 
 \subsection*{Fase 4 --- Testeo y Garantía}
-\textbf{Precio: 15\% del total contratado}
+\textbf{15\% del total contratado \quad$\cdot$\quad 2 semanas}
 \begin{itemize}
     \item Pruebas completas del sistema en condiciones reales.
-    \item Corrida en paralelo con Loyverse/Excel (ver Sección 8).
+    \item Corrida en paralelo con Loyverse/Excel (ver Sección~\ref{sec:migracion}).
     \item Ajustes finales y entrega definitiva.
 \end{itemize}
-\textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves durante [XX] jornadas; el cliente aprueba por escrito el paso a producción.
+\textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves durante 10 jornadas de venta reales; el cliente aprueba por escrito el paso a producción.
 
-\section{Estructura de costos}
-
-\begin{longtable}{p{4cm}p{9cm}p{2cm}}
-\toprule
-\textbf{Rubro} & \textbf{Incluye} & \textbf{\%} \\
-\midrule
-\endhead
-Desarrollo de software & Análisis, diseño, programación, pruebas y despliegue de cada fase. & 80\% \\
-Infraestructura y licencias & Hosting/backend (desde Fase 3), cuenta de desarrollador Play Store si aplica, dominios. & 10\% \\
-Soporte y mantenimiento & Corrección de errores post-entrega y acompañamiento durante la corrida en paralelo. & 10\% \\
-\bottomrule
-\end{longtable}
-
-Estos porcentajes se aplican sobre el \textbf{total de la modalidad elegida más los módulos adicionales contratados} (Sección 2), el mismo total que se reparte entre las cuatro fases de la Sección 3.
-
-\textit{Nota:} los pagos recurrentes de infraestructura (hosting, cuentas de tienda) corren por cuenta del cliente desde su activación; Three Bounds SAS solo se encarga de configurarlos.
-
-\section{Supuestos y dependencias del cliente}
+\section{Supuestos y dependencias del cliente}\label{sec:supuestos}
 \begin{itemize}
     \item El cliente entrega la lista actual de productos y precios en un Excel antes de iniciar la Fase 2.
-    \item El cliente nombra una sola persona responsable de revisar y aprobar cada entrega, en un plazo máximo de [XX] días hábiles.
+    \item El cliente nombra una sola persona responsable de revisar y aprobar cada entrega, en un plazo máximo de 3 días hábiles.
     \item Los celulares o tablets donde se instalará la app son responsabilidad del cliente; Three Bounds SAS indicará antes de la Fase 2 qué características mínimas deben tener.
+    \item Los pagos recurrentes de infraestructura (hosting, dominio, cuenta de desarrollador de tienda si aplica) corren por cuenta del cliente desde su activación; Three Bounds SAS se encarga de configurarlos.
     \item Cualquier función nueva que no esté descrita en el alcance de una fase se cotiza y se cobra aparte.
 \end{itemize}
 
-\section{Propiedad intelectual}
+\section{Propiedad intelectual}\label{sec:propiedad}
 El código fuente, la base de datos y los diseños desarrollados específicamente para Tu Lonchera son propiedad exclusiva de Tu Lonchera una vez cancelado el 100\% del valor de la fase correspondiente. Three Bounds SAS conserva el derecho de reutilizar componentes genéricos y no específicos del negocio del cliente (librerías, patrones de arquitectura) en otros proyectos.
 
 \section{Manejo de datos personales}
 El tratamiento de los datos personales de clientes finales y empleados capturados por el sistema se realizará conforme a la Ley 1581 de 2012 y su decreto reglamentario. Tu Lonchera actúa como responsable del tratamiento; Three Bounds SAS actúa como encargado durante el desarrollo y mantenimiento, y se compromete a no usar dichos datos para fines distintos a la prestación del servicio contratado.
 
-\section{Plan de migración y corrida en paralelo}
+\section{Plan de migración y corrida en paralelo}\label{sec:migracion}
 
 \begin{center}
 \begin{tikzpicture}[
@@ -245,7 +264,7 @@ El tratamiento de los datos personales de clientes finales y empleados capturado
 \draw[accent, thick] (0,0) -- (12,0);
 \foreach \x/\txt/\lbl in {
     0/{Fase 2--3}/{Sistema nuevo\\opera en paralelo},
-    4/{Corrida paralela}/{Mínimo [XX]\\jornadas reales},
+    4/{Corrida paralela}/{Mínimo 10\\jornadas reales},
     8/{Validación}/{Se cumplen los\\criterios de Fase 4},
     12/{Migración}/{Loyverse se\\da de baja}
 }{
@@ -257,16 +276,17 @@ El tratamiento de los datos personales de clientes finales y empleados capturado
 
 \begin{enumerate}
     \item Durante las Fases 2 y 3, el sistema nuevo opera en paralelo con Loyverse/Excel, sin reemplazarlos todavía.
-    \item La corrida en paralelo dura mínimo [XX] jornadas de venta reales.
+    \item La corrida en paralelo dura mínimo 10 jornadas de venta reales (aproximadamente dos semanas de operación).
     \item La migración definitiva solo ocurre cuando los criterios de la Fase 4 se cumplen de forma consistente.
     \item La cancelación de la licencia de Loyverse queda a decisión y cargo del cliente, una vez confirmada la migración.
 \end{enumerate}
 
 \section{Forma de pago y garantía}
 \begin{itemize}
-    \item Dentro de cada fase (Sección 3): [XX]\% al iniciarla, [XX]\% al aprobar su entregable.
+    \item Dentro de cada fase (Sección~\ref{sec:fases}): 50\% al iniciarla, 50\% al aprobar su entregable.
     \item Ninguna fase inicia sin el pago inicial correspondiente ni sin la aprobación por escrito de la fase anterior.
-    \item Garantía de [XX] días después de aprobada cada fase, cubriendo únicamente errores del alcance entregado (no funciones nuevas).
+    \item Garantía de 30 días después de aprobada cada fase, cubriendo únicamente errores del alcance entregado (no funciones nuevas).
+    \item \textbf{Soporte y mantenimiento posterior:} terminada la garantía, Tu Lonchera puede contratar un plan de soporte mensual (correcciones, ajustes menores y acompañamiento). Se cotiza aparte según el alcance que se acuerde.
 \end{itemize}
 
 \section{Riesgos declarados}
@@ -274,14 +294,22 @@ El tratamiento de los datos personales de clientes finales y empleados capturado
     \item Conectividad limitada en los puntos de venta puede afectar los tiempos de sincronización de la Fase 3.
     \item Cambios en el catálogo de productos durante el desarrollo pueden generar trabajo adicional no incluido en el precio de la fase.
     \item La adopción por parte de los promotores depende de la capacitación y puede afectar los tiempos de la corrida en paralelo.
-    \item Retrasos del cliente en entregar información (Sección 5) desplazan el cronograma proporcionalmente.
+    \item Retrasos del cliente en entregar información (Sección~\ref{sec:supuestos}) desplazan el cronograma proporcionalmente.
 \end{itemize}
 
-\vspace{1cm}
+\section{Vigencia de la propuesta}
+
+Los precios y plazos de este documento tienen una vigencia de \textbf{30 días calendario} a partir de la fecha de emisión. Pasado ese plazo deben revalidarse, ya que dependen de la disponibilidad del equipo y de las condiciones del mercado.
+
+\vspace{0.9cm}
+\nopagebreak
 \noindent
 \begin{tabularx}{\textwidth}{XX}
-\underline{\hspace{5cm}} & \underline{\hspace{5cm}} \\
-Por Three Bounds SAS & Por Tu Lonchera \\
+\underline{\hspace{6cm}} & \underline{\hspace{6cm}} \\[2pt]
+\textbf{Por Three Bounds SAS} & \textbf{Por Tu Lonchera} \\[10pt]
+Nombre: \underline{\hspace{4.2cm}} & Nombre: \underline{\hspace{4.2cm}} \\[10pt]
+C.C./NIT: \underline{\hspace{3.9cm}} & C.C./NIT: \underline{\hspace{3.9cm}} \\[10pt]
+Fecha: \underline{\hspace{4.6cm}} & Fecha: \underline{\hspace{4.6cm}} \\
 \end{tabularx}
 
 \end{document}
