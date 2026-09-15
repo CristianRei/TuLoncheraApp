@@ -28,7 +28,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\includegraphics[height=0.6cm]{logo.png}\hspace{4pt}\textbf{\small Three Bounds SAS}}
-\fancyhead[R]{\small\color{graytxt} Bogotá, \today}
+\fancyhead[R]{\small\color{graytxt} Bogotá, 16 de septiembre de 2026}
 \renewcommand{\headrulewidth}{1pt}
 \renewcommand{\headrule}{{\color{accent}\hrule width\textwidth height\headrulewidth}}
 
@@ -45,7 +45,7 @@
 \end{minipage}
 \hfill
 \begin{minipage}[c]{0.24\textwidth}
-\raggedleft\small\color{graytxt} Bogotá, \today
+\raggedleft\small\color{graytxt} Bogotá, 16 de septiembre de 2026
 \end{minipage}
 
 \vspace{6pt}
@@ -130,32 +130,36 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 
 \small\textit{Piso conservador (extremo bajo del rango, salario mínimo). Se confirma con el cliente en Fase 1.}\normalsize
 
-\subsection*{Lo que cuesta no hacer nada}
+\subsection*{El descuadre pesa más que las horas}
 
-Al tiempo perdido se suma la licencia de Loyverse. Los dos desaparecen con la migración:
+Las horas son solo una parte. Con la venta observada de un promotor (\$4.606.000 COP en una jornada), la operación mueve del orden de \$690 millones al mes. Sobre esa base, \textbf{cada punto porcentual de producto que se pierde sin explicación vale más que todo el tiempo recuperado}:
 
 \begin{center}
-\begin{tikzpicture}[
-    caja/.style={rectangle, draw=accent, rounded corners, minimum width=7.2cm, minimum height=1.5cm, align=center, font=\small},
-    hoy/.style={caja, fill=accent!8},
-    despues/.style={caja, fill=accent, text=white},
-    node distance=0.45cm
-]
-\node[hoy] (h) {{\bfseries Hoy, cada año}\\[3pt] Tiempo perdido \$15.553.020 + Loyverse \$3.244.032\\[2pt] {\bfseries\large \$18.797.052 COP/año}};
-\node[despues, below=of h] (d) {{\bfseries Inversión única}\\[3pt] Entre \$8.000.000 y \$14.000.000 COP\\[2pt] {\bfseries se recupera entre 5 y 9 meses}};
-\draw[->, accent, very thick] (h) -- (d);
-\end{tikzpicture}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Concepto} & \textbf{Al mes} & \textbf{Al año} \\
+\midrule
+Horas de trabajo recuperadas & \$1.296.085 & \$15.553.020 \\
+Descuadre evitado (escenario 0,5\%) & \$3.454.500 & \$41.454.000 \\
+\midrule
+\textbf{Total} & \textbf{\$4.750.585} & \textbf{\$57.007.020} \\
+\bottomrule
+\end{tabular}
 \end{center}
 
-\textbf{Cualquiera de las opciones se paga sola dentro del primer año.} Del segundo año en adelante, esos \$18.797.052 anuales dejan de ser un costo y pasan a ser margen --- y a diferencia de Loyverse, que se paga todos los meses para siempre, el sistema queda en propiedad de Tu Lonchera (Sección~\ref{sec:propiedad}).
+\small\textit{El 0,5\% es un escenario ilustrativo, no una cifra medida: hoy no existe forma de conocer el descuadre real porque no hay trazabilidad. Medirlo es justamente uno de los primeros resultados del sistema. Aun tomando solo las horas recuperadas, la inversión se recupera dentro del primer año.}\normalsize
 
-\small\textit{Loyverse estimado en US\$88/mes a TRM \$3.072 COP (14 de septiembre de 2026).}\normalsize
+\subsection*{Sobre el costo del sistema actual}
+
+El gasto mensual en el POS actual (Loyverse) es del orden de \$200.000 a \$250.000 COP, unos \$2,4 a \$3,0 millones al año. \textbf{Esa cifra no es la justificación de esta inversión y no se presenta como tal.} La licencia es un costo menor frente a la pérdida operativa diaria: este sistema se paga con horas recuperadas y con control de inventario, no con el ahorro de la licencia.
 
 \section{Solución propuesta y modalidades tecnológicas}\label{sec:modalidades}
 
 \subsection*{Dos alternativas, no dos entregables}
 
 \textbf{Se elige una de las dos, no ambas por el mismo precio.} Cambiar de una a otra después de iniciado el desarrollo se cotiza aparte.
+
+\textbf{Nuestra recomendación es la App Nativa:} el escáner y el trabajo sin señal son el corazón de la operación en los eventos, y ahí la diferencia de confiabilidad es notoria. La AWP es la opción sensata si el presupuesto es la restricción principal.
 
 \begin{center}
 \begin{tabular}{p{3.1cm}p{5.6cm}p{5.6cm}}
@@ -170,36 +174,38 @@ Al tiempo perdido se suma la licencia de Loyverse. Los dos desaparecen con la mi
 \end{tabular}
 \end{center}
 
-\subsection*{Módulo adicional: Chatbot para WhatsApp}
+\subsection*{Módulo adicional: Asistente por WhatsApp}
 
 \begin{center}
 \begin{tabular}{p{10.5cm}p{3.9cm}}
 \toprule
-\textbf{Módulo de Chatbot para WhatsApp} & \textbf{\$2.000.000 COP} \\
+\textbf{Asistente por WhatsApp (Fase 5)} & \textbf{\$2.000.000 COP} \\
 \midrule
-\multicolumn{2}{p{14.4cm}}{Envía y recibe reportes de cierre por WhatsApp, resuelve dudas frecuentes de los promotores en tiempo real y libera a Administración de responder los mismos mensajes todos los días.} \\
+\multicolumn{2}{p{14.4cm}}{Soporte operativo al promotor, retroalimentación de desempeño durante la jornada y alertas de información pendiente de sincronizar. Alcance detallado y condiciones en la Sección~\ref{sec:whatsapp}.} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Opcional. Se suma a la modalidad elegida, funciona con cualquiera de las dos.
+Opcional y posterior: \textbf{requiere que la Fase 3 esté en producción}, porque las alertas dependen del servidor central. Tiene además un costo recurrente de mensajería a cargo del cliente.
 
 \subsection*{Totales según lo que se elija}
 
 \begin{center}
-\begin{tabular}{lrr}
+\begin{tabular}{lrrr}
 \toprule
-\textbf{Configuración} & \textbf{Inversión única} & \textbf{Se recupera en} \\
+ & & \multicolumn{2}{c}{\textbf{Se recupera en}} \\
+\cmidrule(l){3-4}
+\textbf{Configuración} & \textbf{Inversión única} & \textbf{Solo horas} & \textbf{Con descuadre} \\
 \midrule
-App Web Progresiva & \$8.000.000 COP & 5,1 meses \\
-App Web Progresiva + Chatbot & \$10.000.000 COP & 6,4 meses \\
-App Nativa & \$12.000.000 COP & 7,7 meses \\
-App Nativa + Chatbot & \$14.000.000 COP & 8,9 meses \\
+App Web Progresiva & \$8.000.000 COP & 6,2 meses & 1,7 meses \\
+App Web Progresiva + Asistente & \$10.000.000 COP & 7,7 meses & 2,1 meses \\
+App Nativa & \$12.000.000 COP & 9,3 meses & 2,5 meses \\
+App Nativa + Asistente & \$14.000.000 COP & 10,8 meses & 2,9 meses \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\small\textit{Recuperación calculada sobre el ahorro de \$1.566.421 COP/mes (tiempo + licencia de Loyverse).}\normalsize
+\small\textit{``Solo horas'' usa \$1.296.085 COP/mes, el único componente ya cuantificado. ``Con descuadre'' suma el escenario de 0,5\% descrito arriba. La realidad estará entre las dos columnas.}\normalsize
 
 \subsection*{No partimos de cero}
 
@@ -209,17 +215,20 @@ Ya existe un \textbf{prototipo funcional} con los 123 productos reales de Tu Lon
 
 \begin{center}
 \begin{tikzpicture}[
-    node distance=2.6cm,
-    fase/.style={rectangle, rounded corners, draw=accent, fill=accent!8, minimum width=2.4cm, minimum height=1cm, align=center, font=\small},
+    node distance=0.75cm,
+    fase/.style={rectangle, rounded corners, draw=accent, fill=accent!8, minimum width=2.45cm, minimum height=1.15cm, align=center, font=\footnotesize},
+    opcional/.style={fase, fill=white, draw=graytxt, dashed},
     >={Stealth[length=2mm]}
 ]
-\node[fase] (f1) {1. Planeación\\{\scriptsize 2 semanas}};
-\node[fase, right=of f1] (f2) {2. MVP\\{\scriptsize 4 semanas}};
-\node[fase, right=of f2] (f3) {3. Sincronización\\{\scriptsize 4 semanas}};
-\node[fase, right=of f3] (f4) {4. Testeo y\\Garantía\\{\scriptsize 2 semanas}};
+\node[fase] (f1) {1. Planeación\\{\scriptsize 2 sem}};
+\node[fase, right=of f1] (f2) {2. MVP\\{\scriptsize 4 sem}};
+\node[fase, right=of f2] (f3) {3. Sincroniz.\\{\scriptsize 4 sem}};
+\node[fase, right=of f3] (f4) {4. Testeo y\\Garantía\\{\scriptsize 2 sem}};
+\node[opcional, right=of f4] (f5) {5. WhatsApp\\{\scriptsize opcional}};
 \draw[->, accent, thick] (f1) -- (f2);
 \draw[->, accent, thick] (f2) -- (f3);
 \draw[->, accent, thick] (f3) -- (f4);
+\draw[->, graytxt, thick, dashed] (f4) -- (f5);
 \end{tikzpicture}
 \end{center}
 
@@ -265,12 +274,52 @@ Cada fase cobra un porcentaje del total contratado (modalidad elegida + módulos
 \end{itemize}
 \textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves durante 10 jornadas de venta reales; el cliente aprueba por escrito el paso a producción.
 
+\section{Asistente por WhatsApp (opcional --- Fase 5)}\label{sec:whatsapp}
+
+Se cotiza y se contrata por separado. \textbf{Depende de que la Fase 3 esté en producción}, porque las alertas requieren un servidor central que conozca el estado de cada promotor.
+
+\subsection*{Tres funciones}
+
+\textbf{1. Soporte operativo al promotor.} Responde por chat las dudas frecuentes: cómo registrar una venta, cómo hacer el conteo de cierre, qué hacer si un producto no escanea, cómo se maneja una libranza. Reduce las llamadas a Administración durante el evento y acorta la inducción de personal nuevo.
+
+\textbf{2. Retroalimentación de desempeño durante la jornada.} En momentos definidos (media mañana, mediodía y antes del cierre), el promotor recibe su venta acumulada, el porcentaje de meta alcanzado y la comparación con su propio promedio. La idea es que pueda corregir durante el evento, no enterarse al día siguiente.
+
+\textbf{3. Alertas de información pendiente de sincronizar.} Cuando un evento programado no registra su cierre a la hora esperada, o la app reporta datos pendientes al recuperar señal, el sistema le recuerda al promotor conectarse. Administración recibe la misma alerta si no hay respuesta dentro de un plazo configurable.
+
+\subsection*{Qué incluye}
+\begin{itemize}
+    \item Configuración de la cuenta de WhatsApp Business API y registro del número.
+    \item Redacción y gestión de aprobación de las plantillas ante Meta.
+    \item Base de conocimiento del asistente, construida sobre el manual operativo validado por el cliente.
+    \item Panel de configuración de horarios, metas y umbrales de alerta.
+\end{itemize}
+
+\subsection*{Qué no incluye}
+\begin{itemize}
+    \item Encuestas de satisfacción a empresas cliente.
+    \item Atención al consumidor final.
+    \item Campañas comerciales o de mercadeo por WhatsApp.
+\end{itemize}
+
+\subsection*{Condiciones específicas}
+\begin{itemize}
+    \item \textbf{Costo recurrente por mensaje:} WhatsApp Business API cobra por cada conversación que inicia la empresa. Con tres mensajes diarios por promotor, el volumen estimado ronda las 480 conversaciones al mes. Este costo lo asume el cliente, facturado directamente por el proveedor.
+    \item \textbf{Plantillas:} todo mensaje proactivo requiere aprobación previa de Meta (24 a 48 horas) y no puede modificarse sobre la marcha. Ese plazo no depende de Three Bounds SAS.
+    \item \textbf{Número de teléfono:} el número del asistente queda a nombre del cliente y no puede estar vinculado a una cuenta de WhatsApp personal.
+    \item \textbf{Dependencia:} no entra en operación antes de que la Fase 3 esté aprobada y en producción.
+\end{itemize}
+
+\textit{Criterio de aceptación:} durante 10 jornadas consecutivas, el 100\% de los cierres no recibidos a la hora esperada generan alerta al promotor, y el asistente responde correctamente al menos el 80\% de un banco de preguntas acordado previamente con el cliente.
+
 \section{Supuestos y dependencias del cliente}\label{sec:supuestos}
 \begin{itemize}
     \item El cliente entrega la lista actual de productos y precios en un Excel antes de iniciar la Fase 2.
     \item El cliente nombra una sola persona responsable de revisar y aprobar cada entrega, en un plazo máximo de 3 días hábiles.
     \item Los celulares o tablets donde se instalará la app son responsabilidad del cliente; Three Bounds SAS indicará antes de la Fase 2 qué características mínimas deben tener.
-    \item Los pagos recurrentes de infraestructura (hosting, dominio, cuenta de desarrollador de tienda y, si se contrata el Chatbot, la cuenta de WhatsApp Business API y su consumo por mensaje) corren por cuenta del cliente desde su activación. Three Bounds SAS se encarga de configurarlos y de estimar su costo mensual antes de activarlos.
+    \item Los pagos recurrentes de infraestructura (hosting, dominio, cuenta de desarrollador de tienda y, si se contrata el asistente, la mensajería de WhatsApp Business API) corren por cuenta del cliente desde su activación. Three Bounds SAS se encarga de configurarlos y de estimar su costo mensual antes de activarlos.
+    \item Si se contrata el asistente por WhatsApp, el cliente aporta un número de teléfono dedicado, no vinculado a una cuenta de WhatsApp personal.
+    \item El cliente define y aprueba por escrito las metas de venta por promotor y los horarios de los mensajes de retroalimentación, antes de que se soliciten las plantillas ante Meta.
+    \item El cliente valida el manual de operación que alimenta al asistente; Three Bounds SAS no define procedimientos operativos del negocio.
     \item Cualquier función nueva que no esté descrita en el alcance de una fase se cotiza y se cobra aparte.
 \end{itemize}
 
@@ -279,6 +328,8 @@ El código fuente, la base de datos y los diseños desarrollados específicament
 
 \section{Manejo de datos personales}
 El tratamiento de los datos personales de clientes finales y empleados capturados por el sistema se realizará conforme a la Ley 1581 de 2012 y su decreto reglamentario. Tu Lonchera actúa como responsable del tratamiento; Three Bounds SAS actúa como encargado durante el desarrollo y mantenimiento, y se compromete a no usar dichos datos para fines distintos a la prestación del servicio contratado.
+
+Si se contrata el asistente por WhatsApp, los mensajes de retroalimentación de desempeño constituyen tratamiento de datos de empleados. Tu Lonchera, como responsable y empleador, se encarga de obtener la autorización previa, expresa e informada de cada promotor para recibir estos mensajes en su número personal, y de permitir su retiro en cualquier momento.
 
 \section{Plan de migración y corrida en paralelo}\label{sec:migracion}
 
@@ -322,6 +373,9 @@ El tratamiento de los datos personales de clientes finales y empleados capturado
     \item Cambios en el catálogo de productos durante el desarrollo pueden generar trabajo adicional no incluido en el precio de la fase.
     \item La adopción por parte de los promotores depende de la capacitación y puede afectar los tiempos de la corrida en paralelo.
     \item Retrasos del cliente en entregar información (Sección~\ref{sec:supuestos}) desplazan el cronograma proporcionalmente.
+    \item La aprobación de plantillas de mensaje por parte de Meta es un proceso externo cuyos tiempos no controla Three Bounds SAS y puede desplazar la puesta en marcha del asistente.
+    \item Cambios en la política de WhatsApp Business pueden afectar el formato o el costo de los mensajes automatizados durante la vigencia del contrato.
+    \item Un promotor sin señal durante toda la jornada no recibirá las alertas hasta recuperar conexión; en ese caso el sistema notifica a Administración.
 \end{itemize}
 
 \section{Vigencia de la propuesta}
