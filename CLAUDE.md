@@ -315,10 +315,9 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   de lo disponible.
 - **Venta del promotor** (`app/promotor/index.tsx`): grilla de su propio
   inventario con buscador, escáner de código de barras, ticket (carrito) y
-  cobro con los 3 medios de pago. No bloquea vender más de lo que el saldo
-  calculado indica al tocar la grilla (sí al escanear algo que no tiene) —
-  los descuadres reales se resuelven en el conteo de cierre, que todavía no
-  existe.
+  cobro con los 3 medios de pago. Topa la cantidad vendible al saldo
+  calculado tanto al tocar la grilla como al escanear — los descuadres
+  reales se resuelven en el conteo de cierre, que todavía no existe.
 - **Ventas del admin** (`app/admin/ventas/`): listado (promotor + total,
   pestañas Activas/Anuladas) y detalle (líneas) de cada venta. Se puede
   anular una venta con motivo obligatorio — nunca se borra, se marca y se
