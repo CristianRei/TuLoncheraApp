@@ -95,28 +95,32 @@ El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf
 
 El conteo de cierre pasa de papel a un flujo guiado en el celular del promotor, visible para Administración y Bodega en el mismo instante en que se guarda --- sin esperar una foto por WhatsApp. Los saldos y las libranzas ya están en el sistema, no hay que transcribirlos: la hoja de recargue se genera, no se redacta.
 
-\subsection*{Traducción a tiempo y dinero: solo el cierre del promotor}
+\subsection*{Traducción a tiempo y dinero: los cuatro roles juntos}
 
-Esta cifra es deliberadamente conservadora: cuantifica \textbf{únicamente} el conteo manual del promotor, uno de los cuatro cuellos de botella. No incluye el tiempo de transcripción de Andrea, la doble verificación de Martica en bodega, ni las horas de camión ocioso por retrasos en cadena --- todos ahorros adicionales que la app también genera, pero que dependen de datos operativos que se van a medir en la Fase 1.
+El cálculo suma el tiempo recuperado en los cuatro puntos del diagrama: el del promotor se multiplica por los 7.5 promotores activos por día; el de Administración, Bodega y Transporte se cuenta una sola vez al día porque son procesos centralizados, no por promotor. Se toma el escenario conservador (el extremo bajo de cada rango) sobre 20 jornadas de venta al mes.
 
 \begin{center}
-\begin{tabular}{lr}
+\begin{tabular}{lrrr}
 \toprule
-\textbf{Variable} & \textbf{Valor} \\
+\textbf{Rol} & \textbf{Tiempo/día} & \textbf{Valor hora} & \textbf{Costo/día} \\
 \midrule
-Ahorro estimado por promotor y por jornada & 30 minutos \\
-Promotores activos por día (promedio) & 7.5 \\
-Jornadas de venta al mes (aprox.) & [XX] días \\
-Valor de la hora de un promotor & \$[XX] COP \\
+Promotores (7.5 × 30 min) & 3.75 h & \$[XX] COP/h & \$[XX] COP \\
+Administración & 0.5 h & \$[XX] COP/h & \$[XX] COP \\
+Bodega & 0.5 h & \$[XX] COP/h & \$[XX] COP \\
+Transporte & 0.5 h & \$[XX] COP/h & \$[XX] COP \\
+\midrule
+\textbf{Total por día} & \textbf{5.25 h} & & \textbf{\$[XX] COP} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \begin{center}
-\textit{Ahorro mensual = 7.5 promotores × 0.5 h × [XX] días × \$[XX]/h = \$[XX] COP/mes}
+\textit{Ahorro mensual = \$[XX] COP/día $\times$ 20 días $=$ \textbf{\$[XX] COP/mes}}
 \end{center}
 
-Ese tiempo no es solo costo de nómina evitado: son 30 minutos por promotor por día que la empresa recupera para vender más en el mismo turno, o para que el promotor salga antes sin sacrificar el control del inventario. A esto se suma que, al eliminar el reenvío nocturno del reporte, Administración puede empezar a armar el recargue el mismo día en que cierra el evento --- no al día siguiente.
+Esta cifra es el piso, no el techo: usa el extremo bajo de cada rango del diagrama (5.25 h/día de las 5.25--7.5 h posibles) y sigue sin incluir los descuadres de inventario que el conteo manual no detecta a tiempo, ni las horas de camión ocioso cuando un conductor alarga la ruta para evitar llegar temprano a bodega. El valor hora de cada rol se confirma con el cliente en la Fase 1, junto con los 20 días de jornada efectiva al mes.
+
+Más allá del ahorro en costo de nómina, esas 5.25 horas diarias son tiempo que la empresa recupera para vender más en el mismo turno, y --- al eliminar el reenvío nocturno del reporte --- Administración puede empezar a armar el recargue el mismo día en que cierra el evento, no al día siguiente.
 
 \section{Alcance por fases}
 
