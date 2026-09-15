@@ -74,7 +74,7 @@ El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf
 \begin{tikzpicture}[
     node distance=0.3cm,
     caja/.style={rectangle, draw=accent, fill=accent!8, rounded corners, minimum width=2.7cm, minimum height=2.9cm, align=center, font=\footnotesize, text width=2.5cm},
-    total/.style={rectangle, draw=accent, fill=accent, rounded corners, minimum width=6cm, minimum height=1.7cm, align=center, font=\small, text=white},
+    total/.style={rectangle, draw=accent, fill=accent, rounded corners, minimum width=8.5cm, minimum height=2.1cm, align=center, font=\small, text=white},
     >={Stealth[length=2mm]}
 ]
 \node[caja] (c1) {{\bfseries\scriptsize Promotor}\\[3pt]Conteo manual en papel\\[4pt]{\bfseries\footnotesize\color{accent} 30--40 min}\\+2--3h en enviar};
@@ -84,7 +84,7 @@ El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf
 \draw[->, accent, thick] (c1) -- (c2);
 \draw[->, accent, thick] (c2) -- (c3);
 \draw[->, accent, thick] (c3) -- (c4);
-\node[total, below=0.6cm of c2, xshift=1.55cm] (ct) {Total perdido por evento: \textbf{2--3.5 h}\\[2pt] \small $\times$ 7.5 promotores/día $\rightarrow$ \textbf{15--26 h/día}};
+\node[total, below=0.7cm of c2, xshift=1.5cm] (ct) {\small Promotor: 30--40 min $\times$ 7.5/día = 3.75--5 h\\[2pt] \small + Admin. + Bodega + Transporte (1.5--2.5 h, una sola vez)\\[3pt] Total perdido al día: \textbf{5.25--7.5 h}};
 \draw[->, accent, thick] (c4.south) -- ++(0,-0.3) -| (ct.north);
 \end{tikzpicture}
 \end{center}
