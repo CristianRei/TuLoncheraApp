@@ -45,6 +45,40 @@ export async function registrarMovimiento(
   );
 }
 
+export interface MovimientoExportable {
+  tipo: string;
+  productoNombre: string;
+  cantidad: number;
+  ubicacionOrigen: string | null;
+  ubicacionDestino: string | null;
+  usuarioNombre: string;
+  motivo: string | null;
+  tsCliente: string;
+}
+
+/** Libro completo de movimientos, con nombres legibles — solo para exportar/reportes. */
+export async function listarTodosLosMovimientos(
+  db: SQLiteDatabase
+): Promise<MovimientoExportable[]> {
+  return db.getAllAsync<MovimientoExportable>(
+    `SELECT
+       m.tipo,
+       p.nombre as productoNombre,
+       m.cantidad,
+       uo.nombre as ubicacionOrigen,
+       ud.nombre as ubicacionDestino,
+       u.nombre as usuarioNombre,
+       m.motivo,
+       m.ts_cliente as tsCliente
+     FROM movimientos m
+     JOIN productos p ON p.id = m.producto_id
+     JOIN usuarios u ON u.id = m.usuario_id
+     LEFT JOIN ubicaciones uo ON uo.id = m.ubicacion_origen_id
+     LEFT JOIN ubicaciones ud ON ud.id = m.ubicacion_destino_id
+     ORDER BY m.ts_cliente DESC`
+  );
+}
+
 export async function listarMovimientosPorUbicacion(
   db: SQLiteDatabase,
   ubicacionId: string

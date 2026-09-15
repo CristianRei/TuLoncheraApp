@@ -3,8 +3,10 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { exportarAExcel } from '@/db/exportarExcel';
 import { getDb } from '@/db/client';
 import { listarInventarioBodega, type ItemInventario } from '@/db/inventario';
+import { listarTodosLosMovimientos } from '@/db/movimientos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -13,6 +15,7 @@ export default function Inventario() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [items, setItems] = useState<ItemInventario[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [exportando, setExportando] = useState<'inventario' | 'movimientos' | null>(null);
   const insets = useSafeAreaInsets();
 
   useFocusEffect(
@@ -28,6 +31,43 @@ export default function Inventario() {
       })();
     }, [])
   );
+
+  async function exportarInventario() {
+    setExportando('inventario');
+    try {
+      await exportarAExcel(
+        'Inventario de bodega',
+        items.map((item) => ({ Producto: item.producto.nombre, Saldo: item.saldo })),
+        'inventario_bodega'
+      );
+    } finally {
+      setExportando(null);
+    }
+  }
+
+  async function exportarMovimientos() {
+    setExportando('movimientos');
+    try {
+      const db = await getDb();
+      const movimientos = await listarTodosLosMovimientos(db);
+      await exportarAExcel(
+        'Movimientos',
+        movimientos.map((m) => ({
+          Tipo: m.tipo,
+          Producto: m.productoNombre,
+          Cantidad: m.cantidad,
+          Origen: m.ubicacionOrigen ?? '',
+          Destino: m.ubicacionDestino ?? '',
+          Usuario: m.usuarioNombre,
+          Motivo: m.motivo ?? '',
+          Fecha: m.tsCliente,
+        })),
+        'movimientos'
+      );
+    } finally {
+      setExportando(null);
+    }
+  }
 
   if (!usuario) return null;
 
@@ -49,6 +89,33 @@ export default function Inventario() {
           </View>
         </ContenedorAncho>
       </View>
+
+      <ContenedorAncho anchoMaximo={720}>
+        <View style={styles.accionesExport}>
+          <Pressable
+            style={styles.botonExport}
+            onPress={exportarInventario}
+            disabled={exportando !== null || items.length === 0}
+          >
+            {exportando === 'inventario' ? (
+              <ActivityIndicator size="small" color={COLORES.oscuro} />
+            ) : (
+              <Text style={styles.botonExportTexto}>Exportar inventario a Excel</Text>
+            )}
+          </Pressable>
+          <Pressable
+            style={styles.botonExport}
+            onPress={exportarMovimientos}
+            disabled={exportando !== null}
+          >
+            {exportando === 'movimientos' ? (
+              <ActivityIndicator size="small" color={COLORES.oscuro} />
+            ) : (
+              <Text style={styles.botonExportTexto}>Exportar movimientos a Excel</Text>
+            )}
+          </Pressable>
+        </View>
+      </ContenedorAncho>
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -118,6 +185,29 @@ const styles = StyleSheet.create({
     color: '#3A2400',
     fontSize: 13,
     fontWeight: '700',
+  },
+  accionesExport: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  botonExport: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: COLORES.oscuro,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  botonExportTexto: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORES.oscuro,
+    textAlign: 'center',
   },
   centrado: {
     flex: 1,

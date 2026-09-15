@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatearPesos } from '@/core/dinero';
 import type { Venta } from '@/core/tipos';
+import { exportarAExcel } from '@/db/exportarExcel';
 import { getDb } from '@/db/client';
 import { listarVentas } from '@/db/ventas';
 import { COLORES } from '@/ui/colores';
@@ -26,7 +27,28 @@ export default function Ventas() {
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('ACTIVAS');
   const [cargando, setCargando] = useState(true);
+  const [exportando, setExportando] = useState(false);
   const insets = useSafeAreaInsets();
+
+  async function exportar() {
+    setExportando(true);
+    try {
+      await exportarAExcel(
+        'Ventas',
+        ventas.map((v) => ({
+          Recibo: v.numeroRecibo,
+          Promotor: v.promotorNombre,
+          Fecha: formatearFecha(v.tsCliente),
+          Método: v.metodoPago,
+          Total: v.total,
+          Anulada: v.anulada ? 'Sí' : 'No',
+        })),
+        'ventas'
+      );
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const cargar = useCallback(async (filtroActual: Filtro) => {
     setCargando(true);
@@ -55,7 +77,13 @@ export default function Ventas() {
               <Text style={styles.volver}>‹ Admin</Text>
             </Pressable>
             <Text style={styles.titulo}>Ventas</Text>
-            <View style={{ width: 40 }} />
+            <Pressable onPress={exportar} disabled={exportando || ventas.length === 0}>
+              {exportando ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.exportar}>Excel</Text>
+              )}
+            </Pressable>
           </View>
         </ContenedorAncho>
       </View>
@@ -154,6 +182,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  exportar: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   tabs: {
     flexDirection: 'row',

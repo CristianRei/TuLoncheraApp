@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Producto } from '@/core/tipos';
 import { formatearPesos } from '@/core/dinero';
+import { exportarAExcel } from '@/db/exportarExcel';
 import { getDb } from '@/db/client';
 import { listarProductos } from '@/db/productos';
 import { COLORES } from '@/ui/colores';
@@ -29,6 +30,7 @@ export default function CatalogoProductos() {
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState<Filtro>('ACTIVOS');
   const [busqueda, setBusqueda] = useState('');
+  const [exportando, setExportando] = useState(false);
   const insets = useSafeAreaInsets();
   const anchaPantalla = useEsPantallaAncha();
   const columnas = anchaPantalla ? 3 : 1;
@@ -55,6 +57,25 @@ export default function CatalogoProductos() {
   const filtrados = productos.filter((p) =>
     p.nombre.toLowerCase().includes(busqueda.trim().toLowerCase())
   );
+
+  async function exportar() {
+    setExportando(true);
+    try {
+      await exportarAExcel(
+        'Catálogo',
+        filtrados.map((p) => ({
+          SKU: p.sku,
+          Nombre: p.nombre,
+          Precio: p.precio,
+          'Código de barras': p.codigoBarras ?? '',
+          Activo: p.activo ? 'Sí' : 'No',
+        })),
+        'catalogo_productos'
+      );
+    } finally {
+      setExportando(false);
+    }
+  }
 
   return (
     <View style={styles.contenedor}>
@@ -100,6 +121,17 @@ export default function CatalogoProductos() {
               <Text style={[styles.tabTexto, filtro === 'ELIMINADOS' && styles.tabTextoActivo]}>
                 Eliminados
               </Text>
+            </Pressable>
+            <Pressable
+              style={styles.tab}
+              onPress={exportar}
+              disabled={exportando || filtrados.length === 0}
+            >
+              {exportando ? (
+                <ActivityIndicator size="small" color={COLORES.oscuro} />
+              ) : (
+                <Text style={styles.tabTexto}>Exportar</Text>
+              )}
             </Pressable>
           </View>
         </View>
