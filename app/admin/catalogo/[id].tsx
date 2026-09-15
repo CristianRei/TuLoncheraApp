@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Producto } from '@/core/tipos';
 import { getDb } from '@/db/client';
@@ -12,6 +13,7 @@ import {
   restaurarProducto,
 } from '@/db/productos';
 import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { FormularioProducto, type ValoresProducto } from '@/ui/FormularioProducto';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -21,6 +23,7 @@ export default function EditarProducto() {
   const [producto, setProducto] = useState<Producto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     (async () => {
@@ -61,11 +64,13 @@ export default function EditarProducto() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.volver}>‹ Catálogo</Text>
-        </Pressable>
-        <Text style={styles.titulo}>Editar producto</Text>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={640} style={styles.encabezadoContenido}>
+          <Pressable onPress={() => router.back()}>
+            <Text style={styles.volver}>‹ Catálogo</Text>
+          </Pressable>
+          <Text style={styles.titulo}>Editar producto</Text>
+        </ContenedorAncho>
       </View>
 
       {cargando ? (
@@ -77,34 +82,36 @@ export default function EditarProducto() {
           <Text style={styles.vacio}>Este producto ya no existe.</Text>
         </View>
       ) : (
-        <FormularioProducto
-          valorInicial={{
-            nombre: producto.nombre,
-            precio: producto.precio,
-            fotoUri: producto.fotoUri,
-            codigoBarras: producto.codigoBarras,
-          }}
-          colorAcento={COLORES.oscuro}
-          guardando={guardando}
-          onGuardar={guardar}
-          onGuardarFoto={guardarFoto}
-          textoBoton="Guardar cambios"
-          extra={
-            <Pressable
-              style={[styles.botonEstado, producto.activo && styles.botonEliminar]}
-              onPress={alternarActivo}
-            >
-              <Text
-                style={[
-                  styles.botonEstadoTexto,
-                  producto.activo && styles.botonEliminarTexto,
-                ]}
+        <ContenedorAncho anchoMaximo={640} llenarAlto>
+          <FormularioProducto
+            valorInicial={{
+              nombre: producto.nombre,
+              precio: producto.precio,
+              fotoUri: producto.fotoUri,
+              codigoBarras: producto.codigoBarras,
+            }}
+            colorAcento={COLORES.oscuro}
+            guardando={guardando}
+            onGuardar={guardar}
+            onGuardarFoto={guardarFoto}
+            textoBoton="Guardar cambios"
+            extra={
+              <Pressable
+                style={[styles.botonEstado, producto.activo && styles.botonEliminar]}
+                onPress={alternarActivo}
               >
-                {producto.activo ? 'Eliminar producto' : 'Restaurar producto'}
-              </Text>
-            </Pressable>
-          }
-        />
+                <Text
+                  style={[
+                    styles.botonEstadoTexto,
+                    producto.activo && styles.botonEliminarTexto,
+                  ]}
+                >
+                  {producto.activo ? 'Eliminar producto' : 'Restaurar producto'}
+                </Text>
+              </Pressable>
+            }
+          />
+        </ContenedorAncho>
       )}
     </View>
   );
@@ -117,9 +124,10 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.oscuro,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  encabezadoContenido: {
     gap: 4,
   },
   volver: {

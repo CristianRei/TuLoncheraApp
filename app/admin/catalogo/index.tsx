@@ -10,12 +10,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Producto } from '@/core/tipos';
 import { formatearPesos } from '@/core/dinero';
 import { getDb } from '@/db/client';
 import { listarProductos } from '@/db/productos';
 import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'ACTIVOS' | 'ELIMINADOS';
@@ -26,6 +29,9 @@ export default function CatalogoProductos() {
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState<Filtro>('ACTIVOS');
   const [busqueda, setBusqueda] = useState('');
+  const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
+  const columnas = anchaPantalla ? 3 : 1;
 
   const cargar = useCallback(async (filtroActual: Filtro) => {
     setCargando(true);
@@ -52,43 +58,52 @@ export default function CatalogoProductos() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.volver}>‹ Admin</Text>
-        </Pressable>
-        <Text style={styles.titulo}>Catálogo de productos</Text>
-        <Pressable style={styles.botonNuevo} onPress={() => router.push('/admin/catalogo/nuevo')}>
-          <Text style={styles.botonNuevoTexto}>+</Text>
-        </Pressable>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={960}>
+          <View style={styles.encabezadoFila}>
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Admin</Text>
+            </Pressable>
+            <Text style={styles.titulo}>Catálogo de productos</Text>
+            <Pressable
+              style={styles.botonNuevo}
+              onPress={() => router.push('/admin/catalogo/nuevo')}
+            >
+              <Text style={styles.botonNuevoTexto}>+</Text>
+            </Pressable>
+          </View>
+        </ContenedorAncho>
       </View>
 
-      <View style={styles.controles}>
-        <TextInput
-          style={styles.busqueda}
-          placeholder="Buscar producto..."
-          placeholderTextColor="#999"
-          value={busqueda}
-          onChangeText={setBusqueda}
-        />
-        <View style={styles.tabs}>
-          <Pressable
-            style={[styles.tab, filtro === 'ACTIVOS' && styles.tabActivo]}
-            onPress={() => setFiltro('ACTIVOS')}
-          >
-            <Text style={[styles.tabTexto, filtro === 'ACTIVOS' && styles.tabTextoActivo]}>
-              Activos
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.tab, filtro === 'ELIMINADOS' && styles.tabActivo]}
-            onPress={() => setFiltro('ELIMINADOS')}
-          >
-            <Text style={[styles.tabTexto, filtro === 'ELIMINADOS' && styles.tabTextoActivo]}>
-              Eliminados
-            </Text>
-          </Pressable>
+      <ContenedorAncho anchoMaximo={960}>
+        <View style={styles.controles}>
+          <TextInput
+            style={styles.busqueda}
+            placeholder="Buscar producto..."
+            placeholderTextColor="#999"
+            value={busqueda}
+            onChangeText={setBusqueda}
+          />
+          <View style={styles.tabs}>
+            <Pressable
+              style={[styles.tab, filtro === 'ACTIVOS' && styles.tabActivo]}
+              onPress={() => setFiltro('ACTIVOS')}
+            >
+              <Text style={[styles.tabTexto, filtro === 'ACTIVOS' && styles.tabTextoActivo]}>
+                Activos
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.tab, filtro === 'ELIMINADOS' && styles.tabActivo]}
+              onPress={() => setFiltro('ELIMINADOS')}
+            >
+              <Text style={[styles.tabTexto, filtro === 'ELIMINADOS' && styles.tabTextoActivo]}>
+                Eliminados
+              </Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      </ContenedorAncho>
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -105,31 +120,36 @@ export default function CatalogoProductos() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={filtrados}
-          keyExtractor={(p) => p.id}
-          contentContainerStyle={styles.lista}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.fila}
-              onPress={() => router.push(`/admin/catalogo/${item.id}`)}
-            >
-              {item.fotoUri ? (
-                <Image source={{ uri: item.fotoUri }} style={styles.miniatura} />
-              ) : (
-                <View style={styles.miniaturaVacia}>
-                  <Text style={styles.miniaturaVaciaTexto}>Sin foto</Text>
+        <ContenedorAncho anchoMaximo={960} llenarAlto>
+          <FlatList
+            key={columnas}
+            data={filtrados}
+            keyExtractor={(p) => p.id}
+            numColumns={columnas}
+            columnWrapperStyle={anchaPantalla ? styles.filaGrilla : undefined}
+            contentContainerStyle={styles.lista}
+            renderItem={({ item }) => (
+              <Pressable
+                style={[styles.fila, anchaPantalla && styles.filaAncha]}
+                onPress={() => router.push(`/admin/catalogo/${item.id}`)}
+              >
+                {item.fotoUri ? (
+                  <Image source={{ uri: item.fotoUri }} style={styles.miniatura} />
+                ) : (
+                  <View style={styles.miniaturaVacia}>
+                    <Text style={styles.miniaturaVaciaTexto}>Sin foto</Text>
+                  </View>
+                )}
+                <View style={styles.filaTexto}>
+                  <Text style={styles.filaNombre} numberOfLines={2}>
+                    {item.nombre}
+                  </Text>
+                  <Text style={styles.filaPrecio}>{formatearPesos(item.precio)}</Text>
                 </View>
-              )}
-              <View style={styles.filaTexto}>
-                <Text style={styles.filaNombre} numberOfLines={2}>
-                  {item.nombre}
-                </Text>
-                <Text style={styles.filaPrecio}>{formatearPesos(item.precio)}</Text>
-              </View>
-            </Pressable>
-          )}
-        />
+              </Pressable>
+            )}
+          />
+        </ContenedorAncho>
       )}
     </View>
   );
@@ -142,9 +162,10 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.oscuro,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -226,6 +247,9 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
+  filaGrilla: {
+    gap: 12,
+  },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,6 +262,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
+  },
+  filaAncha: {
+    flex: 1,
   },
   miniatura: {
     width: 56,

@@ -1,16 +1,19 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getDb } from '@/db/client';
 import { listarInventarioBodega, type ItemInventario } from '@/db/inventario';
 import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function Inventario() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [items, setItems] = useState<ItemInventario[]>([]);
   const [cargando, setCargando] = useState(true);
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -30,14 +33,21 @@ export default function Inventario() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.volver}>‹ Admin</Text>
-        </Pressable>
-        <Text style={styles.titulo}>Inventario de bodega</Text>
-        <Pressable style={styles.botonNuevo} onPress={() => router.push('/admin/inventario/pedido')}>
-          <Text style={styles.botonNuevoTexto}>+ Pedido</Text>
-        </Pressable>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={720}>
+          <View style={styles.encabezadoFila}>
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Admin</Text>
+            </Pressable>
+            <Text style={styles.titulo}>Inventario de bodega</Text>
+            <Pressable
+              style={styles.botonNuevo}
+              onPress={() => router.push('/admin/inventario/pedido')}
+            >
+              <Text style={styles.botonNuevoTexto}>+ Pedido</Text>
+            </Pressable>
+          </View>
+        </ContenedorAncho>
       </View>
 
       {cargando ? (
@@ -51,19 +61,21 @@ export default function Inventario() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.producto.id}
-          contentContainerStyle={styles.lista}
-          renderItem={({ item }) => (
-            <View style={styles.fila}>
-              <Text style={styles.filaNombre} numberOfLines={2}>
-                {item.producto.nombre}
-              </Text>
-              <Text style={styles.filaSaldo}>{item.saldo} und.</Text>
-            </View>
-          )}
-        />
+        <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.producto.id}
+            contentContainerStyle={styles.lista}
+            renderItem={({ item }) => (
+              <View style={styles.fila}>
+                <Text style={styles.filaNombre} numberOfLines={2}>
+                  {item.producto.nombre}
+                </Text>
+                <Text style={styles.filaSaldo}>{item.saldo} und.</Text>
+              </View>
+            )}
+          />
+        </ContenedorAncho>
       )}
     </View>
   );
@@ -76,9 +88,10 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.oscuro,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

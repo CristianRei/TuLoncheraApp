@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Producto, UsuarioSesion } from '@/core/tipos';
 import { registrarCargue, StockInsuficienteError } from '@/db/cargue';
@@ -10,6 +11,7 @@ import { obtenerSaldosBodega } from '@/db/inventario';
 import { listarProductos } from '@/db/productos';
 import { listarPromotores } from '@/db/usuarios';
 import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -23,6 +25,7 @@ export default function Cargue() {
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     (async () => {
@@ -90,13 +93,15 @@ export default function Cargue() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => (promotor ? setPromotor(null) : router.back())}>
-          <Text style={styles.volver}>‹ {promotor ? 'Elegir otro promotor' : 'Admin'}</Text>
-        </Pressable>
-        <Text style={styles.titulo}>
-          {promotor ? `Cargue para ${promotor.nombre}` : 'Cargue a promotor'}
-        </Text>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
+          <Pressable onPress={() => (promotor ? setPromotor(null) : router.back())}>
+            <Text style={styles.volver}>‹ {promotor ? 'Elegir otro promotor' : 'Admin'}</Text>
+          </Pressable>
+          <Text style={styles.titulo}>
+            {promotor ? `Cargue para ${promotor.nombre}` : 'Cargue a promotor'}
+          </Text>
+        </ContenedorAncho>
       </View>
 
       {cargando ? (
@@ -109,20 +114,22 @@ export default function Cargue() {
             <Text style={styles.vacio}>No hay promotores activos.</Text>
           </View>
         ) : (
-          <FlatList
-            data={promotores}
-            keyExtractor={(p) => p.id}
-            contentContainerStyle={styles.lista}
-            renderItem={({ item }) => (
-              <Pressable style={styles.filaPromotor} onPress={() => setPromotor(item)}>
-                <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
-                <Text style={styles.filaPromotorFlecha}>›</Text>
-              </Pressable>
-            )}
-          />
+          <ContenedorAncho anchoMaximo={720} llenarAlto>
+            <FlatList
+              data={promotores}
+              keyExtractor={(p) => p.id}
+              contentContainerStyle={styles.lista}
+              renderItem={({ item }) => (
+                <Pressable style={styles.filaPromotor} onPress={() => setPromotor(item)}>
+                  <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
+                  <Text style={styles.filaPromotorFlecha}>›</Text>
+                </Pressable>
+              )}
+            />
+          </ContenedorAncho>
         )
       ) : (
-        <>
+        <ContenedorAncho anchoMaximo={720} llenarAlto>
           <SelectorProductosConCantidad
             productos={productos}
             cantidades={cantidades}
@@ -151,7 +158,7 @@ export default function Cargue() {
               )}
             </Pressable>
           </View>
-        </>
+        </ContenedorAncho>
       )}
     </View>
   );
@@ -164,9 +171,10 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.oscuro,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  encabezadoContenido: {
     gap: 4,
   },
   volver: {

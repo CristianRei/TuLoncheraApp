@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatearPesos } from '@/core/dinero';
 import type { Venta, VentaItem } from '@/core/tipos';
@@ -18,6 +19,7 @@ import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { anularVenta, obtenerVenta, VentaYaAnuladaError } from '@/db/ventas';
 import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string): string {
@@ -40,6 +42,7 @@ export default function DetalleVenta() {
   const [modalVisible, setModalVisible] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [anulando, setAnulando] = useState(false);
+  const insets = useSafeAreaInsets();
 
   async function cargar() {
     const db = await getDb();
@@ -86,11 +89,13 @@ export default function DetalleVenta() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.volver}>‹ Ventas</Text>
-        </Pressable>
-        <Text style={styles.titulo}>Detalle de venta</Text>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
+          <Pressable onPress={() => router.back()}>
+            <Text style={styles.volver}>‹ Ventas</Text>
+          </Pressable>
+          <Text style={styles.titulo}>Detalle de venta</Text>
+        </ContenedorAncho>
       </View>
 
       {cargando ? (
@@ -102,7 +107,7 @@ export default function DetalleVenta() {
           <Text style={styles.vacio}>Esta venta ya no existe.</Text>
         </View>
       ) : (
-        <>
+        <ContenedorAncho anchoMaximo={720} llenarAlto>
           <View style={styles.resumen}>
             <Text style={styles.resumenPromotor}>{venta.promotorNombre}</Text>
             <Text style={styles.resumenDetalle}>
@@ -152,7 +157,7 @@ export default function DetalleVenta() {
               </Pressable>
             )}
           </View>
-        </>
+        </ContenedorAncho>
       )}
 
       <Modal visible={modalVisible} animationType="fade" transparent>
@@ -210,9 +215,10 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.oscuro,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  encabezadoContenido: {
     gap: 4,
   },
   volver: {

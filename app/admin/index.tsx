@@ -1,7 +1,10 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useSesion } from '@/ui/SesionContext';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -31,6 +34,8 @@ const MODULOS = [
 export default function HomeAdmin() {
   const usuario = useRequiereSesion(['ADMIN']);
   const { cerrarSesion } = useSesion();
+  const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   if (!usuario) return null;
 
@@ -41,30 +46,36 @@ export default function HomeAdmin() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <View>
-          <Text style={styles.etiqueta}>Administración</Text>
-          <Text style={styles.saludo}>{usuario.nombre}</Text>
-        </View>
-        <Pressable onPress={salir}>
-          <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
-        </Pressable>
-      </View>
-      <View style={styles.cuerpo}>
-        {MODULOS.map((modulo) => (
-          <Pressable
-            key={modulo.ruta}
-            style={styles.tarjeta}
-            onPress={() => router.push(modulo.ruta)}
-          >
-            <View style={styles.tarjetaTexto}>
-              <Text style={styles.tarjetaTitulo}>{modulo.titulo}</Text>
-              <Text style={styles.tarjetaDescripcion}>{modulo.descripcion}</Text>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={960}>
+          <View style={styles.encabezadoFila}>
+            <View>
+              <Text style={styles.etiqueta}>Administración</Text>
+              <Text style={styles.saludo}>{usuario.nombre}</Text>
             </View>
-            <Text style={styles.tarjetaFlecha}>›</Text>
-          </Pressable>
-        ))}
+            <Pressable onPress={salir}>
+              <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
+            </Pressable>
+          </View>
+        </ContenedorAncho>
       </View>
+      <ContenedorAncho anchoMaximo={960}>
+        <View style={[styles.cuerpo, anchaPantalla && styles.cuerpoAncho]}>
+          {MODULOS.map((modulo) => (
+            <Pressable
+              key={modulo.ruta}
+              style={[styles.tarjeta, anchaPantalla && styles.tarjetaAncha]}
+              onPress={() => router.push(modulo.ruta)}
+            >
+              <View style={styles.tarjetaTexto}>
+                <Text style={styles.tarjetaTitulo}>{modulo.titulo}</Text>
+                <Text style={styles.tarjetaDescripcion}>{modulo.descripcion}</Text>
+              </View>
+              <Text style={styles.tarjetaFlecha}>›</Text>
+            </Pressable>
+          ))}
+        </View>
+      </ContenedorAncho>
     </View>
   );
 }
@@ -76,9 +87,10 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.oscuro,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 24,
+  },
+  encabezadoFila: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -103,6 +115,11 @@ const styles = StyleSheet.create({
     padding: 20,
     gap: 12,
   },
+  cuerpoAncho: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
   tarjeta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -115,6 +132,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
+  },
+  tarjetaAncha: {
+    width: '48%',
   },
   tarjetaTexto: {
     flex: 1,

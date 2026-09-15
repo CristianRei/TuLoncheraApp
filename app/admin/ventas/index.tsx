@@ -1,12 +1,14 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatearPesos } from '@/core/dinero';
 import type { Venta } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarVentas } from '@/db/ventas';
 import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'ACTIVAS' | 'ANULADAS';
@@ -24,6 +26,7 @@ export default function Ventas() {
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('ACTIVAS');
   const [cargando, setCargando] = useState(true);
+  const insets = useSafeAreaInsets();
 
   const cargar = useCallback(async (filtroActual: Filtro) => {
     setCargando(true);
@@ -45,32 +48,38 @@ export default function Ventas() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.volver}>‹ Admin</Text>
-        </Pressable>
-        <Text style={styles.titulo}>Ventas</Text>
-        <View style={{ width: 40 }} />
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={720}>
+          <View style={styles.encabezadoFila}>
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Admin</Text>
+            </Pressable>
+            <Text style={styles.titulo}>Ventas</Text>
+            <View style={{ width: 40 }} />
+          </View>
+        </ContenedorAncho>
       </View>
 
-      <View style={styles.tabs}>
-        <Pressable
-          style={[styles.tab, filtro === 'ACTIVAS' && styles.tabActivo]}
-          onPress={() => setFiltro('ACTIVAS')}
-        >
-          <Text style={[styles.tabTexto, filtro === 'ACTIVAS' && styles.tabTextoActivo]}>
-            Activas
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.tab, filtro === 'ANULADAS' && styles.tabActivo]}
-          onPress={() => setFiltro('ANULADAS')}
-        >
-          <Text style={[styles.tabTexto, filtro === 'ANULADAS' && styles.tabTextoActivo]}>
-            Anuladas
-          </Text>
-        </Pressable>
-      </View>
+      <ContenedorAncho anchoMaximo={720}>
+        <View style={styles.tabs}>
+          <Pressable
+            style={[styles.tab, filtro === 'ACTIVAS' && styles.tabActivo]}
+            onPress={() => setFiltro('ACTIVAS')}
+          >
+            <Text style={[styles.tabTexto, filtro === 'ACTIVAS' && styles.tabTextoActivo]}>
+              Activas
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, filtro === 'ANULADAS' && styles.tabActivo]}
+            onPress={() => setFiltro('ANULADAS')}
+          >
+            <Text style={[styles.tabTexto, filtro === 'ANULADAS' && styles.tabTextoActivo]}>
+              Anuladas
+            </Text>
+          </Pressable>
+        </View>
+      </ContenedorAncho>
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -85,32 +94,37 @@ export default function Ventas() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={ventas}
-          keyExtractor={(v) => v.id}
-          contentContainerStyle={styles.lista}
-          renderItem={({ item }) => (
-            <Pressable style={styles.fila} onPress={() => router.push(`/admin/ventas/${item.id}`)}>
-              <View style={styles.filaTexto}>
-                <View style={styles.filaPromotorFila}>
-                  <Text style={styles.filaPromotor}>{item.promotorNombre}</Text>
-                  {item.anulada && (
-                    <View style={styles.insigniaAnulada}>
-                      <Text style={styles.insigniaAnuladaTexto}>Anulada</Text>
-                    </View>
-                  )}
+        <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <FlatList
+            data={ventas}
+            keyExtractor={(v) => v.id}
+            contentContainerStyle={styles.lista}
+            renderItem={({ item }) => (
+              <Pressable
+                style={styles.fila}
+                onPress={() => router.push(`/admin/ventas/${item.id}`)}
+              >
+                <View style={styles.filaTexto}>
+                  <View style={styles.filaPromotorFila}>
+                    <Text style={styles.filaPromotor}>{item.promotorNombre}</Text>
+                    {item.anulada && (
+                      <View style={styles.insigniaAnulada}>
+                        <Text style={styles.insigniaAnuladaTexto}>Anulada</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.filaDetalle}>
+                    {item.numeroRecibo} · {formatearFecha(item.tsCliente)} ·{' '}
+                    {item.metodoPago.charAt(0) + item.metodoPago.slice(1).toLowerCase()}
+                  </Text>
                 </View>
-                <Text style={styles.filaDetalle}>
-                  {item.numeroRecibo} · {formatearFecha(item.tsCliente)} ·{' '}
-                  {item.metodoPago.charAt(0) + item.metodoPago.slice(1).toLowerCase()}
+                <Text style={[styles.filaTotal, item.anulada && styles.filaTotalAnulada]}>
+                  {formatearPesos(item.total)}
                 </Text>
-              </View>
-              <Text style={[styles.filaTotal, item.anulada && styles.filaTotalAnulada]}>
-                {formatearPesos(item.total)}
-              </Text>
-            </Pressable>
-          )}
-        />
+              </Pressable>
+            )}
+          />
+        </ContenedorAncho>
       )}
     </View>
   );
@@ -123,9 +137,10 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.oscuro,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -1,24 +1,31 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { PantallaIngresarPedido } from '@/ui/PantallaIngresarPedido';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function IngresarPedido() {
   const usuario = useRequiereSesion(['ADMIN']);
+  const insets = useSafeAreaInsets();
 
   if (!usuario) return null;
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()}>
-          <Text style={styles.volver}>‹ Inventario</Text>
-        </Pressable>
-        <Text style={styles.titulo}>Ingresar pedido</Text>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={640} style={styles.encabezadoContenido}>
+          <Pressable onPress={() => router.back()}>
+            <Text style={styles.volver}>‹ Inventario</Text>
+          </Pressable>
+          <Text style={styles.titulo}>Ingresar pedido</Text>
+        </ContenedorAncho>
       </View>
-      <PantallaIngresarPedido usuarioId={usuario.id} />
+      <ContenedorAncho anchoMaximo={640} llenarAlto>
+        <PantallaIngresarPedido usuarioId={usuario.id} />
+      </ContenedorAncho>
     </View>
   );
 }
@@ -30,9 +37,10 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.oscuro,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 16,
+  },
+  encabezadoContenido: {
     gap: 4,
   },
   volver: {
