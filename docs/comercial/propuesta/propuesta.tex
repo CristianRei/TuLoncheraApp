@@ -130,36 +130,19 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 
 \small\textit{Piso conservador (extremo bajo del rango, salario mínimo). Se confirma con el cliente en Fase 1.}\normalsize
 
-\subsection*{El descuadre pesa más que las horas}
+\subsection*{Falta un dato que solo ustedes conocen}
 
-Las horas son solo una parte. Con la venta observada de un promotor (\$4.606.000 COP en una jornada), la operación mueve del orden de \$690 millones al mes. Sobre esa base, \textbf{cada punto porcentual de producto que se pierde sin explicación vale más que todo el tiempo recuperado}:
+Las horas son lo que sí podemos calcular. Falta el otro lado: \textbf{¿cuánto producto se pierde al mes sin explicación?}
 
-\begin{center}
-\begin{tabular}{lrr}
-\toprule
-\textbf{Concepto} & \textbf{Al mes} & \textbf{Al año} \\
-\midrule
-Horas de trabajo recuperadas & \$1.296.085 & \$15.553.020 \\
-Descuadre evitado (escenario 0,5\%) & \$3.454.500 & \$41.454.000 \\
-\midrule
-\textbf{Total} & \textbf{\$4.750.585} & \textbf{\$57.007.020} \\
-\bottomrule
-\end{tabular}
-\end{center}
+Hoy esa cifra no existe, porque el papel no permite medirla. Y sobre el volumen que mueve la operación, cualquier punto porcentual de descuadre pesa más que todas las horas de esta tabla. Es la pregunta que proponemos resolver en la reunión --- y el sistema la convierte en un dato consultable desde el primer mes.
 
-\small\textit{El 0,5\% es un escenario ilustrativo, no una cifra medida: hoy no existe forma de conocer el descuadre real porque no hay trazabilidad. Medirlo es justamente uno de los primeros resultados del sistema. Aun tomando solo las horas recuperadas, la inversión se recupera dentro del primer año.}\normalsize
-
-\subsection*{Sobre el costo del sistema actual}
-
-El gasto mensual en el POS actual (Loyverse) es del orden de \$200.000 a \$250.000 COP, unos \$2,4 a \$3,0 millones al año. \textbf{Esa cifra no es la justificación de esta inversión y no se presenta como tal.} La licencia es un costo menor frente a la pérdida operativa diaria: este sistema se paga con horas recuperadas y con control de inventario, no con el ahorro de la licencia.
+Al ahorro de horas se suma la licencia del POS actual (\$200.000 a \$250.000 COP al mes), que deja de pagarse tras la migración.
 
 \section{Solución propuesta y modalidades tecnológicas}\label{sec:modalidades}
 
 \subsection*{Dos alternativas, no dos entregables}
 
-\textbf{Se elige una de las dos, no ambas por el mismo precio.} Cambiar de una a otra después de iniciado el desarrollo se cotiza aparte.
-
-\textbf{Nuestra recomendación es la App Nativa:} el escáner y el trabajo sin señal son el corazón de la operación en los eventos, y ahí la diferencia de confiabilidad es notoria. La AWP es la opción sensata si el presupuesto es la restricción principal.
+\textbf{Se elige una de las dos, no ambas por el mismo precio.} Cambiarla después se cotiza aparte. \textbf{Recomendamos la App Nativa} por el escáner y el trabajo sin señal.
 
 \begin{center}
 \begin{tabular}{p{3.1cm}p{5.6cm}p{5.6cm}}
@@ -191,21 +174,19 @@ Opcional y posterior: \textbf{requiere que la Fase 3 esté en producción}, porq
 \subsection*{Totales según lo que se elija}
 
 \begin{center}
-\begin{tabular}{lrrr}
+\begin{tabular}{lrr}
 \toprule
- & & \multicolumn{2}{c}{\textbf{Se recupera en}} \\
-\cmidrule(l){3-4}
-\textbf{Configuración} & \textbf{Inversión única} & \textbf{Solo horas} & \textbf{Con descuadre} \\
+\textbf{Configuración} & \textbf{Inversión única} & \textbf{Se recupera en} \\
 \midrule
-App Web Progresiva & \$8.000.000 COP & 6,2 meses & 1,7 meses \\
-App Web Progresiva + Asistente & \$10.000.000 COP & 7,7 meses & 2,1 meses \\
-App Nativa & \$12.000.000 COP & 9,3 meses & 2,5 meses \\
-App Nativa + Asistente & \$14.000.000 COP & 10,8 meses & 2,9 meses \\
+App Web Progresiva & \$8.000.000 COP & 5,2 meses \\
+App Web Progresiva + Asistente & \$10.000.000 COP & 6,5 meses \\
+App Nativa & \$12.000.000 COP & 7,8 meses \\
+App Nativa + Asistente & \$14.000.000 COP & 9,1 meses \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\small\textit{``Solo horas'' usa \$1.296.085 COP/mes, el único componente ya cuantificado. ``Con descuadre'' suma el escenario de 0,5\% descrito arriba. La realidad estará entre las dos columnas.}\normalsize
+\small\textit{Calculado sobre \$1.546.085 COP/mes: horas recuperadas más la licencia que deja de pagarse. No incluye el descuadre de inventario, que está sin medir y solo mejora estas cifras.}\normalsize
 
 \subsection*{No partimos de cero}
 
@@ -233,7 +214,7 @@ Ya existe un \textbf{prototipo funcional} con los 123 productos reales de Tu Lon
 \end{center}
 
 \begin{center}
-\textbf{Duración total estimada: 12 semanas (aproximadamente 3 meses)}
+\textbf{Duración: 10 semanas, con 2 semanas de margen por imprevistos}
 \end{center}
 
 Cada fase cobra un porcentaje del total contratado (modalidad elegida + módulos, Sección~\ref{sec:modalidades}). Los tiempos corren desde la aprobación de la fase anterior.
