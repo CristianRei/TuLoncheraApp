@@ -72,20 +72,19 @@ El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf
 
 \begin{center}
 \begin{tikzpicture}[
-    node distance=0.35cm,
-    caja/.style={rectangle, draw=accent, fill=accent!8, rounded corners, minimum width=2.5cm, minimum height=2.8cm, align=center, font=\footnotesize, text width=2.3cm},
-    tiempo/.style={font=\bfseries\footnotesize, color=accent},
-    total/.style={rectangle, draw=accent, fill=accent, rounded corners, minimum width=2.9cm, minimum height=1.6cm, align=center, font=\small, text=white},
+    node distance=0.3cm,
+    caja/.style={rectangle, draw=accent, fill=accent!8, rounded corners, minimum width=2.7cm, minimum height=2.9cm, align=center, font=\footnotesize, text width=2.5cm},
+    total/.style={rectangle, draw=accent, fill=accent, rounded corners, minimum width=6cm, minimum height=1.7cm, align=center, font=\small, text=white},
     >={Stealth[length=2mm]}
 ]
-\node[caja] (c1) {\textbf{Promotor}\\[2pt]Conteo manual en papel\\[4pt]\tiempo{30--40 min}\\+2--3h en enviar};
-\node[caja, right=of c1] (c2) {\textbf{Administración}\\[2pt]Transcribir papel a Excel\\[4pt]\tiempo{[XX] min}};
-\node[caja, right=of c2] (c3) {\textbf{Bodega}\\[2pt]Alistar y volver a contar todo\\[4pt]\tiempo{[XX] min}};
-\node[caja, right=of c3] (c4) {\textbf{Transporte}\\[2pt]Recorrido retrasado por cierre tardío\\[4pt]\tiempo{[XX] min}};
+\node[caja] (c1) {{\bfseries\scriptsize Promotor}\\[3pt]Conteo manual en papel\\[4pt]{\bfseries\footnotesize\color{accent} 30--40 min}\\+2--3h en enviar};
+\node[caja, right=of c1] (c2) {{\bfseries\scriptsize Administración}\\[3pt]Transcribir papel a Excel\\[4pt]{\bfseries\footnotesize\color{accent} 30 min -- 1h}};
+\node[caja, right=of c2] (c3) {{\bfseries\scriptsize Bodega}\\[3pt]Alistar y volver a contar todo\\[4pt]{\bfseries\footnotesize\color{accent} 30 min -- 1h}};
+\node[caja, right=of c3] (c4) {{\bfseries\scriptsize Transporte}\\[3pt]Recorrido retrasado por cierre tardío\\[4pt]{\bfseries\footnotesize\color{accent} $\sim$30 min}};
 \draw[->, accent, thick] (c1) -- (c2);
 \draw[->, accent, thick] (c2) -- (c3);
 \draw[->, accent, thick] (c3) -- (c4);
-\node[total, below=0.5cm of c2, xshift=1.4cm] (ct) {Total por evento: \textbf{[XX] minutos}};
+\node[total, below=0.6cm of c2, xshift=1.55cm] (ct) {Total perdido por evento: \textbf{2--3.5 h}\\[2pt] \small $\times$ 7.5 promotores/día $\rightarrow$ \textbf{15--26 h/día}};
 \draw[->, accent, thick] (c4.south) -- ++(0,-0.3) -| (ct.north);
 \end{tikzpicture}
 \end{center}
