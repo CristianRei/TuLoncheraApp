@@ -60,7 +60,9 @@
 
 \section{Diagnóstico del proceso actual y caso de negocio}
 
-El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf{secuencial}, no simultáneo. Bodega no puede avanzar hasta que Administración termine, y Administración no puede empezar hasta que el promotor envíe su foto. Cada fase espera a la anterior, y ese encadenamiento es lo que la app elimina al dar visibilidad en tiempo real a los tres roles a la vez.
+\begin{center}
+\textit{El problema no es falta de trabajo: es que cada área espera a la anterior.}
+\end{center}
 
 \subsection*{Los cuatro cuellos de botella}
 
@@ -87,13 +89,21 @@ El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf
 
 \subsection*{Cómo lo resuelve la app}
 
-El conteo de cierre pasa de papel a un flujo guiado en el celular del promotor, visible para Administración y Bodega en el mismo instante en que se guarda --- sin esperar una foto por WhatsApp. Los saldos y las libranzas ya están en el sistema, no hay que transcribirlos: la hoja de recargue se genera, no se redacta.
+\begin{center}
+\begin{tabular}{p{6.3cm}p{6.3cm}}
+\toprule
+\textbf{Hoy} & \textbf{Con la app} \\
+\midrule
+Conteo a mano en papel & Flujo guiado en el celular \\
+Foto por WhatsApp, horas después & Visible al instante para todos \\
+Andrea transcribe a Excel & La hoja de recargue se genera sola \\
+Precios tecleados en cada venta & Precio fijo del catálogo \\
+Un descuadre no se puede verificar & Cada movimiento queda con usuario y hora \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-\subsection*{El segundo problema: el papel no deja rastro}
-
-Una hoja de cargue escrita a mano no permite saber, semanas después, qué se vendió realmente, a qué precio y quién lo registró. Con el sistema cada movimiento de inventario queda registrado con usuario, fecha y hora, y \textbf{no se puede borrar ni editar}: un error se corrige con un movimiento de ajuste que también queda registrado. Los precios los define Administración en el catálogo, no se teclean en cada venta.
-
-Esto no es desconfianza del equipo: es que hoy \textbf{no existe forma de verificar un descuadre} aunque se quiera. Con trazabilidad, un faltante deja de ser una discusión de memoria y pasa a ser un dato consultable.
+Sobre el último punto: los movimientos \textbf{no se pueden borrar ni editar} --- un error se corrige con un ajuste que también queda registrado. Hoy un faltante es una discusión de memoria; con el sistema es un dato consultable.
 
 \subsection*{Traducción a tiempo y dinero: los cuatro roles juntos}
 
@@ -122,7 +132,7 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 
 \subsection*{Lo que cuesta no hacer nada}
 
-Al tiempo perdido se suma la licencia del POS actual. Ambos son costos recurrentes que desaparecen con la migración:
+Al tiempo perdido se suma la licencia de Loyverse. Los dos desaparecen con la migración:
 
 \begin{center}
 \begin{tikzpicture}[
@@ -137,7 +147,7 @@ Al tiempo perdido se suma la licencia del POS actual. Ambos son costos recurrent
 \end{tikzpicture}
 \end{center}
 
-\textbf{Incluso la configuración más completa (App Nativa + Chatbot, \$4.000.000 COP) se paga sola en menos de tres meses.} A partir de ahí, cada mes que pasa el sistema genera caja en vez de consumirla --- y a diferencia de la licencia de Loyverse, el sistema queda en propiedad de Tu Lonchera (Sección~\ref{sec:propiedad}).
+\textbf{Hasta la opción más completa (Nativa + Chatbot, \$4.000.000) se paga sola en menos de tres meses.} Y a diferencia de Loyverse, el sistema queda en propiedad de Tu Lonchera (Sección~\ref{sec:propiedad}).
 
 \small\textit{Loyverse estimado en US\$88/mes a TRM \$3.072 COP (14 de septiembre de 2026).}\normalsize
 
@@ -145,7 +155,7 @@ Al tiempo perdido se suma la licencia del POS actual. Ambos son costos recurrent
 
 \subsection*{Dos alternativas, no dos entregables}
 
-La app se puede construir de dos formas distintas. \textbf{Son alternativas tecnológicas mutuamente excluyentes: se elige una de las dos para el desarrollo, no ambas por el mismo precio.} Cambiar de una a otra después de iniciado el desarrollo se cotiza como trabajo adicional, no como upgrade incluido.
+\textbf{Se elige una de las dos, no ambas por el mismo precio.} Cambiar de una a otra después de iniciado el desarrollo se cotiza aparte.
 
 \begin{center}
 \begin{tabular}{p{3.1cm}p{5.6cm}p{5.6cm}}
@@ -167,16 +177,16 @@ La app se puede construir de dos formas distintas. \textbf{Son alternativas tecn
 \toprule
 \textbf{Módulo de Chatbot para WhatsApp} & \textbf{\$2.000.000 COP} \\
 \midrule
-\multicolumn{2}{p{14.4cm}}{Automatiza la comunicación operativa con los promotores directamente por WhatsApp: envía y recibe reportes de cierre, resuelve dudas operativas frecuentes en tiempo real, y libera a Administración de responder manualmente cada mensaje repetitivo del día a día.} \\
+\multicolumn{2}{p{14.4cm}}{Envía y recibe reportes de cierre por WhatsApp, resuelve dudas frecuentes de los promotores en tiempo real y libera a Administración de responder los mismos mensajes todos los días.} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Este módulo es opcional y se suma al precio de la modalidad elegida (AWP o Nativa) — no reemplaza ni depende de cuál de las dos se escoja.
+Opcional. Se suma a la modalidad elegida, funciona con cualquiera de las dos.
 
 \subsection*{No partimos de cero}
 
-Existe ya un \textbf{prototipo funcional} con el catálogo real de Tu Lonchera cargado (123 productos con sus precios), que hoy permite escanear código de barras, registrar ventas por promotor, asignar cargue desde bodega y consultar el inventario resultante. Está disponible para demostración en vivo antes de firmar. Lo que esta propuesta cotiza es llevar ese prototipo a un sistema completo, sincronizado y listo para operar todos los días.
+Ya existe un \textbf{prototipo funcional} con los 123 productos reales de Tu Lonchera cargados: escanea código de barras, registra ventas por promotor y asigna cargue desde bodega. \textbf{Disponible para verlo funcionando antes de firmar.}
 
 \section{Alcance por fases}\label{sec:fases}
 
@@ -200,7 +210,7 @@ Existe ya un \textbf{prototipo funcional} con el catálogo real de Tu Lonchera c
 \textbf{Duración total estimada: 12 semanas (aproximadamente 3 meses)}
 \end{center}
 
-El precio de cada fase es un porcentaje del \textbf{total de la modalidad elegida} (AWP o Nativa, Sección~\ref{sec:modalidades}) más los módulos adicionales contratados (ej. Chatbot de WhatsApp) --- no un valor fijo independiente de esa elección. Los tiempos corren desde la aprobación de la fase anterior y asumen que el cliente cumple los plazos de revisión de la Sección~\ref{sec:supuestos}.
+Cada fase cobra un porcentaje del total contratado (modalidad elegida + módulos, Sección~\ref{sec:modalidades}). Los tiempos corren desde la aprobación de la fase anterior.
 
 \subsection*{Fase 1 --- Planeación}
 \textbf{15\% del total contratado \quad$\cdot$\quad 2 semanas}
