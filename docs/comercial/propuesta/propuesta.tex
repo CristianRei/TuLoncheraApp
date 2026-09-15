@@ -58,12 +58,6 @@
 \end{center}
 \vspace{18pt}
 
-\section{Modalidad de la solución}
-\begin{itemize}
-    \item \textbf{App nativa (Android):} mejor desempeño con el escáner de productos, funciona sin conexión a internet. Requiere instalación del archivo de la app en cada celular.
-    \item \textbf{App web progresiva (PWA):} se instala directamente desde el navegador, sin pasar por una tienda de aplicaciones. El uso de cámara y el funcionamiento sin internet dependen del celular de cada promotor.
-\end{itemize}
-
 \section{Diagnóstico del proceso actual y caso de negocio}
 
 El problema de fondo no es falta de trabajo: es que el proceso actual es \textbf{secuencial}, no simultáneo. Bodega no puede avanzar hasta que Administración termine, y Administración no puede empezar hasta que el promotor envíe su foto. Cada fase espera a la anterior, y ese encadenamiento es lo que la app elimina al dar visibilidad en tiempo real a los tres roles a la vez.
@@ -120,6 +114,39 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 
 \small\textit{Piso conservador (extremo bajo del rango, salario mínimo). Se confirma con el cliente en Fase 1.}\normalsize
 
+\section{Solución propuesta y modalidades tecnológicas}
+
+\subsection*{Dos alternativas, no dos entregables}
+
+La app se puede construir de dos formas distintas. \textbf{Son alternativas tecnológicas mutuamente excluyentes: se elige una de las dos para el desarrollo, no ambas por el mismo precio.} Cambiar de una a otra después de iniciado el desarrollo se cotiza como trabajo adicional, no como upgrade incluido.
+
+\begin{center}
+\begin{tabular}{p{3.1cm}p{5.6cm}p{5.6cm}}
+\toprule
+ & \textbf{App Web Progresiva (AWP)} & \textbf{App Nativa (Android/iOS)} \\
+\midrule
+\textbf{Instalación} & Desde el navegador, sin pasar por Play Store / App Store. & Archivo instalable (Android) o publicación en tienda (iOS).\\
+\textbf{Cámara / escáner} & Depende del navegador y el celular de cada promotor; puede variar entre dispositivos. & Acceso directo y consistente a la cámara en todos los dispositivos.\\
+\textbf{Sin conexión} & Funciona sin internet, con algunas limitaciones según el navegador. & Funciona sin internet de forma más confiable (R5).\\
+\textbf{Precio} & \textbf{\$1.000.000 COP} & \textbf{\$2.000.000 COP} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection*{Módulo adicional: Chatbot para WhatsApp}
+
+\begin{center}
+\begin{tabular}{p{10.5cm}p{3.9cm}}
+\toprule
+\textbf{Módulo de Chatbot para WhatsApp} & \textbf{\$2.000.000 COP} \\
+\midrule
+\multicolumn{2}{p{14.4cm}}{Automatiza la comunicación operativa con los promotores directamente por WhatsApp: envía y recibe reportes de cierre, resuelve dudas operativas frecuentes en tiempo real, y libera a Administración de responder manualmente cada mensaje repetitivo del día a día.} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Este módulo es opcional y se suma al precio de la modalidad elegida (AWP o Nativa) — no reemplaza ni depende de cuál de las dos se escoja.
+
 \section{Alcance por fases}
 
 \begin{center}
@@ -138,8 +165,10 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 \end{tikzpicture}
 \end{center}
 
+El precio de cada fase es un porcentaje del \textbf{total de la modalidad elegida} (AWP o Nativa, Sección 2) más los módulos adicionales contratados (ej. Chatbot de WhatsApp) --- no un valor fijo independiente de esa elección.
+
 \subsection*{Fase 1 --- Planeación}
-\textbf{Precio: \$[XX] COP}
+\textbf{Precio: 15\% del total contratado}
 \begin{itemize}
     \item Entendimiento del proceso actual (bodega, camiones, eventos con promotores).
     \item Diagrama de cómo funcionará la solución.
@@ -148,7 +177,7 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 \textit{Criterio de aceptación:} el cliente aprueba por escrito el diagrama y la vista previa antes de pasar a la Fase 2.
 
 \subsection*{Fase 2 --- MVP}
-\textbf{Precio: \$[XX] COP}
+\textbf{Precio: 35\% del total contratado}
 \begin{itemize}
     \item App funcionando en un celular: registro de inventario, ventas y escaneo de productos.
     \item Funciona sin internet; cada celular guarda su propia información.
@@ -157,7 +186,7 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 \textit{Criterio de aceptación:} el 100\% de las ventas de un día real de prueba quedan registradas correctamente, comparado contra el conteo físico.
 
 \subsection*{Fase 3 --- Sincronización (Implementación)}
-\textbf{Precio: \$[XX] COP}
+\textbf{Precio: 35\% del total contratado}
 \begin{itemize}
     \item Conexión entre los celulares de los promotores y la bodega (los datos se unifican).
     \item Reportes de ventas e inventario, en reemplazo del Excel administrativo.
@@ -166,10 +195,10 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 \textit{Criterio de aceptación:} el inventario consolidado en el reporte coincide con el conteo físico con un margen de error menor al 1\%, durante dos días seguidos de prueba.
 
 \subsection*{Fase 4 --- Testeo y Garantía}
-\textbf{Precio: \$[XX] COP}
+\textbf{Precio: 15\% del total contratado}
 \begin{itemize}
     \item Pruebas completas del sistema en condiciones reales.
-    \item Corrida en paralelo con Loyverse/Excel (ver Sección 7).
+    \item Corrida en paralelo con Loyverse/Excel (ver Sección 8).
     \item Ajustes finales y entrega definitiva.
 \end{itemize}
 \textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves durante [XX] jornadas; el cliente aprueba por escrito el paso a producción.
@@ -181,11 +210,13 @@ Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
 \textbf{Rubro} & \textbf{Incluye} & \textbf{\%} \\
 \midrule
 \endhead
-Desarrollo de software & Análisis, diseño, programación, pruebas y despliegue de cada fase. & [XX]\% \\
-Infraestructura y licencias & Hosting/backend (desde Fase 3), cuenta de desarrollador Play Store si aplica, dominios. & [XX]\% \\
-Soporte y mantenimiento & Corrección de errores post-entrega y acompañamiento durante la corrida en paralelo. & [XX]\% \\
+Desarrollo de software & Análisis, diseño, programación, pruebas y despliegue de cada fase. & 80\% \\
+Infraestructura y licencias & Hosting/backend (desde Fase 3), cuenta de desarrollador Play Store si aplica, dominios. & 10\% \\
+Soporte y mantenimiento & Corrección de errores post-entrega y acompañamiento durante la corrida en paralelo. & 10\% \\
 \bottomrule
 \end{longtable}
+
+Estos porcentajes se aplican sobre el \textbf{total de la modalidad elegida más los módulos adicionales contratados} (Sección 2), el mismo total que se reparte entre las cuatro fases de la Sección 3.
 
 \textit{Nota:} los pagos recurrentes de infraestructura (hosting, cuentas de tienda) corren por cuenta del cliente desde su activación; Three Bounds SAS solo se encarga de configurarlos.
 
@@ -233,7 +264,7 @@ El tratamiento de los datos personales de clientes finales y empleados capturado
 
 \section{Forma de pago y garantía}
 \begin{itemize}
-    \item Pago por fase: [XX]\% al iniciar la fase, [XX]\% al aprobar el entregable.
+    \item Dentro de cada fase (Sección 3): [XX]\% al iniciarla, [XX]\% al aprobar su entregable.
     \item Ninguna fase inicia sin el pago inicial correspondiente ni sin la aprobación por escrito de la fase anterior.
     \item Garantía de [XX] días después de aprobada cada fase, cubriendo únicamente errores del alcance entregado (no funciones nuevas).
 \end{itemize}
@@ -243,7 +274,7 @@ El tratamiento de los datos personales de clientes finales y empleados capturado
     \item Conectividad limitada en los puntos de venta puede afectar los tiempos de sincronización de la Fase 3.
     \item Cambios en el catálogo de productos durante el desarrollo pueden generar trabajo adicional no incluido en el precio de la fase.
     \item La adopción por parte de los promotores depende de la capacitación y puede afectar los tiempos de la corrida en paralelo.
-    \item Retrasos del cliente en entregar información (Sección 4) desplazan el cronograma proporcionalmente.
+    \item Retrasos del cliente en entregar información (Sección 5) desplazan el cronograma proporcionalmente.
 \end{itemize}
 
 \vspace{1cm}
