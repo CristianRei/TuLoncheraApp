@@ -124,9 +124,13 @@ administrativo se elimina la transcripción repetitiva de Excel a Excel --- la h
 de recargue se genera, no se redacta. Si el cliente quiere seguir usando Excel, la
 app exporta cualquier hoja lista en el momento, sin trabajo manual de por medio.
 
-En la venta, el cambio es de control: hoy el promotor tiene inventario ilimitado y
-teclea los precios en cada transacción; con la app cada promotor opera contra un
-inventario asignado, y el precio sale del catálogo, no del teclado.
+La liquidación también se simplifica: cada venta por transferencia queda verificada
+con foto del comprobante en el momento de cobrar, así que al cerrar la jornada solo
+falta contar el efectivo e ingresar el valor de las ventas por libranza, si las hay.
+
+En la venta, el cambio es de control: hoy el promotor tiene inventario ilimitado
+dentro de la app que utilizan; con la app cada promotor opera contra un inventario
+asignado y limitado.
 
 Los descuadres no desaparecen --- ningún sistema los elimina. Lo que cambia es que
 cada movimiento queda registrado con usuario y hora, y por lo tanto es
@@ -249,8 +253,7 @@ de la licencia.
 
 \vspace{2pt}
 \noindent\textit{Los costos recurrentes van a nombre y a cargo del cliente.
-Three Bounds SAS los configura, no los factura. Cambiar de modalidad después de
-iniciado el desarrollo se cotiza aparte.}
+Three Bounds SAS los configura, no los factura.}
 
 % ================= FASES =================
 \section{Alcance por fases}\label{sec:fases}
@@ -296,7 +299,15 @@ vista previa antes de pasar a la Fase 2.
 
 \subsection*{Fase 2 --- MVP \quad$\cdot$\quad 3 semanas}
 \begin{itemize}
-    \item App funcionando en un celular: registro de inventario, ventas y escaneo de productos.
+    \item App funcionando en un celular: registro de inventario, ventas y escaneo de
+    productos.
+    \item Registro de inicio de turno: foto con ubicación y hora, obligatoria antes de
+    poder registrar cualquier venta.
+    \item En cada venta por transferencia, foto del comprobante al momento de cobrar,
+    almacenada y disponible para administración.
+    \item Liquidación de cierre simplificada: como la transferencia ya queda verificada
+    con foto en el momento, al final de la jornada solo queda contar el efectivo e
+    ingresar el valor de las ventas por libranza, si las hay.
     \item Funciona sin internet; cada celular guarda su propia información.
     \item Capacitación al equipo de bodega y administración.
 \end{itemize}
@@ -316,7 +327,7 @@ el conteo físico con un margen de error menor al 1\%, durante dos días seguido
 \subsection*{Fase 4 --- Testeo y garantía \quad$\cdot$\quad 1 semana}
 \begin{itemize}
     \item Pruebas completas del sistema en condiciones reales.
-    \item Corrida en paralelo con Loyverse/Excel (ver Sección~\ref{sec:migracion}).
+    \item Corrida en paralelo con Loyverse/Excel.
     \item Ajustes finales y entrega definitiva.
 \end{itemize}
 \textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves
@@ -356,7 +367,6 @@ durante 10 jornadas de venta reales; el cliente aprueba por escrito el paso a pr
     \item \textbf{Aprobación tácita:} si el cliente no emite observaciones por escrito
     dentro de 5 días hábiles desde la entrega de una fase, esta se entiende
     aprobada y el pago correspondiente se hace exigible.
-    \item \textbf{Mora:} los pagos vencidos causan intereses a la tasa máxima legal vigente.
     \item Ninguna fase inicia sin la aprobación escrita de la anterior.
     \item \textbf{Garantía de 1 año} contada desde la aprobación final, cubriendo
     la corrección de errores del alcance entregado. No incluye funciones nuevas,
@@ -459,8 +469,8 @@ responde correctamente al menos el 80\% de un banco de preguntas acordado previa
     sin reemplazarlos todavía.
     \item La corrida en paralelo dura mínimo 10 jornadas de venta reales
     (aproximadamente dos semanas de operación).
-    \item La migración definitiva solo ocurre cuando los criterios de la Fase 4 se
-    cumplen de forma consistente.
+    \item La migración definitiva solo ocurre cuando los criterios de aceptación se
+    cumplan.
     \item La cancelación de la licencia de Loyverse queda a decisión y cargo del cliente,
     una vez confirmada la migración.
 \end{enumerate}
@@ -485,8 +495,8 @@ responde correctamente al menos el 80\% de un banco de preguntas acordado previa
     horarios de los mensajes de retroalimentación.
     \item El cliente valida el manual de operación que alimenta al asistente;
     Three Bounds SAS no define procedimientos operativos del negocio.
-    \item Cualquier función nueva que no esté descrita en el alcance de una fase se
-    cotiza y se cobra aparte.
+    \item Cualquier función nueva que no esté descrita o se derive de las descritas en
+    el alcance de una fase se cotiza aparte.
 \end{itemize}
 
 % ================= LEGAL =================
@@ -514,8 +524,6 @@ en cualquier momento.
 \begin{itemize}
     \item Conectividad limitada en los puntos de venta puede afectar los tiempos de
     sincronización de la Fase 3.
-    \item Cambios en el catálogo de productos durante el desarrollo pueden generar
-    trabajo adicional no incluido en el precio de la fase.
     \item La adopción por parte de los promotores depende de la capacitación y puede
     afectar los tiempos de la corrida en paralelo.
     \item Retrasos del cliente en entregar información (Sección~\ref{sec:supuestos})
@@ -527,11 +535,6 @@ en cualquier momento.
     \item Un promotor sin señal durante toda la jornada no recibirá las alertas hasta
     recuperar conexión; en ese caso el sistema notifica a Administración.
 \end{itemize}
-
-\section{Vigencia de la propuesta}
-Los precios y plazos de este documento tienen una vigencia de \textbf{30 días
-calendario} a partir del 16 de septiembre de 2026. Pasado ese plazo deben revalidarse,
-ya que dependen de la disponibilidad del equipo y de las condiciones del mercado.
 
 \vspace{1.1cm}
 \nopagebreak
