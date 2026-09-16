@@ -2,63 +2,100 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish]{babel}
-\usepackage[margin=2.2cm,headheight=22.2pt]{geometry}
+\usepackage[margin=2.4cm,headheight=24pt,headsep=14pt]{geometry}
 \usepackage{xcolor}
+
 \usepackage{tabularx}
 \usepackage{booktabs}
 \usepackage{enumitem}
 \usepackage{titlesec}
 \usepackage{hyperref}
-\usepackage{longtable}
 \usepackage{graphicx}
 \usepackage{fancyhdr}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, babel, calc}
 
-\definecolor{accent}{HTML}{1F4E5F}
-\definecolor{graytxt}{HTML}{6B6B6B}
+% ---- Tipografía: Charter (cuerpo) + TeX Gyre Heros (títulos) ----
+\usepackage{charter}
+\usepackage[scaled=0.94]{tgheros}
 
-\titleformat{\section}{\large\bfseries\color{accent}}{\thesection}{0.6em}{}
-\titleformat{\subsection}{\normalsize\bfseries\color{accent}}{\thesubsection}{0.6em}{}
-\setlist[itemize]{leftmargin=1.4em, itemsep=2pt, topsep=2pt}
-\setlist[enumerate]{leftmargin=1.6em, itemsep=2pt, topsep=2pt}
-\hypersetup{colorlinks=true, linkcolor=accent, urlcolor=accent}
+% ---- Paleta: identidad Tu Lonchera ----
+\definecolor{tinta}{HTML}{1A1A1A}
+\definecolor{vino}{HTML}{5C1A1A}
+\definecolor{ambar}{HTML}{E8A020}
+\definecolor{graytxt}{HTML}{7A7A7A}
+\color{tinta}
 
-% ---- Encabezado en cada página ----
+% ---- Secciones sin numeración, versalitas ----
+\titleformat{\section}
+  {\sffamily\bfseries\large\color{vino}\scshape}{}{0pt}{}
+  [\vspace{-6pt}{\color{vino}\rule{\textwidth}{0.6pt}}]
+\titlespacing*{\section}{0pt}{26pt}{12pt}
+
+\titleformat{\subsection}
+  {\sffamily\bfseries\normalsize\color{tinta}}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{16pt}{6pt}
+
+\setlist[itemize]{leftmargin=1.4em, itemsep=3pt, topsep=3pt}
+\setlist[enumerate]{leftmargin=1.6em, itemsep=3pt, topsep=3pt}
+\hypersetup{colorlinks=true, linkcolor=vino, urlcolor=vino}
+
+% ---- Encabezado desde página 2 ----
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\includegraphics[height=0.6cm]{logo.png}\hspace{4pt}\textbf{\small Three Bounds SAS}}
-\fancyhead[R]{\small\color{graytxt} Bogotá, 16 de septiembre de 2026}
-\renewcommand{\headrulewidth}{1pt}
-\renewcommand{\headrule}{{\color{accent}\hrule width\textwidth height\headrulewidth}}
+\fancyhead[L]{\includegraphics[height=0.6cm]{logo.png}\hspace{5pt}\raisebox{4pt}{\sffamily\small\textbf{Three Bounds SAS}}}
+\fancyhead[R]{\raisebox{4pt}{\sffamily\footnotesize\color{graytxt}Propuesta Técnico-Comercial}}
+\renewcommand{\headrulewidth}{0.6pt}
+\renewcommand{\headrule}{{\color{vino}\hrule width\textwidth height\headrulewidth}}
+
+% ---- Estilos TikZ comunes ----
+\tikzset{
+  caja/.style={rectangle, draw=graytxt, line width=0.5pt, minimum width=3.0cm,
+               minimum height=2.9cm, align=center, font=\footnotesize, text width=2.7cm},
+  flecha/.style={-{Stealth[length=2mm]}, draw=graytxt, line width=0.5pt}
+}
 
 \begin{document}
+\thispagestyle{empty}
 
-% ---- Membrete de primera página (estilo carta) ----
+% ================= PORTADA =================
 \noindent
-\begin{minipage}[c]{0.10\textwidth}
+\begin{minipage}[c]{0.11\textwidth}
 \includegraphics[width=\linewidth]{logo.png}
-\end{minipage}
-\begin{minipage}[c]{0.62\textwidth}
-{\LARGE\bfseries\color{accent} Three Bounds SAS}\\[3pt]
-{\small\color{graytxt} Consultoría Tecnológica $\cdot$ Automatización $\cdot$ Inteligencia Artificial}
-\end{minipage}
+\end{minipage}%
+\begin{minipage}[c]{0.60\textwidth}
+{\sffamily\LARGE\bfseries\color{vino} Three Bounds SAS}\\[4pt]
+{\sffamily\small\color{graytxt} Consultoría Tecnológica $\cdot$ Automatización $\cdot$ Inteligencia Artificial}
+\end{minipage}%
 \hfill
-\begin{minipage}[c]{0.24\textwidth}
-\raggedleft\small\color{graytxt} Bogotá, 16 de septiembre de 2026
+\begin{minipage}[c]{0.25\textwidth}
+\raggedleft\sffamily\small\color{graytxt} Bogotá,\\16 de septiembre de 2026
 \end{minipage}
 
-\vspace{6pt}
-{\color{accent}\hrule height 1pt}
-\vspace{22pt}
+\vspace{8pt}
+{\color{vino}\hrule height 0.8pt}
+\vspace{2pt}
+\hfill{\color{ambar}\rule{4cm}{2pt}}
 
+\vspace{60pt}
 \begin{center}
-{\Large\bfseries\color{accent} Propuesta Técnico-Comercial}\\[4pt]
-{\large Sistema de Inventario y Ventas --- Tu Lonchera}
-\end{center}
-\vspace{18pt}
+{\sffamily\Huge\bfseries\color{tinta} Propuesta Técnico-Comercial}\\[14pt]
+{\large\color{graytxt} Sistema de Inventario y Ventas}\\[6pt]
+{\sffamily\LARGE\color{vino} Tu Lonchera}
 
-\section{Diagnóstico del proceso actual y caso de negocio}
+\vspace{46pt}
+\includegraphics[height=2.9cm]{logo-tu-lonchera-reducido.png}
+\end{center}
+
+\vfill
+\begin{center}
+{\sffamily\footnotesize\color{graytxt} Documento válido por 30 días calendario desde la fecha de emisión.}
+\end{center}
+
+\newpage
+
+% ================= DIAGNÓSTICO =================
+\section{Diagnóstico del proceso actual}
 
 \begin{center}
 \textit{El problema no es falta de trabajo: es que cada área espera a la anterior.}
@@ -67,344 +104,352 @@
 \subsection*{Los cuatro cuellos de botella}
 
 \begin{center}
-\begin{tikzpicture}[
-    node distance=0.3cm,
-    caja/.style={rectangle, draw=accent, fill=accent!8, rounded corners, minimum width=2.7cm, minimum height=2.9cm, align=center, font=\footnotesize, text width=2.5cm},
-    total/.style={rectangle, draw=accent, fill=accent, rounded corners, minimum width=8.5cm, minimum height=2.1cm, align=center, font=\small, text=white},
-    >={Stealth[length=2mm]}
-]
-\node[caja] (c1) {{\bfseries\scriptsize Promotor}\\[3pt]Conteo manual en papel\\[4pt]{\bfseries\footnotesize\color{accent} 30--40 min}\\+2--3h en enviar};
-\node[caja, right=of c1] (c2) {{\bfseries\scriptsize Administración}\\[3pt]Transcribir papel a Excel\\[4pt]{\bfseries\footnotesize\color{accent} 30 min -- 1h}};
-\node[caja, right=of c2] (c3) {{\bfseries\scriptsize Bodega}\\[3pt]Alistar y volver a contar todo\\[4pt]{\bfseries\footnotesize\color{accent} 30 min -- 1h}};
-\node[caja, right=of c3] (c4) {{\bfseries\scriptsize Transporte}\\[3pt]Recorrido retrasado por cierre tardío\\[4pt]{\bfseries\footnotesize\color{accent} $\sim$30 min}};
-\draw[->, accent, thick] (c1) -- (c2);
-\draw[->, accent, thick] (c2) -- (c3);
-\draw[->, accent, thick] (c3) -- (c4);
-\node[total, below=0.7cm of c2, xshift=1.5cm] (ct) {\small Promotor: 30--40 min $\times$ 7.5/día = 3.75--5 h\\[2pt] \small + Admin. + Bodega + Transporte (1.5--2.5 h, una sola vez)\\[3pt] Total perdido al día: \textbf{5.25--7.5 h}};
-\draw[->, accent, thick] (c4.south) -- ++(0,-0.3) -| (ct.north);
+\begin{tikzpicture}[node distance=0.35cm]
+\node[caja] (c1) {{\sffamily\bfseries\scriptsize Promotor}\\[4pt]Conteo manual y liquidación\\[6pt]{\bfseries\footnotesize\color{ambar}30--60 min}\\{\scriptsize conteo}\\[2pt]{\scriptsize + 15 min liquidación}};
+\node[caja, right=of c1] (c2) {{\sffamily\bfseries\scriptsize Administración}\\[4pt]Procesos repetitivos en Excel\\[6pt]{\bfseries\footnotesize\color{ambar}1--4 h}\\{\scriptsize a lo largo del día}};
+\node[caja, right=of c2] (c3) {{\sffamily\bfseries\scriptsize Bodega}\\[4pt]Alistar y contar todo\\[6pt]{\bfseries\footnotesize\color{ambar}30 min -- 1 h}};
+\node[caja, right=of c3] (c4) {{\sffamily\bfseries\scriptsize Transporte}\\[4pt]Se retrasa por tardanza del promotor y de bodega\\[6pt]{\bfseries\footnotesize\color{ambar}$\sim$30 min}};
+\draw[flecha] (c1) -- (c2);
+\draw[flecha] (c2) -- (c3);
+\draw[flecha] (c3) -- (c4);
 \end{tikzpicture}
 \end{center}
-
-\textit{Cada casilla espera a que termine la anterior --- por eso el tiempo no se reparte entre roles, se acumula.}
 
 \subsection*{Cómo lo resuelve la app}
 
+El conteo de cierre pasa de papel a un flujo guiado en el celular, y queda visible
+al instante para administración: no se espera ninguna foto por WhatsApp. Del lado
+administrativo se elimina la transcripción repetitiva de Excel a Excel --- la hoja
+de recargue se genera, no se redacta. Si el cliente quiere seguir usando Excel, la
+app exporta cualquier hoja lista en el momento, sin trabajo manual de por medio.
+
+En la venta, el cambio es de control: hoy el promotor tiene inventario ilimitado y
+teclea los precios en cada transacción; con la app cada promotor opera contra un
+inventario asignado, y el precio sale del catálogo, no del teclado.
+
+Los descuadres no desaparecen --- ningún sistema los elimina. Lo que cambia es que
+cada movimiento queda registrado con usuario y hora, y por lo tanto es
+\textbf{auditable}. Hoy un faltante es una discusión de memoria; con el sistema es
+un dato consultable.
+
+\subsection*{Traducción a tiempo y dinero}
+
+Promotor $\times$ 7,5 al día; Administración, Bodega y Transporte una sola vez al día.
+Costo hora $=$ costo empleador con salario mínimo 2026 (\$12.344 COP/h, incluye
+prestaciones).
+
 \begin{center}
-\begin{tabular}{p{6.3cm}p{6.3cm}}
+\begin{tabular}{lrrrr}
 \toprule
-\textbf{Hoy} & \textbf{Con la app} \\
+\sffamily\bfseries Rol & \sffamily\bfseries h/día bajo & \sffamily\bfseries h/día alto & \sffamily\bfseries Costo/día bajo & \sffamily\bfseries Costo/día alto \\
 \midrule
-Conteo a mano en papel & Flujo guiado en el celular \\
-Foto por WhatsApp, horas después & Visible al instante para todos \\
-Andrea transcribe a Excel & La hoja de recargue se genera sola \\
-Precios tecleados en cada venta & Precio fijo del catálogo \\
-Un descuadre no se puede verificar & Cada movimiento queda con usuario y hora \\
+Promotores (7,5 $\times$ 45--75 min) & 5,63 & 9,38 & \$69.435 & \$115.725 \\
+Administración & 1,00 & 4,00 & \$12.344 & \$49.376 \\
+Bodega & 0,50 & 1,00 & \$6.172 & \$12.344 \\
+Transporte & 0,50 & 0,50 & \$6.172 & \$6.172 \\
+\midrule
+\textbf{Total por día} & \textbf{7,63} & \textbf{14,88} & \textbf{\$94.123} & \textbf{\$183.617} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Sobre el último punto: los movimientos \textbf{no se pueden borrar ni editar} --- un error se corrige con un ajuste que también queda registrado. Hoy un faltante es una discusión de memoria; con el sistema es un dato consultable.
-
-\subsection*{Traducción a tiempo y dinero: los cuatro roles juntos}
-
-Promotor × 7.5/día; Administración, Bodega y Transporte una sola vez al día. Costo hora = costo empleador con salario mínimo 2026 (\$12.344 COP/h, incluye prestaciones).
-
+\vspace{6pt}
 \begin{center}
-\begin{tabular}{lrrr}
-\toprule
-\textbf{Rol} & \textbf{Tiempo/día} & \textbf{Costo hora} & \textbf{Costo/día} \\
-\midrule
-Promotores (7.5 × 30 min) & 3.75 h & \$12.344 COP/h & \$46.289 COP \\
-Administración & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
-Bodega & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
-Transporte & 0.5 h & \$12.344 COP/h & \$6.172 COP \\
-\midrule
-\textbf{Total por día} & \textbf{5.25 h} & & \textbf{\$64.804 COP} \\
-\bottomrule
-\end{tabular}
+\textit{Ahorro mensual (20 días hábiles):}\quad
+{\sffamily\large\bfseries\color{vino} \$1,9 M} --- {\sffamily\large\bfseries\color{vino}\$3,7 M COP/mes}
 \end{center}
 
-\begin{center}
-\textit{Ahorro mensual = \$64.804 COP/día $\times$ 20 días $=$ \textbf{\$1.296.085 COP/mes}}
-\end{center}
-
-\small\textit{Piso conservador (extremo bajo del rango, salario mínimo). Se confirma con el cliente en Fase 1.}\normalsize
+\vspace{6pt}
+\noindent{\color{ambar}\rule{\textwidth}{1.5pt}}\\[4pt]
+\noindent{\sffamily\large\bfseries Retorno de la inversión: de 2 a 4 meses.}
+{\small Con \$8.000.000 COP de inversión y un ahorro de \$1,9 a \$3,7 millones al mes,
+el sistema se paga solo dentro del primer trimestre de operación.}\\[2pt]
+\noindent{\color{ambar}\rule{\textwidth}{1.5pt}}
 
 \subsection*{Falta un dato que solo ustedes conocen}
 
-Las horas son lo que sí podemos calcular. Falta el otro lado: \textbf{¿cuánto producto se pierde al mes sin explicación?}
+Las horas son lo que sí podemos calcular. Falta el otro lado: \textbf{¿cuánto
+producto se pierde al mes sin explicación?} Hoy esa cifra no existe, porque el papel
+no permite medirla. Sobre el volumen que mueve la operación, cualquier punto
+porcentual de descuadre pesa más que todas las horas de esta tabla. Es la pregunta
+que proponemos resolver en la reunión --- y el sistema la convierte en un dato
+consultable desde el primer mes.
 
-Hoy esa cifra no existe, porque el papel no permite medirla. Y sobre el volumen que mueve la operación, cualquier punto porcentual de descuadre pesa más que todas las horas de esta tabla. Es la pregunta que proponemos resolver en la reunión --- y el sistema la convierte en un dato consultable desde el primer mes.
+\subsection*{Sobre el costo del sistema actual}
 
-Al ahorro de horas se suma la licencia del POS actual (\$200.000 a \$250.000 COP al mes), que deja de pagarse tras la migración.
+El gasto mensual en el POS actual (Loyverse) es del orden de \$200.000 a \$250.000
+COP, equivalente a \$2,4--3,0 millones COP al año. Esa cifra \textbf{no es la
+justificación de esta inversión} y no se presenta como tal: el sistema propuesto se
+paga con horas de trabajo recuperadas y con control de inventario, no con el ahorro
+de la licencia.
 
-\section{Solución propuesta y modalidades tecnológicas}\label{sec:modalidades}
+% ================= MODALIDAD =================
+\section{Modalidad de la solución}\label{sec:modalidades}
 
-\subsection*{Dos alternativas, no dos entregables}
-
-\textbf{Se elige una de las dos, no ambas por el mismo precio.} Cambiarla después se cotiza aparte. \textbf{Recomendamos la App Nativa} por el escáner y el trabajo sin señal.
+\textbf{Se elige una de las dos alternativas.} No son dos entregables ni dos fases:
+son caminos excluyentes. Cambiar de modalidad después de iniciado el desarrollo se
+cotiza aparte. \textbf{Recomendamos la aplicación nativa} por el escáner y el trabajo
+sin señal.
 
 \begin{center}
-\begin{tabular}{p{3.1cm}p{5.6cm}p{5.6cm}}
+\begin{tabular}{p{2.8cm}p{5.6cm}p{5.6cm}}
 \toprule
- & \textbf{App Web Progresiva (AWP)} & \textbf{App Nativa (Android/iOS)} \\
+ & \sffamily\bfseries Aplicación web progresiva (PWA) & \sffamily\bfseries Aplicación nativa \\
 \midrule
-\textbf{Instalación} & Desde el navegador, sin pasar por Play Store / App Store. & Archivo instalable (Android) o publicación en tienda (iOS).\\
-\textbf{Cámara / escáner} & Depende del navegador y el celular de cada promotor; puede variar entre dispositivos. & Acceso directo y consistente a la cámara en todos los dispositivos.\\
-\textbf{Sin conexión} & Funciona sin internet, con algunas limitaciones según el navegador. & Funciona sin internet de forma más confiable.\\
-\textbf{Precio} & \textbf{\$8.000.000 COP} & \textbf{\$12.000.000 COP} \\
+\textbf{Instalación} & Desde el navegador, sin tienda de aplicaciones. Actualizaciones inmediatas sin reinstalar. & Requiere instalación y publicación en tienda. \\
+\addlinespace
+\textbf{Cámara / escáner} & Depende del navegador de cada celular; puede variar entre dispositivos. & Mejor desempeño del escáner, acceso pleno al hardware. \\
+\addlinespace
+\textbf{Sin conexión} & Depende del navegador de cada celular. & Funcionamiento sin conexión confiable. \\
+\addlinespace
+\textbf{Desarrollo} & {\sffamily\bfseries\color{vino}\$8.000.000 COP} & {\sffamily\bfseries\color{vino}\$10.000.000 COP} \\
+\addlinespace
+\textbf{Recurrente anual} & \$550.000 COP (hosting) & \$550.000 COP hosting $+$ licencia Apple (US\$99/año $\approx$ \$400.000 COP) $+$ inscripción única Google Play (US\$25) \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\subsection*{Asistente por WhatsApp}
+\vspace{4pt}
+\noindent\textit{Los costos recurrentes van a nombre y a cargo del cliente.
+Three Bounds SAS los configura, no los factura.}
 
-\begin{center}
-\begin{tabular}{p{10.5cm}p{3.9cm}}
-\toprule
-\textbf{Asistente por WhatsApp (Fase 5)} & \textbf{\$2.000.000 COP} \\
-\midrule
-\multicolumn{2}{p{14.4cm}}{Soporte operativo al promotor, retroalimentación de desempeño durante la jornada y alertas de información pendiente de sincronizar. Alcance detallado y condiciones en la Sección~\ref{sec:whatsapp}.} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-Va después de la Fase 3 porque las alertas dependen del servidor central. Tiene además un costo recurrente de mensajería a cargo del cliente.
-
-\subsection*{Totales}
-
-\begin{center}
-\begin{tabular}{lrr}
-\toprule
-\textbf{Configuración} & \textbf{Inversión única} & \textbf{Se recupera en} \\
-\midrule
-App Web Progresiva + Asistente & \$10.000.000 COP & 6,5 meses \\
-\textbf{App Nativa + Asistente} \small(recomendada) & \textbf{\$14.000.000 COP} & \textbf{9,1 meses} \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-
+% ================= FASES =================
 \section{Alcance por fases}\label{sec:fases}
 
 \begin{center}
-\begin{tikzpicture}[
-    node distance=0.75cm,
-    fase/.style={rectangle, rounded corners, draw=accent, fill=accent!8, minimum width=2.45cm, minimum height=1.15cm, align=center, font=\footnotesize},
-    posterior/.style={fase, fill=white},
-    >={Stealth[length=2mm]}
-]
-\node[fase] (f1) {1. Planeación\\{\scriptsize 2 sem}};
-\node[fase, right=of f1] (f2) {2. MVP\\{\scriptsize 4 sem}};
-\node[fase, right=of f2] (f3) {3. Sincroniz.\\{\scriptsize 4 sem}};
-\node[fase, right=of f3] (f4) {4. Testeo y\\Garantía\\{\scriptsize 2 sem}};
-\node[posterior, right=of f4] (f5) {5. WhatsApp\\{\scriptsize 2 sem}};
-\draw[->, accent, thick] (f1) -- (f2);
-\draw[->, accent, thick] (f2) -- (f3);
-\draw[->, accent, thick] (f3) -- (f4);
-\draw[->, accent, thick] (f4) -- (f5);
+\begin{tikzpicture}[node distance=0.8cm,
+    fase/.style={rectangle, draw=graytxt, line width=0.5pt, minimum width=2.6cm,
+                 minimum height=1.25cm, align=center, font=\footnotesize}]
+\node[fase] (f1) {1. Planeación\\[2pt]{\bfseries\scriptsize\color{ambar}1 semana}};
+\node[fase, right=of f1] (f2) {2. MVP\\[2pt]{\bfseries\scriptsize\color{ambar}3 semanas}};
+\node[fase, right=of f2] (f3) {3. Sincronización\\[2pt]{\bfseries\scriptsize\color{ambar}3 semanas}};
+\node[fase, right=of f3] (f4) {4. Testeo y\\garantía\\[2pt]{\bfseries\scriptsize\color{ambar}1 semana}};
+\draw[flecha] (f1) -- (f2);
+\draw[flecha] (f2) -- (f3);
+\draw[flecha] (f3) -- (f4);
 \end{tikzpicture}
 \end{center}
 
 \begin{center}
-\textbf{12 semanas en total, con 2 semanas de margen por imprevistos}
+{\sffamily\bfseries 8 semanas en total (2 meses)}
 \end{center}
 
-Las fases 1 a 4 reparten el valor de la app (\$8.000.000 o \$12.000.000 según la modalidad). La Fase 5 se factura por su propio valor (\$2.000.000) al aprobarse. Los tiempos corren desde la aprobación de la fase anterior.
+El precio total corresponde a la modalidad elegida: \$8.000.000 COP (PWA) o
+\$10.000.000 COP (nativa). Los tiempos corren desde la aprobación de la fase anterior.
 
-\subsection*{Fase 1 --- Planeación}
-\textbf{15\% del valor de la app \quad$\cdot$\quad 2 semanas}
+\subsection*{Fase 1 --- Planeación \quad$\cdot$\quad 1 semana}
 \begin{itemize}
     \item Entendimiento del proceso actual (bodega, camiones, eventos con promotores).
     \item Diagrama de cómo funcionará la solución.
     \item Vista previa navegable de las pantallas (sin funciones reales todavía).
 \end{itemize}
-\textit{Criterio de aceptación:} el cliente aprueba por escrito el diagrama y la vista previa antes de pasar a la Fase 2.
+\textit{Criterio de aceptación:} el cliente aprueba por escrito el diagrama y la
+vista previa antes de pasar a la Fase 2.
 
-\subsection*{Fase 2 --- MVP}
-\textbf{35\% del valor de la app \quad$\cdot$\quad 4 semanas}
+\subsection*{Fase 2 --- MVP \quad$\cdot$\quad 3 semanas}
 \begin{itemize}
     \item App funcionando en un celular: registro de inventario, ventas y escaneo de productos.
     \item Funciona sin internet; cada celular guarda su propia información.
     \item Capacitación al equipo de bodega y administración.
 \end{itemize}
-\textit{Criterio de aceptación:} el 100\% de las ventas de un día real de prueba quedan registradas correctamente, comparado contra el conteo físico.
+\textit{Criterio de aceptación:} el 100\% de las ventas de un día real de prueba
+quedan registradas correctamente, comparado contra el conteo físico.
 
-\subsection*{Fase 3 --- Sincronización (Implementación)}
-\textbf{35\% del valor de la app \quad$\cdot$\quad 4 semanas}
+\subsection*{Fase 3 --- Sincronización \quad$\cdot$\quad 3 semanas}
 \begin{itemize}
     \item Conexión entre los celulares de los promotores y la bodega (los datos se unifican).
     \item Reportes de ventas e inventario, en reemplazo del Excel administrativo.
+    \item Exportación a Excel de cualquier hoja, bajo demanda.
     \item Perfiles de usuario: promotor, bodega, administración.
 \end{itemize}
-\textit{Criterio de aceptación:} el inventario consolidado en el reporte coincide con el conteo físico con un margen de error menor al 1\%, durante dos días seguidos de prueba.
+\textit{Criterio de aceptación:} el inventario consolidado en el reporte coincide con
+el conteo físico con un margen de error menor al 1\%, durante dos días seguidos de prueba.
 
-\subsection*{Fase 4 --- Testeo y Garantía}
-\textbf{15\% del valor de la app \quad$\cdot$\quad 2 semanas}
+\subsection*{Fase 4 --- Testeo y garantía \quad$\cdot$\quad 1 semana}
 \begin{itemize}
     \item Pruebas completas del sistema en condiciones reales.
     \item Corrida en paralelo con Loyverse/Excel (ver Sección~\ref{sec:migracion}).
     \item Ajustes finales y entrega definitiva.
 \end{itemize}
-\textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves durante 10 jornadas de venta reales; el cliente aprueba por escrito el paso a producción.
+\textit{Criterio de aceptación:} el sistema funciona en paralelo sin errores graves
+durante 10 jornadas de venta reales; el cliente aprueba por escrito el paso a producción.
 
-\section{Asistente por WhatsApp --- Fase 5}\label{sec:whatsapp}
-
-Solicitado por Tu Lonchera. \textbf{Va después de la Fase 3 por una razón técnica:} las alertas necesitan un servidor central que sepa qué está pasando con cada promotor, y ese servidor nace en la Fase 3. Antes de eso no hay contra qué comparar.
-
-\subsection*{Tres funciones}
-
-\begin{center}
-\begin{tikzpicture}[
-    tarjeta/.style={rectangle, draw=accent, fill=accent!6, rounded corners, minimum width=4.35cm, minimum height=4cm, align=center, font=\footnotesize, text width=3.9cm},
-    node distance=0.4cm,
-]
-% --- Tarjeta 1: globo de chat ---
-\node[tarjeta] (t1) {\\[1.05cm]{\bfseries\small Resuelve dudas}\\[4pt]
-Cómo registrar una venta, hacer el cierre, qué hacer si un producto no escanea, cómo va una libranza.\\[4pt]
-{\itshape Menos llamadas a Administración.}};
-\begin{scope}[shift={($(t1.north)+(0,-0.72)$)}]
-  \draw[accent, thick, fill=white, rounded corners=3pt] (-0.42,-0.26) rectangle (0.42,0.26);
-  \draw[accent, thick, fill=white] (-0.12,-0.26) -- (-0.02,-0.46) -- (0.08,-0.26) -- cycle;
-  \draw[accent, line width=0.7pt] (-0.26,0.08) -- (0.26,0.08);
-  \draw[accent, line width=0.7pt] (-0.26,-0.06) -- (0.12,-0.06);
-\end{scope}
-% --- Tarjeta 2: barras ---
-\node[tarjeta, right=of t1] (t2) {\\[1.05cm]{\bfseries\small Muestra cómo va}\\[4pt]
-Tres veces al día: venta acumulada, \% de la meta y comparación con su propio promedio.\\[4pt]
-{\itshape Corrige durante el evento, no al día siguiente.}};
-\begin{scope}[shift={($(t2.north)+(0,-0.72)$)}]
-  \draw[accent, line width=0.8pt] (-0.45,-0.34) -- (0.45,-0.34);
-  \fill[accent!45] (-0.34,-0.34) rectangle (-0.14,-0.02);
-  \fill[accent!70] (-0.07,-0.34) rectangle (0.13,0.16);
-  \fill[accent] (0.2,-0.34) rectangle (0.4,0.36);
-\end{scope}
-% --- Tarjeta 3: campana ---
-\node[tarjeta, right=of t2] (t3) {\\[1.05cm]{\bfseries\small Avisa lo pendiente}\\[4pt]
-Si un cierre no llegó a la hora esperada, le recuerda conectarse. Administración recibe el mismo aviso.\\[4pt]
-{\itshape Nadie se queda esperando datos.}};
-\begin{scope}[shift={($(t3.north)+(0,-0.72)$)}]
-  \draw[accent, thick, fill=white] (-0.3,-0.2) .. controls (-0.3,0.2) and (-0.16,0.3) .. (0,0.3)
-      .. controls (0.16,0.3) and (0.3,0.2) .. (0.3,-0.2) -- cycle;
-  \draw[accent, thick] (-0.38,-0.2) -- (0.38,-0.2);
-  \fill[accent] (0,-0.32) circle (0.07);
-  \draw[accent, thick] (0,0.3) -- (0,0.4);
-\end{scope}
-\end{tikzpicture}
-\end{center}
-
-\subsection*{Qué incluye}
-\begin{itemize}
-    \item Configuración de la cuenta de WhatsApp Business API y registro del número.
-    \item Redacción y gestión de aprobación de las plantillas ante Meta.
-    \item Base de conocimiento del asistente, construida sobre el manual operativo validado por el cliente.
-    \item Panel de configuración de horarios, metas y umbrales de alerta.
-\end{itemize}
-
-\subsection*{Condiciones específicas}
-\begin{itemize}
-    \item \textbf{Costo recurrente por mensaje:} WhatsApp Business API cobra por cada conversación que inicia la empresa. Con tres mensajes diarios por promotor, el volumen estimado ronda las 480 conversaciones al mes. Este costo lo asume el cliente, facturado directamente por el proveedor.
-    \item \textbf{Plantillas:} todo mensaje proactivo requiere aprobación previa de Meta (24 a 48 horas) y no puede modificarse sobre la marcha. Ese plazo no depende de Three Bounds SAS.
-    \item \textbf{Número de teléfono:} el número del asistente queda a nombre del cliente y no puede estar vinculado a una cuenta de WhatsApp personal.
-    \item \textbf{Dependencia:} no entra en operación antes de que la Fase 3 esté aprobada y en producción.
-\end{itemize}
-
-\textit{Criterio de aceptación:} durante 10 jornadas consecutivas, el 100\% de los cierres no recibidos a la hora esperada generan alerta al promotor, y el asistente responde correctamente al menos el 80\% de un banco de preguntas acordado previamente con el cliente.
-
-\section{Supuestos y dependencias del cliente}\label{sec:supuestos}
-\begin{itemize}
-    \item El cliente entrega la lista actual de productos y precios en un Excel antes de iniciar la Fase 2.
-    \item El cliente nombra una sola persona responsable de revisar y aprobar cada entrega, en un plazo máximo de 3 días hábiles.
-    \item Los celulares o tablets donde se instalará la app son responsabilidad del cliente; Three Bounds SAS indicará antes de la Fase 2 qué características mínimas deben tener.
-    \item Los pagos recurrentes de infraestructura (hosting, dominio, cuenta de desarrollador de tienda y, si se contrata el asistente, la mensajería de WhatsApp Business API) corren por cuenta del cliente desde su activación. Three Bounds SAS se encarga de configurarlos y de estimar su costo mensual antes de activarlos.
-    \item Si se contrata el asistente por WhatsApp, el cliente aporta un número de teléfono dedicado, no vinculado a una cuenta de WhatsApp personal.
-    \item El cliente define y aprueba por escrito las metas de venta por promotor y los horarios de los mensajes de retroalimentación, antes de que se soliciten las plantillas ante Meta.
-    \item El cliente valida el manual de operación que alimenta al asistente; Three Bounds SAS no define procedimientos operativos del negocio.
-    \item Cualquier función nueva que no esté descrita en el alcance de una fase se cotiza y se cobra aparte.
-\end{itemize}
-
-\section{Propiedad intelectual}\label{sec:propiedad}
-El código fuente, la base de datos y los diseños desarrollados específicamente para Tu Lonchera son propiedad exclusiva de Tu Lonchera una vez cancelado el 100\% del valor de la fase correspondiente. Three Bounds SAS conserva el derecho de reutilizar componentes genéricos y no específicos del negocio del cliente (librerías, patrones de arquitectura) en otros proyectos.
-
-\section{Manejo de datos personales}
-El tratamiento de los datos personales de clientes finales y empleados capturados por el sistema se realizará conforme a la Ley 1581 de 2012 y su decreto reglamentario. Tu Lonchera actúa como responsable del tratamiento; Three Bounds SAS actúa como encargado durante el desarrollo y mantenimiento, y se compromete a no usar dichos datos para fines distintos a la prestación del servicio contratado.
-
-Si se contrata el asistente por WhatsApp, los mensajes de retroalimentación de desempeño constituyen tratamiento de datos de empleados. Tu Lonchera, como responsable y empleador, se encarga de obtener la autorización previa, expresa e informada de cada promotor para recibir estos mensajes en su número personal, y de permitir su retiro en cualquier momento.
-
-\section{Plan de migración y corrida en paralelo}\label{sec:migracion}
-
-\begin{center}
-\begin{tikzpicture}[
-    node distance=0cm,
-    hito/.style={circle, draw=accent, fill=accent, minimum size=8pt, inner sep=0pt},
-    etq/.style={font=\footnotesize, align=center, text width=2.6cm}
-]
-\draw[accent, thick] (0,0) -- (12,0);
-\foreach \x/\txt/\lbl in {
-    0/{Fase 2--3}/{Sistema nuevo\\opera en paralelo},
-    4/{Corrida paralela}/{Mínimo 10\\jornadas reales},
-    8/{Validación}/{Se cumplen los\\criterios de Fase 4},
-    12/{Migración}/{Loyverse se\\da de baja}
-}{
-    \node[hito] at (\x,0) {};
-    \node[etq, below=6pt] at (\x,0) {\txt \\ \lbl};
-}
-\end{tikzpicture}
-\end{center}
-
-\begin{enumerate}
-    \item Durante las Fases 2 y 3, el sistema nuevo opera en paralelo con Loyverse/Excel, sin reemplazarlos todavía.
-    \item La corrida en paralelo dura mínimo 10 jornadas de venta reales (aproximadamente dos semanas de operación).
-    \item La migración definitiva solo ocurre cuando los criterios de la Fase 4 se cumplen de forma consistente.
-    \item La cancelación de la licencia de Loyverse queda a decisión y cargo del cliente, una vez confirmada la migración.
-\end{enumerate}
-
+% ================= PAGOS =================
 \section{Forma de pago y garantía}
 
 \begin{center}
-\begin{tabular}{lrr}
+\begin{tabular}{llr}
 \toprule
-\textbf{Se paga al aprobar} & \textbf{Con AWP} & \textbf{Con App Nativa} \\
+\sffamily\bfseries Fase & \sffamily\bfseries Momento del pago & \sffamily\bfseries Porcentaje \\
 \midrule
-Fase 1 --- Planeación & \$1.200.000 & \$1.800.000 \\
-Fase 2 --- MVP & \$2.800.000 & \$4.200.000 \\
-Fase 3 --- Sincronización & \$2.800.000 & \$4.200.000 \\
-Fase 4 --- Testeo y Garantía & \$1.200.000 & \$1.800.000 \\
-Fase 5 --- Asistente WhatsApp & \$2.000.000 & \$2.000.000 \\
+1 --- Planeación & Pago inicial, al iniciar & 20\% \\
+2 --- MVP & Al aprobar el entregable & 30\% \\
+3 --- Sincronización & Sin desembolso & --- \\
+4 --- Testeo y garantía & Contra aprobación final & 50\% \\
 \midrule
-\textbf{Total} & \textbf{\$10.000.000} & \textbf{\$14.000.000} \\
+\textbf{Total} & & \textbf{100\%} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
+\vspace{4pt}
+\noindent El valor total es el de la modalidad elegida (\$8.000.000 o \$10.000.000 COP).
+
+\subsection*{Condiciones}
 \begin{itemize}
-    \item Cada fase se paga completa al aprobarse su entregable. No hay anticipos.
-    \item Ninguna fase inicia sin que la anterior esté aprobada por escrito y pagada.
-    \item Garantía de 30 días después de aprobada cada fase, cubriendo únicamente errores del alcance entregado (no funciones nuevas).
-    \item \textbf{Soporte y mantenimiento posterior:} terminada la garantía, Tu Lonchera puede contratar un plan de soporte mensual (correcciones, ajustes menores y acompañamiento). Se cotiza aparte según el alcance que se acuerde.
+    \item \textbf{Aprobación tácita:} si el cliente no emite observaciones por escrito
+    dentro de 5 días hábiles desde la entrega de una fase, esta se entiende
+    aprobada y el pago correspondiente se hace exigible.
+    \item \textbf{Mora:} los pagos vencidos causan intereses a la tasa máxima legal vigente.
+    \item Ninguna fase inicia sin la aprobación escrita de la anterior.
+    \item Garantía de 30 días después de aprobada cada fase, cubriendo únicamente
+    errores del alcance entregado (no funciones nuevas).
+    \item \textbf{Soporte posterior:} terminada la garantía, Tu Lonchera puede contratar
+    un plan de soporte mensual (correcciones, ajustes menores y acompañamiento).
+    Se cotiza aparte según el alcance que se acuerde.
 \end{itemize}
+
+% ================= WHATSAPP =================
+\section{Módulo de WhatsApp --- Fase 5, opcional}\label{sec:whatsapp}
+
+Solicitado por Tu Lonchera. Se cotiza y contrata aparte: \textbf{\$2.000.000 COP}.
+Va después de la Fase 3 por una razón técnica: las alertas necesitan un servidor
+central que sepa qué está pasando con cada promotor, y ese servidor nace en la Fase 3.
+
+\subsection*{Tres funciones}
+\begin{itemize}
+    \item \textbf{Soporte operativo al promotor.} Cómo registrar una venta, hacer el
+    cierre, qué hacer si un producto no escanea. Menos llamadas a Administración.
+    \item \textbf{Retroalimentación de desempeño, tres veces por jornada.} Venta
+    acumulada, porcentaje de la meta y comparación con su propio promedio. Corrige
+    durante el evento, no al día siguiente.
+    \item \textbf{Alertas de datos pendientes de sincronizar.} Si un cierre no llegó
+    a la hora esperada, le recuerda conectarse; Administración recibe el mismo aviso.
+\end{itemize}
+
+\subsection*{Condiciones específicas}
+\begin{itemize}
+    \item \textbf{Costo de mensajería:} estimado en \$30.000--45.000 COP/mes, a cargo
+    del cliente y facturado directamente por el proveedor.
+    \item \textbf{Arquitectura:} Three Bounds SAS desarrolla un backend propio conectado
+    directamente a la API oficial de WhatsApp Cloud, sin intermediarios que cobren
+    sobrecosto por mensaje.
+    \item \textbf{Dependencia del cliente:} verificación de la cuenta Meta Business
+    (RUT y cámara de comercio), trámite externo cuyos tiempos no controla Three Bounds SAS.
+    \item \textbf{Número telefónico:} debe ser dedicado y no puede estar vinculado a una
+    cuenta de WhatsApp personal ni a WhatsApp Business estándar.
+    \item No entra en operación antes de que la Fase 3 esté aprobada y en producción.
+\end{itemize}
+
+\textit{Criterio de aceptación:} durante 10 jornadas consecutivas, el 100\% de los
+cierres no recibidos a la hora esperada generan alerta al promotor, y el asistente
+responde correctamente al menos el 80\% de un banco de preguntas acordado previamente.
+
+% ================= MIGRACIÓN =================
+\section{Plan de migración y corrida en paralelo}\label{sec:migracion}
+
+\begin{center}
+\begin{tikzpicture}[
+    hito/.style={circle, draw=ambar, fill=ambar, minimum size=7pt, inner sep=0pt},
+    etq/.style={font=\footnotesize, align=center, text width=2.6cm}]
+\draw[graytxt, line width=0.5pt] (0,0) -- (12,0);
+\foreach \x/\txt/\lbl in {
+    0/{Fases 2--3}/{Sistema nuevo\\opera en paralelo},
+    4/{Corrida paralela}/{Mínimo 10\\jornadas reales},
+    8/{Validación}/{Se cumplen los\\criterios de Fase 4},
+    12/{Migración}/{Loyverse se\\da de baja}}{
+    \node[hito] at (\x,0) {};
+    \node[etq, below=7pt] at (\x,0) {{\sffamily\bfseries\scriptsize\txt} \\ \lbl};
+}
+\end{tikzpicture}
+\end{center}
+
+\vspace{8pt}
+\begin{enumerate}
+    \item Durante las Fases 2 y 3, el sistema nuevo opera en paralelo con Loyverse/Excel,
+    sin reemplazarlos todavía.
+    \item La corrida en paralelo dura mínimo 10 jornadas de venta reales
+    (aproximadamente dos semanas de operación).
+    \item La migración definitiva solo ocurre cuando los criterios de la Fase 4 se
+    cumplen de forma consistente.
+    \item La cancelación de la licencia de Loyverse queda a decisión y cargo del cliente,
+    una vez confirmada la migración.
+\end{enumerate}
+
+% ================= SUPUESTOS =================
+\section{Supuestos y dependencias del cliente}\label{sec:supuestos}
+\begin{itemize}
+    \item El cliente entrega la lista actual de productos y precios en un Excel antes
+    de iniciar la Fase 2.
+    \item El cliente nombra una sola persona responsable de revisar y aprobar cada
+    entrega, en un plazo máximo de 3 días hábiles.
+    \item Los celulares o tablets donde se instalará la app son responsabilidad del
+    cliente; Three Bounds SAS indicará antes de la Fase 2 qué características mínimas
+    deben tener.
+    \item Los pagos recurrentes de infraestructura (hosting, dominio, cuenta de
+    desarrollador de tienda y, si se contrata el módulo de WhatsApp, la mensajería)
+    corren por cuenta del cliente desde su activación. Three Bounds SAS se encarga de
+    configurarlos y de estimar su costo mensual antes de activarlos.
+    \item Si se contrata el módulo de WhatsApp, el cliente aporta un número de teléfono
+    dedicado, no vinculado a una cuenta de WhatsApp personal ni a WhatsApp Business estándar.
+    \item El cliente define y aprueba por escrito las metas de venta por promotor y los
+    horarios de los mensajes de retroalimentación.
+    \item El cliente valida el manual de operación que alimenta al asistente;
+    Three Bounds SAS no define procedimientos operativos del negocio.
+    \item Cualquier función nueva que no esté descrita en el alcance de una fase se
+    cotiza y se cobra aparte.
+\end{itemize}
+
+% ================= LEGAL =================
+\section{Propiedad intelectual}\label{sec:propiedad}
+El código fuente, la base de datos y los diseños desarrollados específicamente para
+Tu Lonchera son propiedad exclusiva de Tu Lonchera una vez cancelado el 100\% del
+valor del contrato. Three Bounds SAS conserva el derecho de reutilizar componentes
+genéricos y no específicos del negocio del cliente (librerías, patrones de
+arquitectura) en otros proyectos.
+
+\section{Manejo de datos personales}
+El tratamiento de los datos personales de clientes finales y empleados capturados por
+el sistema se realizará conforme a la Ley 1581 de 2012 y su decreto reglamentario.
+Tu Lonchera actúa como responsable del tratamiento; Three Bounds SAS actúa como
+encargado durante el desarrollo y mantenimiento, y se compromete a no usar dichos
+datos para fines distintos a la prestación del servicio contratado.
+
+Si se contrata el módulo de WhatsApp, los mensajes de retroalimentación de desempeño
+constituyen tratamiento de datos de empleados. Tu Lonchera, como responsable y
+empleador, se encarga de obtener la autorización previa, expresa e informada de cada
+promotor para recibir estos mensajes en su número personal, y de permitir su retiro
+en cualquier momento.
 
 \section{Riesgos declarados}
 \begin{itemize}
-    \item Conectividad limitada en los puntos de venta puede afectar los tiempos de sincronización de la Fase 3.
-    \item Cambios en el catálogo de productos durante el desarrollo pueden generar trabajo adicional no incluido en el precio de la fase.
-    \item La adopción por parte de los promotores depende de la capacitación y puede afectar los tiempos de la corrida en paralelo.
-    \item Retrasos del cliente en entregar información (Sección~\ref{sec:supuestos}) desplazan el cronograma proporcionalmente.
-    \item La aprobación de plantillas de mensaje por parte de Meta es un proceso externo cuyos tiempos no controla Three Bounds SAS y puede desplazar la puesta en marcha del asistente.
-    \item Cambios en la política de WhatsApp Business pueden afectar el formato o el costo de los mensajes automatizados durante la vigencia del contrato.
-    \item Un promotor sin señal durante toda la jornada no recibirá las alertas hasta recuperar conexión; en ese caso el sistema notifica a Administración.
+    \item Conectividad limitada en los puntos de venta puede afectar los tiempos de
+    sincronización de la Fase 3.
+    \item Cambios en el catálogo de productos durante el desarrollo pueden generar
+    trabajo adicional no incluido en el precio de la fase.
+    \item La adopción por parte de los promotores depende de la capacitación y puede
+    afectar los tiempos de la corrida en paralelo.
+    \item Retrasos del cliente en entregar información (Sección~\ref{sec:supuestos})
+    desplazan el cronograma proporcionalmente.
+    \item La verificación de la cuenta Meta Business es un proceso externo cuyos tiempos
+    no controla Three Bounds SAS y puede desplazar la puesta en marcha del módulo de WhatsApp.
+    \item Cambios en la política de WhatsApp Business pueden afectar el formato o el
+    costo de los mensajes automatizados durante la vigencia del contrato.
+    \item Un promotor sin señal durante toda la jornada no recibirá las alertas hasta
+    recuperar conexión; en ese caso el sistema notifica a Administración.
 \end{itemize}
 
 \section{Vigencia de la propuesta}
+Los precios y plazos de este documento tienen una vigencia de \textbf{30 días
+calendario} a partir del 16 de septiembre de 2026. Pasado ese plazo deben revalidarse,
+ya que dependen de la disponibilidad del equipo y de las condiciones del mercado.
 
-Los precios y plazos de este documento tienen una vigencia de \textbf{30 días calendario} a partir de la fecha de emisión. Pasado ese plazo deben revalidarse, ya que dependen de la disponibilidad del equipo y de las condiciones del mercado.
-
-\vspace{0.9cm}
+\vspace{1.1cm}
 \nopagebreak
 \noindent
 \begin{tabularx}{\textwidth}{XX}
 \underline{\hspace{6cm}} & \underline{\hspace{6cm}} \\[2pt]
-\textbf{Por Three Bounds SAS} & \textbf{Por Tu Lonchera} \\[10pt]
+\sffamily\bfseries Por Three Bounds SAS & \sffamily\bfseries Por Tu Lonchera \\[10pt]
 Nombre: \underline{\hspace{4.2cm}} & Nombre: \underline{\hspace{4.2cm}} \\[10pt]
 C.C./NIT: \underline{\hspace{3.9cm}} & C.C./NIT: \underline{\hspace{3.9cm}} \\[10pt]
 Fecha: \underline{\hspace{4.6cm}} & Fecha: \underline{\hspace{4.6cm}} \\
