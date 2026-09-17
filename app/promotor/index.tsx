@@ -1,5 +1,7 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -39,6 +41,8 @@ export default function HomePromotor() {
   const [cobrarVisible, setCobrarVisible] = useState(false);
   const [escanerVisible, setEscanerVisible] = useState(false);
   const [procesandoVenta, setProcesandoVenta] = useState(false);
+  const [avisoEscaner, setAvisoEscaner] = useState<string | null>(null);
+  const avisoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cargarInventario = useCallback(async (promotorId: string) => {
     setCargando(true);
@@ -64,30 +68,41 @@ export default function HomePromotor() {
     router.replace('/');
   }
 
+  function mostrarAvisoEscaner(texto: string) {
+    if (avisoTimeout.current) clearTimeout(avisoTimeout.current);
+    setAvisoEscaner(texto);
+    avisoTimeout.current = setTimeout(() => setAvisoEscaner(null), 1300);
+  }
+
   async function manejarCodigoEscaneado(codigo: string) {
-    setEscanerVisible(false);
     const db = await getDb();
     const producto = await buscarProductoPorCodigoBarras(db, codigo);
     if (!producto) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Código no reconocido', 'Ningún producto del catálogo tiene ese código.');
       return;
     }
     const saldo = await obtenerSaldoProducto(db, usuarioActual.id, producto.id);
     if (saldo <= 0) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Sin inventario', `No tienes "${producto.nombre}" en tu inventario.`);
       return;
     }
-    agregarAlCarritoConTope(producto, saldo);
+    if (agregarAlCarritoConTope(producto, saldo)) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      mostrarAvisoEscaner(`✓ Agregado: ${producto.nombre}`);
+    }
   }
 
   function agregarAlCarritoConTope(
     producto: { id: string; nombre: string; precio: number; fotoUri: string | null },
     saldo: number
-  ) {
+  ): boolean {
     const enCarrito = carrito.items.find((item) => item.productoId === producto.id)?.cantidad ?? 0;
     if (enCarrito >= saldo) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Sin inventario', `No tienes más "${producto.nombre}" disponible.`);
-      return;
+      return false;
     }
     carrito.agregar({
       id: producto.id,
@@ -95,6 +110,7 @@ export default function HomePromotor() {
       precio: producto.precio,
       fotoUri: producto.fotoUri,
     });
+    return true;
   }
 
   async function cobrar(metodoPago: MetodoPago) {
@@ -149,7 +165,7 @@ export default function HomePromotor() {
           onChangeText={setBusqueda}
         />
         <Pressable style={styles.botonEscanear} onPress={() => setEscanerVisible(true)}>
-          <Text style={styles.botonEscanearTexto}>📷</Text>
+          <Ionicons name="camera-outline" size={20} color={COLORES.oscuro} />
         </Pressable>
         <Pressable style={styles.botonTicket} onPress={() => setTicketVisible(true)}>
           <Text style={styles.botonTicketTexto}>Ticket</Text>
@@ -201,7 +217,7 @@ export default function HomePromotor() {
       )}
 
       <TicketModal
-        visible={ticketVisible}
+        visible={ticketVisible && !escanerVisible}
         items={carrito.items}
         total={carrito.total}
         colorAcento={COLORES.primario}
@@ -212,7 +228,7 @@ export default function HomePromotor() {
       />
 
       <CobrarModal
-        visible={cobrarVisible}
+        visible={cobrarVisible && !escanerVisible}
         total={carrito.total}
         colorAcento={COLORES.primario}
         procesando={procesandoVenta}
@@ -222,10 +238,53 @@ export default function HomePromotor() {
 
       <EscanerCodigoBarras
         visible={escanerVisible}
+        activa={!ticketVisible && !cobrarVisible}
         colorAcento={COLORES.primario}
-        titulo="Escanear producto"
+        titulo={avisoEscaner ?? 'Escanear producto'}
         onCerrar={() => setEscanerVisible(false)}
         onDetectado={manejarCodigoEscaneado}
+        accionesHeaderExtra={
+          <Pressable style={styles.botonTicketEscaner} onPress={() => setTicketVisible(true)}>
+            <Text style={styles.botonTicketEscanerTexto}>Ticket</Text>
+            {carrito.cantidadTotal > 0 && (
+              <View style={styles.botonTicketBadge}>
+                <Text style={styles.botonTicketBadgeTexto}>{carrito.cantidadTotal}</Text>
+              </View>
+            )}
+          </Pressable>
+        }
+        piePersonalizado={
+          carrito.cantidadTotal > 0 ? (
+            <Pressable style={styles.barraCobrarEscaner} onPress={() => setCobrarVisible(true)}>
+              <Text style={styles.barraCobrarTexto}>Cobrar</Text>
+              <Text style={styles.barraCobrarTotal}>{formatearPesos(carrito.total)}</Text>
+            </Pressable>
+          ) : undefined
+        }
+        overlayEncimaDeCamara={
+          <>
+            <TicketModal
+              variante="superpuesto"
+              visible={ticketVisible}
+              items={carrito.items}
+              total={carrito.total}
+              colorAcento={COLORES.primario}
+              onQuitarUno={carrito.quitarUno}
+              onVaciar={carrito.vaciar}
+              onCerrar={() => setTicketVisible(false)}
+              onCobrar={() => setCobrarVisible(true)}
+            />
+            <CobrarModal
+              variante="superpuesto"
+              visible={cobrarVisible}
+              total={carrito.total}
+              colorAcento={COLORES.primario}
+              procesando={procesandoVenta}
+              onSeleccionar={cobrar}
+              onCerrar={() => setCobrarVisible(false)}
+            />
+          </>
+        }
       />
     </View>
   );
@@ -282,9 +341,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  botonEscanearTexto: {
-    fontSize: 18,
-  },
   botonTicket: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -312,6 +368,29 @@ const styles = StyleSheet.create({
     color: COLORES.oscuro,
     fontSize: 11,
     fontWeight: '800',
+  },
+  botonTicketEscaner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 21,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  botonTicketEscanerTexto: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  barraCobrarEscaner: {
+    backgroundColor: COLORES.oscuro,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   centrado: {
     flex: 1,

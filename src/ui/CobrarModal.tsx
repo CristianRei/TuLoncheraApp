@@ -10,6 +10,13 @@ interface Props {
   procesando: boolean;
   onSeleccionar: (metodo: MetodoPago) => void;
   onCerrar: () => void;
+  /**
+   * 'modal' (default): Modal nativo propio. 'superpuesto': sin Modal propio,
+   * para usarlo ya dentro de otro Modal (ej. encima de la cámara del
+   * escáner) — dos Modal nativos simultáneos con la cámara activa cuelgan
+   * la pantalla en Android.
+   */
+  variante?: 'modal' | 'superpuesto';
 }
 
 const OPCIONES: { metodo: MetodoPago; etiqueta: string }[] = [
@@ -25,41 +32,50 @@ export function CobrarModal({
   procesando,
   onSeleccionar,
   onCerrar,
+  variante = 'modal',
 }: Props) {
+  if (variante === 'superpuesto' && !visible) return null;
+
+  const contenido = (
+    <View style={[StyleSheet.absoluteFill, styles.fondo]}>
+      <View style={styles.tarjeta}>
+        <Text style={styles.etiquetaTotal}>Total a cobrar</Text>
+        <Text style={[styles.total, { color: colorAcento }]}>{formatearPesos(total)}</Text>
+
+        <Text style={styles.pregunta}>¿Cómo va a pagar?</Text>
+
+        {procesando ? (
+          <ActivityIndicator size="large" color={colorAcento} style={styles.cargando} />
+        ) : (
+          <View style={styles.opciones}>
+            {OPCIONES.map((opcion) => (
+              <Pressable
+                key={opcion.metodo}
+                style={[styles.opcion, { borderColor: colorAcento }]}
+                onPress={() => onSeleccionar(opcion.metodo)}
+              >
+                <Text style={[styles.opcionTexto, { color: colorAcento }]}>
+                  {opcion.etiqueta}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {!procesando && (
+          <Pressable onPress={onCerrar}>
+            <Text style={styles.cancelar}>Cancelar</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
+  );
+
+  if (variante === 'superpuesto') return contenido;
+
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onCerrar}>
-      <View style={styles.fondo}>
-        <View style={styles.tarjeta}>
-          <Text style={styles.etiquetaTotal}>Total a cobrar</Text>
-          <Text style={[styles.total, { color: colorAcento }]}>{formatearPesos(total)}</Text>
-
-          <Text style={styles.pregunta}>¿Cómo va a pagar?</Text>
-
-          {procesando ? (
-            <ActivityIndicator size="large" color={colorAcento} style={styles.cargando} />
-          ) : (
-            <View style={styles.opciones}>
-              {OPCIONES.map((opcion) => (
-                <Pressable
-                  key={opcion.metodo}
-                  style={[styles.opcion, { borderColor: colorAcento }]}
-                  onPress={() => onSeleccionar(opcion.metodo)}
-                >
-                  <Text style={[styles.opcionTexto, { color: colorAcento }]}>
-                    {opcion.etiqueta}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-
-          {!procesando && (
-            <Pressable onPress={onCerrar}>
-              <Text style={styles.cancelar}>Cancelar</Text>
-            </Pressable>
-          )}
-        </View>
-      </View>
+      {contenido}
     </Modal>
   );
 }

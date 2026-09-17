@@ -55,7 +55,8 @@
           "cameraPermission": "Tu Lonchera usa la cámara para tomarle foto a los productos del catálogo."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true,

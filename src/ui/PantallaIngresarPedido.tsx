@@ -1,9 +1,10 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -57,16 +58,17 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
   const [guardando, setGuardando] = useState(false);
 
   async function manejarCodigoEscaneado(codigo: string) {
-    setEscanerVisible(false);
     const db = await getDb();
     const producto = await buscarProductoPorCodigoBarras(db, codigo);
     if (!producto) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
         'Código no reconocido',
         'Ningún producto del catálogo tiene ese código. Regístralo primero en Catálogo.'
       );
       return;
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setProductoPendiente({ id: producto.id, nombre: producto.nombre });
     setCantidadTexto('');
     setFechaTexto('');
@@ -132,7 +134,8 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
   return (
     <View style={styles.contenedor}>
       <Pressable style={styles.botonEscanear} onPress={() => setEscanerVisible(true)}>
-        <Text style={styles.botonEscanearTexto}>📷  Escanear producto</Text>
+        <Ionicons name="camera-outline" size={18} color="#FFF" />
+        <Text style={styles.botonEscanearTexto}>Escanear producto</Text>
       </Pressable>
 
       {items.length === 0 ? (
@@ -183,70 +186,72 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
 
       <EscanerCodigoBarras
         visible={escanerVisible}
+        activa={!productoPendiente}
         colorAcento={COLORES.oscuro}
         titulo="Escanear producto del pedido"
         onCerrar={() => setEscanerVisible(false)}
         onDetectado={manejarCodigoEscaneado}
-      />
-
-      <Modal visible={!!productoPendiente} animationType="fade" transparent>
-        <View style={styles.fondoModal}>
-          <View style={styles.tarjetaModal}>
-            <Text style={styles.modalTitulo}>{productoPendiente?.nombre}</Text>
-            <Text style={styles.modalTexto}>¿Cuántas unidades llegaron?</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="0"
-              placeholderTextColor="#999"
-              value={cantidadTexto}
-              onChangeText={(texto) => setCantidadTexto(texto.replace(/\D/g, ''))}
-              keyboardType="number-pad"
-              autoFocus
-            />
-            <Text style={styles.modalTexto}>Fecha de vencimiento (opcional)</Text>
-            <TextInput
-              style={styles.modalInputFecha}
-              placeholder="AAAA-MM-DD"
-              placeholderTextColor="#999"
-              value={fechaTexto}
-              onChangeText={(texto) => setFechaTexto(formatearEntradaFecha(texto))}
-              keyboardType="number-pad"
-              maxLength={10}
-            />
-            {fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto) && (
-              <Text style={styles.modalErrorFecha}>Formato: AAAA-MM-DD</Text>
-            )}
-            <View style={styles.modalAcciones}>
-              <Pressable
-                onPress={() => {
-                  setProductoPendiente(null);
-                  setCantidadTexto('');
-                  setFechaTexto('');
-                }}
-              >
-                <Text style={styles.modalCancelar}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.modalConfirmar,
-                  (!cantidadTexto ||
-                    parseInt(cantidadTexto, 10) <= 0 ||
-                    (fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto))) &&
-                    styles.botonDeshabilitado,
-                ]}
-                disabled={
-                  !cantidadTexto ||
-                  parseInt(cantidadTexto, 10) <= 0 ||
-                  (fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto))
-                }
-                onPress={confirmarCantidad}
-              >
-                <Text style={styles.modalConfirmarTexto}>Agregar</Text>
-              </Pressable>
+        overlayEncimaDeCamara={
+          productoPendiente && (
+            <View style={[StyleSheet.absoluteFill, styles.fondoModal]}>
+              <View style={styles.tarjetaModal}>
+                <Text style={styles.modalTitulo}>{productoPendiente.nombre}</Text>
+                <Text style={styles.modalTexto}>¿Cuántas unidades llegaron?</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="0"
+                  placeholderTextColor="#999"
+                  value={cantidadTexto}
+                  onChangeText={(texto) => setCantidadTexto(texto.replace(/\D/g, ''))}
+                  keyboardType="number-pad"
+                  autoFocus
+                />
+                <Text style={styles.modalTexto}>Fecha de vencimiento (opcional)</Text>
+                <TextInput
+                  style={styles.modalInputFecha}
+                  placeholder="AAAA-MM-DD"
+                  placeholderTextColor="#999"
+                  value={fechaTexto}
+                  onChangeText={(texto) => setFechaTexto(formatearEntradaFecha(texto))}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                />
+                {fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto) && (
+                  <Text style={styles.modalErrorFecha}>Formato: AAAA-MM-DD</Text>
+                )}
+                <View style={styles.modalAcciones}>
+                  <Pressable
+                    onPress={() => {
+                      setProductoPendiente(null);
+                      setCantidadTexto('');
+                      setFechaTexto('');
+                    }}
+                  >
+                    <Text style={styles.modalCancelar}>Cancelar</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.modalConfirmar,
+                      (!cantidadTexto ||
+                        parseInt(cantidadTexto, 10) <= 0 ||
+                        (fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto))) &&
+                        styles.botonDeshabilitado,
+                    ]}
+                    disabled={
+                      !cantidadTexto ||
+                      parseInt(cantidadTexto, 10) <= 0 ||
+                      (fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto))
+                    }
+                    onPress={confirmarCantidad}
+                  >
+                    <Text style={styles.modalConfirmarTexto}>Agregar</Text>
+                  </Pressable>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
-      </Modal>
+          )
+        }
+      />
     </View>
   );
 }
@@ -256,12 +261,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   botonEscanear: {
+    flexDirection: 'row',
     margin: 20,
     marginBottom: 12,
     backgroundColor: COLORES.oscuro,
     borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   botonEscanearTexto: {
     color: '#FFF',

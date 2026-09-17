@@ -13,6 +13,13 @@ interface Props {
   onVaciar: () => void;
   onCerrar: () => void;
   onCobrar: () => void;
+  /**
+   * 'modal' (default): Modal nativo propio. 'superpuesto': sin Modal propio,
+   * para usarlo ya dentro de otro Modal (ej. encima de la cámara del
+   * escáner) — dos Modal nativos simultáneos con la cámara activa cuelgan
+   * la pantalla en Android.
+   */
+  variante?: 'modal' | 'superpuesto';
 }
 
 export function TicketModal({
@@ -24,69 +31,78 @@ export function TicketModal({
   onVaciar,
   onCerrar,
   onCobrar,
+  variante = 'modal',
 }: Props) {
+  if (variante === 'superpuesto' && !visible) return null;
+
+  const contenido = (
+    <View style={[StyleSheet.absoluteFill, styles.fondo]}>
+      <View style={styles.hoja}>
+        <View style={styles.encabezado}>
+          <Text style={styles.titulo}>Ticket</Text>
+          <Pressable onPress={onCerrar}>
+            <Text style={styles.cerrar}>Cerrar</Text>
+          </Pressable>
+        </View>
+
+        {items.length === 0 ? (
+          <View style={styles.vacio}>
+            <Text style={styles.vacioTexto}>Todavía no has agregado productos.</Text>
+          </View>
+        ) : (
+          <>
+            <FlatList
+              data={items}
+              keyExtractor={(item) => item.productoId}
+              style={styles.lista}
+              renderItem={({ item }) => (
+                <View style={styles.fila}>
+                  <View style={styles.filaTexto}>
+                    <Text style={styles.filaNombre} numberOfLines={2}>
+                      {item.nombre}
+                    </Text>
+                    <Text style={styles.filaDetalle}>
+                      {item.cantidad} × {formatearPesos(item.precio)} ={' '}
+                      {formatearPesos(item.precio * item.cantidad)}
+                    </Text>
+                  </View>
+                  <Pressable
+                    style={styles.botonQuitar}
+                    onPress={() => onQuitarUno(item.productoId)}
+                  >
+                    <Text style={styles.botonQuitarTexto}>−</Text>
+                  </Pressable>
+                </View>
+              )}
+            />
+
+            <Pressable onPress={onVaciar}>
+              <Text style={styles.vaciar}>Vaciar ticket</Text>
+            </Pressable>
+
+            <View style={styles.pie}>
+              <View style={styles.totalFila}>
+                <Text style={styles.totalEtiqueta}>Total</Text>
+                <Text style={styles.totalValor}>{formatearPesos(total)}</Text>
+              </View>
+              <Pressable
+                style={[styles.botonCobrar, { backgroundColor: colorAcento }]}
+                onPress={onCobrar}
+              >
+                <Text style={styles.botonCobrarTexto}>Cobrar</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+      </View>
+    </View>
+  );
+
+  if (variante === 'superpuesto') return contenido;
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}>
-      <View style={styles.fondo}>
-        <View style={styles.hoja}>
-          <View style={styles.encabezado}>
-            <Text style={styles.titulo}>Ticket</Text>
-            <Pressable onPress={onCerrar}>
-              <Text style={styles.cerrar}>Cerrar</Text>
-            </Pressable>
-          </View>
-
-          {items.length === 0 ? (
-            <View style={styles.vacio}>
-              <Text style={styles.vacioTexto}>Todavía no has agregado productos.</Text>
-            </View>
-          ) : (
-            <>
-              <FlatList
-                data={items}
-                keyExtractor={(item) => item.productoId}
-                style={styles.lista}
-                renderItem={({ item }) => (
-                  <View style={styles.fila}>
-                    <View style={styles.filaTexto}>
-                      <Text style={styles.filaNombre} numberOfLines={2}>
-                        {item.nombre}
-                      </Text>
-                      <Text style={styles.filaDetalle}>
-                        {item.cantidad} × {formatearPesos(item.precio)} ={' '}
-                        {formatearPesos(item.precio * item.cantidad)}
-                      </Text>
-                    </View>
-                    <Pressable
-                      style={styles.botonQuitar}
-                      onPress={() => onQuitarUno(item.productoId)}
-                    >
-                      <Text style={styles.botonQuitarTexto}>−</Text>
-                    </Pressable>
-                  </View>
-                )}
-              />
-
-              <Pressable onPress={onVaciar}>
-                <Text style={styles.vaciar}>Vaciar ticket</Text>
-              </Pressable>
-
-              <View style={styles.pie}>
-                <View style={styles.totalFila}>
-                  <Text style={styles.totalEtiqueta}>Total</Text>
-                  <Text style={styles.totalValor}>{formatearPesos(total)}</Text>
-                </View>
-                <Pressable
-                  style={[styles.botonCobrar, { backgroundColor: colorAcento }]}
-                  onPress={onCobrar}
-                >
-                  <Text style={styles.botonCobrarTexto}>Cobrar</Text>
-                </Pressable>
-              </View>
-            </>
-          )}
-        </View>
-      </View>
+      {contenido}
     </Modal>
   );
 }
