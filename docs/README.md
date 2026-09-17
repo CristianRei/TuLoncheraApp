@@ -16,7 +16,13 @@ detalles largos que ese archivo referencia bajo demanda.
 
 | Documento | Contenido |
 |---|---|
-| [`comercial/propuesta/`](comercial/propuesta/propuesta.pdf) | Propuesta técnico-comercial (fuente en `propuesta.tex`, entregable en `propuesta.pdf`). |
+| [`comercial/propuesta/`](comercial/propuesta/propuesta_final.pdf) | Propuesta técnico-comercial. Fuente: `propuesta.tex`. `propuesta.pdf` se regenera desde ahí; `propuesta_final.pdf` es el nombre de entrega al cliente — mantenerlos sincronizados al editar. |
 
 Este material es de negocio (ventas, precios, cronograma comercial), no
 documentación técnica del producto — vive separado a propósito.
+
+**No hay LaTeX instalado localmente.** Para recompilar el PDF: descargar el
+binario portable `tectonic` (GitHub releases del proyecto
+`tectonic-typesetting/tectonic`, build `x86_64-pc-windows-msvc`, sin
+instalador), correrlo una vez sobre `propuesta.tex`, y borrar el binario
+después — nunca instalar MiKTeX/TeX Live ni nada permanente solo para esto.

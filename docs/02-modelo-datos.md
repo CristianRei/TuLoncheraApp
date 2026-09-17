@@ -45,7 +45,7 @@
 | `usuarios` | Personas: promotores, conductores, bodega, admin. `rol` fija el actor. `pin` es el único mecanismo de login (ADR 0001). | En uso |
 | `ubicaciones` | Bodega (una sola fila, singleton) y el inventario "virtual" de cada promotor. Todo saldo vive contra una ubicación. Se crean perezosamente (`src/db/ubicaciones.ts`), no por migración ni seed. | En uso (solo tipos `BODEGA` y `PROMOTOR`; `CAMION` sin usar) |
 | `productos` | Catálogo: ponqués y licor. `precio` en pesos enteros; `categoria`/`costo` opcionales, sin dato todavía. `foto_uri` apunta a un archivo local (no un blob en SQLite). `activo=0` = "eliminado" (nunca `DELETE`). | En uso |
-| `lotes` | Agrupar unidades por fecha de vencimiento. | Sin usar — nada escribe aquí todavía |
+| `lotes` | Agrupar unidades por fecha de vencimiento. | En uso (opcional) — `crearLote` (`src/db/lotes.ts`) se llama solo si "ingresar pedido" trae fecha de vencimiento |
 | `empresas` | Cliente donde ocurre un evento/feria. | Sin usar |
 | `eventos` | Una jornada de venta: empresa + fecha + promotor + conductor + camión. | Sin usar — ver ADR 0002, no se pidió gestión de eventos |
 | `movimientos` | El libro contable del inventario. Cada fila es un hecho inmutable. Tipos en uso hoy: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega → promotor), `VENTA` (promotor → afuera), `ANULACION_VENTA` (afuera → promotor, revierte una venta anulada — ADR 0004). | En uso (parcial) |
@@ -64,7 +64,8 @@ vuelo:
    `app/bodega/index.tsx` y Admin `app/admin/inventario/pedido.tsx` →
    `registrarEntradaBodega`) → un `COMPRA_PROVEEDOR` por producto,
    `ubicacion_origen_id = NULL`, `ubicacion_destino_id` = la ubicación de
-   bodega (se crea sola la primera vez). Es la única forma de que entre
+   bodega (se crea sola la primera vez). Si se tecleó fecha de vencimiento,
+   crea también un `lote` (opcional). Es la única forma de que entre
    stock — la pantalla de Inventario en sí es de solo lectura.
 2. **Bodega → promotor:** admin arma un cargue
    (`app/admin/cargue/index.tsx` → `registrarCargue`) → un `RECARGA` por

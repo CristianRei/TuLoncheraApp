@@ -145,6 +145,13 @@ pasa por una única función**, nunca `if (rol === 'admin')` disperso por la UI.
 `expo-barcode-scanner` está deprecado desde SDK 51; el escaneo está integrado en
 `expo-camera`. No lo instales.
 
+**Calidad:** `eslint-config-expo` (`npm run lint`) — corre limpio, tratar
+cualquier error nuevo como bloqueante, no solo advertencia. **Excel:** `xlsx`
++ `expo-sharing` para exportar reportes (`src/db/exportarExcel.ts`). **Web:**
+se intentó soporte de `expo-sqlite` (headers COOP/COEP en `metro.config.js` y
+`app.json`) — **no funciona, bloqueado por un bug del propio paquete**; no es
+el objetivo del stack, no reinventar esto sin motivo nuevo.
+
 Todo lo del SDK de Expo funciona en **Expo Go**. Solo hace falta un development
 build si se agrega un módulo nativo fuera del SDK (por ejemplo impresora térmica
 Bluetooth o lector láser Bluetooth). Probar siempre en dispositivo físico: los
@@ -176,7 +183,7 @@ tulonchera/
       inventario/                  ← stock de bodega + registrar entradas
       cargue/                       ← asignar cargue a un promotor (sale de bodega)
       ventas/                        ← listado + detalle de ventas registradas
-    bodega/index.tsx             ← placeholder: el rol Bodega no tiene pantallas propias todavía
+    bodega/index.tsx             ← es directamente "ingresar pedido" (única función de Bodega hoy, sin menú)
     _layout.tsx                 ← migra la DB al arrancar, envuelve todo en SesionProvider
   src/
     core/                       ← lógica de dominio, SIN dependencias de React ni Expo
@@ -185,9 +192,13 @@ tulonchera/
       inventario/                   ← calcularSaldosPorProducto + su property test
       tipos/                         ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0007, versionadas, nunca se editan una vez aplicadas
+      migraciones/                ← 0001 a 0008, versionadas, nunca se editan una vez aplicadas
     ui/                         ← componentes y hooks compartidos (sí usan React/Expo)
+      ContenedorAncho.tsx         ← centra contenido con ancho máximo en tablet/pantalla ancha
+      useEsPantallaAncha.ts        ← breakpoint 768px, lo usan Admin y Bodega
   assets/
+  eslint.config.js            ← eslint-config-expo, `npm run lint`
+  metro.config.js             ← intento de expo-sqlite en web, bloqueado por bug del paquete — no reintentar sin revisar si ya lo arreglaron upstream
 ```
 
 **`src/core` no importa React ni nada de Expo.** Es TypeScript puro. Se puede
@@ -198,7 +209,7 @@ panel web el día que exista.
 
 ## 7. Modelo de datos (resumen)
 
-Estado real después de las migraciones 0001-0007. Detalle completo y
+Estado real después de las migraciones 0001-0008. Detalle completo y
 razonamiento en `docs/02-modelo-datos.md`.
 
 ```
@@ -211,7 +222,8 @@ productos         (id, sku, codigo_barras, nombre, categoria[opcional],
                    unidad_empaque, foto_uri[opcional], activo)
                   ← categoria/costo opcionales: no vinieron en la carga
                     inicial. "Eliminar" = activo=0, nunca DELETE.
-lotes             (id, producto_id, fecha_vencimiento)         ← sin usar todavía
+lotes             (id, producto_id, fecha_vencimiento)         ← en uso, opcional: se crea
+                  al "ingresar pedido" solo si se teclea fecha de vencimiento
 empresas          (id, nombre, direccion, sector, contacto)     ← sin usar todavía
 eventos           (id, empresa_id, fecha, promotor_id, conductor_id,
                    camion_id, estado)                             ← sin usar todavía
@@ -222,7 +234,8 @@ movimientos       (id UUID PK, tipo, producto_id, lote_id, cantidad,
                     de evento_id opcional y de que RECARGA tenga origen real.
 ventas            (id UUID PK, numero_recibo, evento_id[opcional], promotor_id,
                    ts_cliente, metodo_pago[EFECTIVO|TRANSFERENCIA|LIBRANZA],
-                   total, dispositivo_id)
+                   total, dispositivo_id, anulada, motivo_anulacion[opcional])
+                  ← anulada nunca se borra la fila (ver ADR 0004)
 venta_items       (venta_id, producto_id, cantidad, precio_unitario,
                    ts_cliente, dispositivo_id)
 conteos           (id UUID PK, evento_id, ts_cliente, estado, firmado_por)  ← sin usar todavía
@@ -276,6 +289,20 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
    cuadrar. Si eso se rompe, nada más importa. Como `core` es TypeScript puro, esos
    tests corren en Node sin emulador.
 5. **Seeds realistas.** Probar con el catálogo real, no con `producto_1`.
+6. **Este repo lo trabajan dos personas, cada quien con su propia sesión de
+   Claude Code**, subiendo directo al mismo remoto de GitHub
+   (`CristianRei/TuLoncheraApp`). Al empezar cualquier tarea: `git pull`
+   primero y revisar `git log` por commits que no reconozcas antes de asumir
+   que el estado local es el actual — puede haber cambiado por fuera de esta
+   sesión.
+7. **Antes de dar una tarea por terminada**, corre las cuatro verificaciones:
+   `npx tsc --noEmit`, `npm test` (property tests de `src/core`, `node --test`),
+   `npm run lint` (ESLint, `eslint-config-expo` — configurado desde
+   `86957cf`), y `npx expo export --platform android` como smoke test de
+   bundling (no hay emulador con cámara real, así que esto no reemplaza
+   probar en dispositivo físico, pero sí detecta errores de compilación).
+8. **`git push` requiere pedir confirmación cada vez**, aunque se haya
+   aprobado antes en la misma conversación — no es un permiso permanente.
 
 ---
 
@@ -305,8 +332,8 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   saldo por producto. La única forma de que entre stock es "Ingresar
   pedido" (`src/ui/PantallaIngresarPedido.tsx`, compartida con Bodega):
   escanear el producto y teclear la cantidad (suelen ser +60 unidades, por
-  eso teclear y no un contador +/-) → `COMPRA_PROVEEDOR`. Sin captura de
-  costo todavía.
+  eso teclear y no un contador +/-) → `COMPRA_PROVEEDOR`, con fecha de
+  vencimiento opcional (crea un `lote`). Sin captura de costo todavía.
 - **Bodega** (`app/bodega/index.tsx`): su pantalla de inicio *es*
   "Ingresar pedido" directamente — hoy es su única función, así que no hay
   un menú intermedio como en Admin.
@@ -322,6 +349,26 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   pestañas Activas/Anuladas) y detalle (líneas) de cada venta. Se puede
   anular una venta con motivo obligatorio — nunca se borra, se marca y se
   revierte con un movimiento compensatorio (ver ADR 0004).
+- **Exportar a Excel** (`src/db/exportarExcel.ts`, `xlsx` + `expo-sharing`):
+  botón "Exportar" en catálogo, ventas e inventario; genera un `.xlsx` y
+  abre el diálogo nativo de compartir. Etiquetado como demo en el código —
+  sin manejo de archivos grandes ni formato avanzado.
+- **Tablet / pantalla ancha** (`ContenedorAncho`, `useEsPantallaAncha`):
+  Admin y Bodega se adaptan a partir de 768px de ancho (grilla de 2 columnas,
+  contenido centrado con ancho máximo) — el celular no cambia.
+- **Usuarios de prueba** (`src/db/seed.ts`) y **stock de prueba**
+  (`src/db/seedInventario.ts`), ambos solo bajo `__DEV__`: bodega y el
+  promotor de prueba arrancan con inventario real (del catálogo cargado),
+  no vacíos.
+- **ESLint** configurado (`eslint.config.js`, `eslint-config-expo`,
+  `npm run lint`) — no existía en las primeras rebanadas de este proyecto.
+- **Propuesta comercial** (`docs/comercial/propuesta/`): documento para el
+  cliente, editado a pedido según feedback de reuniones — no es código de la
+  app. `propuesta.tex` es la fuente; `propuesta.pdf` se regenera desde ahí;
+  `propuesta_final.pdf` es el nombre de entrega al cliente. **No hay LaTeX
+  instalado en las máquinas de desarrollo** — para recompilar, se descarga el
+  binario portable `tectonic` (sin instalador, GitHub releases), se usa una
+  vez, y se borra — nunca se instala nada permanente para esto.
 
 Lo que falta de cada fase (conteo de cierre, arqueo, alistamiento por
 escáner, niveles objetivo, gestión de empresas/eventos, sincronización,
