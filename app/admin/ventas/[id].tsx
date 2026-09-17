@@ -53,7 +53,13 @@ export default function DetalleVenta() {
   }
 
   useEffect(() => {
-    cargar();
+    (async () => {
+      const db = await getDb();
+      const resultado = await obtenerVenta(db, id);
+      setVenta(resultado?.venta ?? null);
+      setItems(resultado?.items ?? []);
+      setCargando(false);
+    })();
   }, [id]);
 
   if (!usuario) return null;

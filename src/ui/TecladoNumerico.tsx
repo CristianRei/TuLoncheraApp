@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface Props {
@@ -31,7 +32,11 @@ export function TecladoNumerico({
               <Pressable
                 key={j}
                 disabled={deshabilitado}
-                onPress={() => (esBorrar ? onBorrar() : onPresionar(tecla))}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (esBorrar) onBorrar();
+                  else onPresionar(tecla);
+                }}
                 style={({ pressed }) => [
                   styles.tecla,
                   { borderColor: colorAcento },
@@ -59,15 +64,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   tecla: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   textoTecla: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '600',
   },
 });
