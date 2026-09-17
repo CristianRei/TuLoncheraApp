@@ -64,11 +64,12 @@ export function FondoFlotante({ color }: { color: string }) {
 }
 
 /**
- * Resplandor que "respira" detrás de un elemento (pensado para envolver el
- * logo). Se centra en el punto medio de su contenedor, sin importar el
- * tamaño de este — el contenedor solo necesita `position: 'relative'`.
+ * Círculo que "respira" (escala + opacidad en loop). No se posiciona a sí
+ * mismo — quien lo use debe centrarlo con flexbox (`alignItems`/
+ * `justifyContent: 'center'` en un contenedor absoluto), que es más
+ * confiable en Android que centrar con `top/left: '50%'` + margen negativo.
  */
-export function HaloResplandor({ color }: { color: string }) {
+export function HaloResplandor({ color, tamano = 240 }: { color: string; tamano?: number }) {
   const progreso = useSharedValue(0);
 
   useEffect(() => {
@@ -86,7 +87,10 @@ export function HaloResplandor({ color }: { color: string }) {
 
   return (
     <Animated.View
-      style={[styles.halo, { backgroundColor: color }, estilo]}
+      style={[
+        { width: tamano, height: tamano, borderRadius: tamano / 2, backgroundColor: color },
+        estilo,
+      ]}
       pointerEvents="none"
     />
   );
@@ -97,15 +101,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     borderRadius: 999,
     opacity: 0.14,
-  },
-  halo: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: 260,
-    height: 260,
-    marginTop: -130,
-    marginLeft: -130,
-    borderRadius: 999,
   },
 });

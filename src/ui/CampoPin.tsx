@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -18,6 +18,8 @@ interface Props {
   colorAcento: string;
   /** Cambiar este número (ej. incrementar un contador) dispara la sacudida de error. */
   intentoFallido?: number;
+  /** Decoración opcional (ej. un halo animado) centrada detrás del teclado. */
+  decoracionTeclado?: ReactNode;
 }
 
 /**
@@ -32,6 +34,7 @@ export function CampoPin({
   deshabilitado,
   colorAcento,
   intentoFallido,
+  decoracionTeclado,
 }: Props) {
   const desplazamiento = useSharedValue(0);
 
@@ -69,6 +72,7 @@ export function CampoPin({
         onBorrar={onBorrar}
         deshabilitado={deshabilitado}
         colorAcento={colorAcento}
+        decoracionFondo={decoracionTeclado}
       />
     </View>
   );

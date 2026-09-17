@@ -28,8 +28,8 @@ interface Tema {
   colorDecoracion: string;
   /** Formas flotando de fondo, en toda la pantalla. */
   fondoFlotante?: boolean;
-  /** Resplandor que respira, centrado detrás de la tarjeta del logo. */
-  haloEnLogo?: boolean;
+  /** Resplandor que respira, centrado detrás del teclado numérico. */
+  haloEnTeclado?: boolean;
 }
 
 // Los tres tonos salen de la paleta real del logo: dorado (ícono/"TU"),
@@ -51,7 +51,7 @@ const TEMAS: Record<ModoLogin, Tema> = {
     gradiente: ['#7A2020', '#360A0A'],
     colorTexto: '#FFFFFF',
     colorDecoracion: '#FFFFFF',
-    haloEnLogo: true,
+    haloEnTeclado: true,
   },
 };
 
@@ -118,15 +118,12 @@ export default function Login() {
       </Animated.View>
 
       <View style={[styles.contenido, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 16 }]}>
-        <View style={styles.envoltorioLogo}>
-          {tema.haloEnLogo && <HaloResplandor color={tema.colorDecoracion} />}
-          <View style={styles.tarjetaLogo}>
-            <Image
-              source={require('../assets/images/logo-tu-lonchera.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </View>
+        <View style={styles.tarjetaLogo}>
+          <Image
+            source={require('../assets/images/logo-tu-lonchera.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
 
         <View style={styles.encabezado}>
@@ -141,6 +138,9 @@ export default function Login() {
           deshabilitado={verificando}
           colorAcento={tema.colorTexto}
           intentoFallido={intentosFallidos}
+          decoracionTeclado={
+            tema.haloEnTeclado ? <HaloResplandor color={tema.colorDecoracion} /> : undefined
+          }
           onPresionar={(digito) =>
             setPin((actual) => (actual.length < LARGO_PIN ? actual + digito : actual))
           }
@@ -200,11 +200,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 24,
-  },
-  envoltorioLogo: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   tarjetaLogo: {
     backgroundColor: '#FFFFFF',
