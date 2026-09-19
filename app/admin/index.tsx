@@ -29,6 +29,17 @@ const MODULOS = [
     titulo: 'Ventas',
     descripcion: 'Ver las ventas registradas por los promotores.',
   },
+  {
+    ruta: '/admin/dashboard',
+    titulo: 'Dashboard',
+    descripcion: 'Ventas, productos top y saldo de bodega.',
+    soloPantallaAncha: true,
+  },
+  {
+    ruta: '/admin/intentos-pin',
+    titulo: 'Seguridad de acceso',
+    descripcion: 'Dispositivos bloqueados e intentos fallidos de PIN.',
+  },
 ] as const;
 
 export default function HomeAdmin() {
@@ -61,19 +72,23 @@ export default function HomeAdmin() {
       </View>
       <ContenedorAncho anchoMaximo={960}>
         <View style={[styles.cuerpo, anchaPantalla && styles.cuerpoAncho]}>
-          {MODULOS.map((modulo) => (
-            <Pressable
-              key={modulo.ruta}
-              style={[styles.tarjeta, anchaPantalla && styles.tarjetaAncha]}
-              onPress={() => router.push(modulo.ruta)}
-            >
-              <View style={styles.tarjetaTexto}>
-                <Text style={styles.tarjetaTitulo}>{modulo.titulo}</Text>
-                <Text style={styles.tarjetaDescripcion}>{modulo.descripcion}</Text>
-              </View>
-              <Text style={styles.tarjetaFlecha}>›</Text>
-            </Pressable>
-          ))}
+          {MODULOS.filter(
+            (modulo) => !('soloPantallaAncha' in modulo) || anchaPantalla
+          ).map(
+            (modulo) => (
+              <Pressable
+                key={modulo.ruta}
+                style={[styles.tarjeta, anchaPantalla && styles.tarjetaAncha]}
+                onPress={() => router.push(modulo.ruta)}
+              >
+                <View style={styles.tarjetaTexto}>
+                  <Text style={styles.tarjetaTitulo}>{modulo.titulo}</Text>
+                  <Text style={styles.tarjetaDescripcion}>{modulo.descripcion}</Text>
+                </View>
+                <Text style={styles.tarjetaFlecha}>›</Text>
+              </Pressable>
+            )
+          )}
         </View>
       </ContenedorAncho>
     </View>

@@ -8,6 +8,7 @@ import { migracion0005CargaCatalogoInicial } from './0005_carga_catalogo_inicial
 import { migracion0006VentasSinEvento } from './0006_ventas_sin_evento';
 import { migracion0007CodigoBarrasUnico } from './0007_codigo_barras_unico';
 import { migracion0008AnulacionVentas } from './0008_anulacion_ventas';
+import { migracion0009SeguridadPin } from './0009_seguridad_pin';
 
 export interface Migracion {
   version: number;
@@ -27,6 +28,7 @@ const migraciones: Migracion[] = [
   migracion0006VentasSinEvento,
   migracion0007CodigoBarrasUnico,
   migracion0008AnulacionVentas,
+  migracion0009SeguridadPin,
 ];
 
 /**

@@ -7,11 +7,18 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { rolesPermitidosPara, type ModoLogin } from '@/core/auth';
-import type { Rol } from '@/core/tipos';
+import type { EstadoIntentosPin, Rol } from '@/core/tipos';
 import { getDb } from '@/db/client';
+import { getDispositivoId } from '@/db/dispositivo';
+import {
+  obtenerEstadoIntentos,
+  registrarIntentoFallido,
+  registrarLoginExitoso,
+} from '@/db/intentosPin';
 import { buscarUsuarioPorPin } from '@/db/usuarios';
 import { CampoPin } from '@/ui/CampoPin';
 import { FondoFlotante, HaloResplandor } from '@/ui/FondoAnimado';
+import { ModalDesbloqueoPin } from '@/ui/ModalDesbloqueoPin';
 import { useSesion } from '@/ui/SesionContext';
 
 const LARGO_PIN = 4;
@@ -61,13 +68,63 @@ export default function Login() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [verificando, setVerificando] = useState(false);
-  const [intentosFallidos, setIntentosFallidos] = useState(0);
+  const [intentoFallido, setIntentoFallido] = useState(0);
+  const [dispositivoId, setDispositivoId] = useState<string | null>(null);
+  const [estadoIntentos, setEstadoIntentos] = useState<EstadoIntentosPin>({ estado: 'NORMAL' });
+  const [segundosRestantes, setSegundosRestantes] = useState(0);
+  const [mostrarDesbloqueo, setMostrarDesbloqueo] = useState(false);
   const insets = useSafeAreaInsets();
 
   const tema = TEMAS[modo];
 
   useEffect(() => {
-    if (pin.length !== LARGO_PIN) return;
+    (async () => {
+      const db = await getDb();
+      setDispositivoId(await getDispositivoId(db));
+    })();
+  }, []);
+
+  async function refrescarEstadoIntentos(idDispositivo: string, modoActual: ModoLogin) {
+    const db = await getDb();
+    const estado = await obtenerEstadoIntentos(db, idDispositivo, modoActual);
+    setEstadoIntentos(estado);
+    if (estado.estado === 'ESPERANDO') setSegundosRestantes(estado.segundosRestantes);
+  }
+
+  useEffect(() => {
+    if (!dispositivoId) return;
+    let cancelado = false;
+    (async () => {
+      const db = await getDb();
+      const estado = await obtenerEstadoIntentos(db, dispositivoId, modo);
+      if (cancelado) return;
+      setEstadoIntentos(estado);
+      if (estado.estado === 'ESPERANDO') setSegundosRestantes(estado.segundosRestantes);
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [dispositivoId, modo]);
+
+  useEffect(() => {
+    if (estadoIntentos.estado !== 'ESPERANDO' || !dispositivoId) return;
+
+    const intervalo = setInterval(() => {
+      setSegundosRestantes((actual) => {
+        if (actual <= 1) {
+          refrescarEstadoIntentos(dispositivoId, modo);
+          return 0;
+        }
+        return actual - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(intervalo);
+  }, [estadoIntentos.estado, dispositivoId, modo]);
+
+  useEffect(() => {
+    if (pin.length !== LARGO_PIN || !dispositivoId) return;
+    if (estadoIntentos.estado !== 'NORMAL') return;
 
     let cancelado = false;
     (async () => {
@@ -79,13 +136,17 @@ export default function Login() {
         if (cancelado) return;
 
         if (!usuario) {
+          await registrarIntentoFallido(db, dispositivoId, modo);
+          if (cancelado) return;
           setError('Código no encontrado');
           setPin('');
-          setIntentosFallidos((n) => n + 1);
+          setIntentoFallido((n) => n + 1);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          await refrescarEstadoIntentos(dispositivoId, modo);
           return;
         }
 
+        await registrarLoginExitoso(db, dispositivoId, modo);
         iniciarSesion(usuario);
         irAHome(usuario.rol);
       } finally {
@@ -96,7 +157,7 @@ export default function Login() {
     return () => {
       cancelado = true;
     };
-  }, [pin, modo, iniciarSesion]);
+  }, [pin, modo, dispositivoId, estadoIntentos.estado, iniciarSesion]);
 
   function irAHome(rol: Rol) {
     if (rol === 'PROMOTOR') router.replace('/promotor');
@@ -135,9 +196,9 @@ export default function Login() {
 
         <CampoPin
           pin={pin}
-          deshabilitado={verificando}
+          deshabilitado={verificando || estadoIntentos.estado !== 'NORMAL'}
           colorAcento={tema.colorTexto}
-          intentoFallido={intentosFallidos}
+          intentoFallido={intentoFallido}
           decoracionTeclado={
             tema.haloEnTeclado ? <HaloResplandor color={tema.colorDecoracion} /> : undefined
           }
@@ -148,7 +209,17 @@ export default function Login() {
         />
 
         <View style={styles.pieError}>
-          {error && (
+          {estadoIntentos.estado === 'BLOQUEADO' && (
+            <View style={styles.chipError}>
+              <Text style={styles.error}>Bloqueado. Requiere autorización de administrador</Text>
+            </View>
+          )}
+          {estadoIntentos.estado === 'ESPERANDO' && (
+            <View style={styles.chipError}>
+              <Text style={styles.error}>Espera {segundosRestantes}s...</Text>
+            </View>
+          )}
+          {estadoIntentos.estado === 'NORMAL' && error && (
             <View style={styles.chipError}>
               <Text style={styles.error}>{error}</Text>
             </View>
@@ -156,6 +227,16 @@ export default function Login() {
         </View>
 
         <View style={styles.accesos}>
+          {estadoIntentos.estado === 'BLOQUEADO' && (
+            <Pressable
+              onPress={() => setMostrarDesbloqueo(true)}
+              style={({ pressed }) => [styles.enlace, pressed && styles.enlacePresionado]}
+            >
+              <Text style={[styles.enlaceTexto, { color: tema.colorTexto }]}>
+                Desbloquear con PIN de administrador
+              </Text>
+            </Pressable>
+          )}
           {modo === 'PROMOTOR' ? (
             <>
               <Pressable
@@ -185,6 +266,19 @@ export default function Login() {
           )}
         </View>
       </View>
+
+      {dispositivoId && (
+        <ModalDesbloqueoPin
+          visible={mostrarDesbloqueo}
+          modo={modo}
+          dispositivoId={dispositivoId}
+          onDesbloqueado={() => {
+            setMostrarDesbloqueo(false);
+            refrescarEstadoIntentos(dispositivoId, modo);
+          }}
+          onCerrar={() => setMostrarDesbloqueo(false)}
+        />
+      )}
     </View>
   );
 }

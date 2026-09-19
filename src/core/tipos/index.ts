@@ -24,6 +24,12 @@ export type EstadoConteo = 'ABIERTO' | 'PENDIENTE_APROBACION' | 'CERRADO';
 export type MetodoPago = 'EFECTIVO' | 'TRANSFERENCIA' | 'LIBRANZA';
 
 /**
+ * Modo de la pantalla de login. Ver docs/03-decisiones/0001-metodo-autenticacion.md:
+ * un solo campo de PIN, acotado por rol a través del modo elegido.
+ */
+export type ModoLogin = 'PROMOTOR' | 'ADMIN' | 'BODEGA';
+
+/**
  * Pesos colombianos, siempre entero. Nunca float — ver CLAUDE.md sección 8.
  */
 export type Pesos = number;
@@ -99,4 +105,22 @@ export interface VentaItem {
   productoNombre: string;
   cantidad: number;
   precioUnitario: Pesos;
+}
+
+/**
+ * Estado del backoff/bloqueo de PIN para una combinación dispositivo+modo,
+ * a mostrar en la pantalla de login.
+ */
+export type EstadoIntentosPin =
+  | { estado: 'NORMAL' }
+  | { estado: 'ESPERANDO'; segundosRestantes: number }
+  | { estado: 'BLOQUEADO' };
+
+/** Fila agregada para el panel de admin: una combinación dispositivo+modo. */
+export interface ResumenIntentosPin {
+  dispositivoId: string;
+  modo: ModoLogin;
+  fallosConsecutivos: number;
+  bloqueado: boolean;
+  ultimoIntentoTs: string | null;
 }
