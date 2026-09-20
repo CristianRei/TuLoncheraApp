@@ -1,9 +1,14 @@
 # ADR 0002 — Ventas y recargas sin `evento` (por ahora)
 
 **Estado:** Aceptado, parcialmente superado por
-[ADR 0003](0003-stock-de-bodega.md) — el punto sobre el origen `NULL` de
-`RECARGA` ya no aplica: el cargue ahora sale de un stock de bodega real. El
-resto de este documento (ventas y recargas sin `evento_id`) sigue vigente.
+[ADR 0003](0003-stock-de-bodega.md) y [ADR 0005](0005-puntos-y-descuentos.md)
+— el punto sobre el origen `NULL` de `RECARGA` ya no aplica (ADR 0003): el
+cargue ahora sale de un stock de bodega real. `empresas`/`eventos` dejaron
+de estar "sin usar" (ADR 0005): `eventos` ahora representa la asignación
+vigente de un promotor a un punto, y `ventas.evento_id` sigue opcional pero
+`ventas.punto_id` sí se graba siempre que el promotor tiene punto asignado.
+El resto de este documento sigue vigente: `evento_id` en sí sigue sin
+exigirse.
 
 ## Contexto
 

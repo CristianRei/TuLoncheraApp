@@ -151,9 +151,14 @@ export default function HomePromotor() {
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
         <Text style={styles.saludo}>Hola, {usuario.nombre}</Text>
-        <Pressable onPress={salir}>
-          <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
-        </Pressable>
+        <View style={styles.encabezadoAcciones}>
+          <Pressable onPress={() => router.push('/promotor/conteo-cierre')}>
+            <Text style={styles.cerrarSesion}>Conteo de cierre</Text>
+          </Pressable>
+          <Pressable onPress={salir}>
+            <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.barraAcciones}>
@@ -308,6 +313,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#3A2400',
+  },
+  encabezadoAcciones: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   cerrarSesion: {
     fontSize: 13,

@@ -1,0 +1,190 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import type { Conteo, ConteoLinea } from '@/core/tipos';
+import { getDb } from '@/db/client';
+import { obtenerConteo } from '@/db/conteos';
+import { COLORES } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useRequiereSesion } from '@/ui/useRequiereSesion';
+
+function formatearFecha(tsCliente: string): string {
+  const fecha = new Date(tsCliente);
+  return fecha.toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short' });
+}
+
+export default function DetalleConteo() {
+  const usuario = useRequiereSesion(['ADMIN']);
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const [conteo, setConteo] = useState<Conteo | null>(null);
+  const [lineas, setLineas] = useState<ConteoLinea[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    (async () => {
+      const db = await getDb();
+      const resultado = await obtenerConteo(db, id);
+      setConteo(resultado?.conteo ?? null);
+      setLineas(resultado?.lineas ?? []);
+      setCargando(false);
+    })();
+  }, [id]);
+
+  if (!usuario) return null;
+
+  const conDescuadre = lineas.filter((linea) => linea.diferencia !== 0).length;
+
+  return (
+    <View style={styles.contenedor}>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
+          <Pressable onPress={() => router.back()}>
+            <Text style={styles.volver}>‹ Conteos</Text>
+          </Pressable>
+          <Text style={styles.titulo}>Detalle del conteo</Text>
+        </ContenedorAncho>
+      </View>
+
+      {cargando ? (
+        <View style={styles.centrado}>
+          <ActivityIndicator size="large" color={COLORES.oscuro} />
+        </View>
+      ) : !conteo ? (
+        <View style={styles.centrado}>
+          <Text style={styles.vacio}>Este conteo ya no existe.</Text>
+        </View>
+      ) : (
+        <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <View style={styles.resumen}>
+            <Text style={styles.resumenPromotor}>{conteo.promotorNombre}</Text>
+            <Text style={styles.resumenDetalle}>{formatearFecha(conteo.tsCliente)}</Text>
+            <Text style={styles.resumenDetalle}>
+              {conDescuadre === 0
+                ? 'Sin descuadres.'
+                : `${conDescuadre} producto${conDescuadre === 1 ? '' : 's'} con descuadre.`}
+            </Text>
+          </View>
+
+          <FlatList
+            data={lineas}
+            keyExtractor={(item) => item.productoId}
+            contentContainerStyle={styles.lista}
+            renderItem={({ item }) => (
+              <View style={styles.fila}>
+                <View style={styles.filaTexto}>
+                  <Text style={styles.filaNombre} numberOfLines={2}>
+                    {item.productoNombre}
+                  </Text>
+                  <Text style={styles.filaDetalle}>
+                    Teórico: {item.teorico} · Contado: {item.contado}
+                  </Text>
+                </View>
+                {item.diferencia !== 0 && (
+                  <Text
+                    style={[
+                      styles.filaDiferencia,
+                      item.diferencia > 0 ? styles.diferenciaPositiva : styles.diferenciaNegativa,
+                    ]}
+                  >
+                    {item.diferencia > 0 ? `+${item.diferencia}` : item.diferencia}
+                  </Text>
+                )}
+              </View>
+            )}
+          />
+        </ContenedorAncho>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  contenedor: {
+    flex: 1,
+    backgroundColor: '#FBEDED',
+  },
+  encabezado: {
+    backgroundColor: COLORES.oscuro,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  encabezadoContenido: {
+    gap: 4,
+  },
+  volver: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+  titulo: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  centrado: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  vacio: {
+    fontSize: 14,
+    color: '#888',
+  },
+  resumen: {
+    backgroundColor: '#FFFFFF',
+    margin: 20,
+    marginBottom: 0,
+    borderRadius: 14,
+    padding: 16,
+    gap: 4,
+  },
+  resumenPromotor: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  resumenDetalle: {
+    fontSize: 13,
+    color: '#777',
+  },
+  lista: {
+    padding: 20,
+    gap: 10,
+  },
+  fila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+  },
+  filaTexto: {
+    flex: 1,
+    gap: 2,
+  },
+  filaNombre: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  filaDetalle: {
+    fontSize: 13,
+    color: '#888',
+  },
+  filaDiferencia: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  diferenciaPositiva: {
+    color: '#1B7A3D',
+  },
+  diferenciaNegativa: {
+    color: '#B00020',
+  },
+});

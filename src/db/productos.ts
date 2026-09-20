@@ -9,6 +9,7 @@ interface FilaProducto {
   codigo_barras: string | null;
   nombre: string;
   categoria: string | null;
+  marca: string | null;
   es_licor: number;
   es_perecedero: number;
   precio: number;
@@ -25,6 +26,7 @@ function aProducto(fila: FilaProducto): Producto {
     codigoBarras: fila.codigo_barras,
     nombre: fila.nombre,
     categoria: fila.categoria,
+    marca: fila.marca,
     esLicor: fila.es_licor === 1,
     esPerecedero: fila.es_perecedero === 1,
     precio: fila.precio,
@@ -36,7 +38,7 @@ function aProducto(fila: FilaProducto): Producto {
 }
 
 const COLUMNAS =
-  'id, sku, codigo_barras, nombre, categoria, es_licor, es_perecedero, precio, costo, unidad_empaque, foto_uri, activo';
+  'id, sku, codigo_barras, nombre, categoria, marca, es_licor, es_perecedero, precio, costo, unidad_empaque, foto_uri, activo';
 
 export async function listarProductos(
   db: SQLiteDatabase,
@@ -70,13 +72,35 @@ export async function obtenerProductosPorIds(
   return new Map(filas.map((fila) => [fila.id, aProducto(fila)]));
 }
 
+/** Categorías distintas en uso — para poblar el filtro del dashboard. */
+export async function listarCategoriasDistintas(db: SQLiteDatabase): Promise<string[]> {
+  const filas = await db.getAllAsync<{ categoria: string }>(
+    "SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC"
+  );
+  return filas.map((fila) => fila.categoria);
+}
+
+/** Marcas distintas en uso — para poblar el filtro del dashboard. */
+export async function listarMarcasDistintas(db: SQLiteDatabase): Promise<string[]> {
+  const filas = await db.getAllAsync<{ marca: string }>(
+    "SELECT DISTINCT marca FROM productos WHERE marca IS NOT NULL AND marca != '' ORDER BY marca ASC"
+  );
+  return filas.map((fila) => fila.marca);
+}
+
 function generarSku(): string {
   return `TL-${Crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 }
 
 export async function crearProducto(
   db: SQLiteDatabase,
-  datos: { nombre: string; precio: Pesos; fotoUri?: string | null; codigoBarras?: string | null },
+  datos: {
+    nombre: string;
+    precio: Pesos;
+    fotoUri?: string | null;
+    codigoBarras?: string | null;
+    marca?: string | null;
+  },
   dispositivoId: string,
   idPredefinido?: string
 ): Promise<Producto> {
@@ -86,8 +110,8 @@ export async function crearProducto(
   const id = idPredefinido ?? Crypto.randomUUID();
   const ahora = new Date().toISOString();
   await db.runAsync(
-    `INSERT INTO productos (id, sku, nombre, precio, foto_uri, codigo_barras, activo, ts_cliente, dispositivo_id)
-     VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+    `INSERT INTO productos (id, sku, nombre, precio, foto_uri, codigo_barras, marca, activo, ts_cliente, dispositivo_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     [
       id,
       generarSku(),
@@ -95,6 +119,7 @@ export async function crearProducto(
       datos.precio,
       datos.fotoUri ?? null,
       datos.codigoBarras ?? null,
+      datos.marca ?? null,
       ahora,
       dispositivoId,
     ]
@@ -112,6 +137,7 @@ export async function actualizarProducto(
     precio?: Pesos;
     fotoUri?: string | null;
     codigoBarras?: string | null;
+    marca?: string | null;
   }
 ): Promise<void> {
   const columnas: string[] = [];
@@ -132,6 +158,10 @@ export async function actualizarProducto(
   if (cambios.codigoBarras !== undefined) {
     columnas.push('codigo_barras = ?');
     valores.push(cambios.codigoBarras);
+  }
+  if (cambios.marca !== undefined) {
+    columnas.push('marca = ?');
+    valores.push(cambios.marca);
   }
   if (columnas.length === 0) return;
 

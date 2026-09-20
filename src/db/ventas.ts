@@ -1,8 +1,11 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { aplicarDescuento } from '@/core/descuentos';
 import type { MetodoPago, Pesos, Venta, VentaItem } from '@/core/tipos';
 
+import { obtenerDescuentoVigente } from './descuentos';
+import { obtenerPuntoVigentePromotor } from './eventos';
 import { registrarMovimiento } from './movimientos';
 import { obtenerOCrearUbicacionPromotor } from './ubicaciones';
 
@@ -25,6 +28,8 @@ interface FilaVenta {
   numero_recibo: string;
   promotor_id: string;
   promotor_nombre: string;
+  punto_id: string | null;
+  punto_nombre: string | null;
   ts_cliente: string;
   metodo_pago: MetodoPago;
   total: number;
@@ -33,6 +38,7 @@ interface FilaVenta {
 }
 
 const COLUMNAS_VENTA = `v.id, v.numero_recibo, v.promotor_id, u.nombre as promotor_nombre,
+   v.punto_id, pt.nombre as punto_nombre,
    v.ts_cliente, v.metodo_pago, v.total, v.anulada, v.motivo_anulacion`;
 
 function aVenta(fila: FilaVenta): Venta {
@@ -41,6 +47,8 @@ function aVenta(fila: FilaVenta): Venta {
     numeroRecibo: fila.numero_recibo,
     promotorId: fila.promotor_id,
     promotorNombre: fila.promotor_nombre,
+    puntoId: fila.punto_id,
+    puntoNombre: fila.punto_nombre,
     tsCliente: fila.ts_cliente,
     metodoPago: fila.metodo_pago,
     total: fila.total,
@@ -69,6 +77,15 @@ async function generarNumeroRecibo(db: SQLiteDatabase, dispositivoId: string): P
 /**
  * Registra una venta: cabecera + líneas + un movimiento VENTA por producto
  * (sale del saldo del promotor), todo en una sola transacción.
+ *
+ * El punto vigente del promotor (ver src/db/eventos.ts) se resuelve una
+ * sola vez y queda grabado en `ventas.punto_id` — no basta con el evento
+ * EN_CURSO actual, porque si el admin reasigna al promotor después, una
+ * consulta futura perdería en qué punto ocurrió esta venta (ver ADR 0005).
+ * Ese mismo punto se usa para resolver el descuento vigente de cada línea:
+ * el precio unitario que se guarda ya es el precio con descuento aplicado
+ * — el recibo y el total reflejan lo que realmente se cobró, sin necesitar
+ * columnas extra en `venta_items`.
  */
 export async function registrarVenta(
   db: SQLiteDatabase,
@@ -77,15 +94,28 @@ export async function registrarVenta(
 ): Promise<Venta> {
   const id = Crypto.randomUUID();
   const ahora = new Date().toISOString();
-  const total = datos.items.reduce((suma, item) => suma + item.cantidad * item.precioUnitario, 0);
+  const puntoVigente = await obtenerPuntoVigentePromotor(db, datos.promotorId);
+  const puntoId = puntoVigente?.puntoId ?? null;
+
+  const itemsConDescuento = await Promise.all(
+    datos.items.map(async (item) => {
+      const descuento = await obtenerDescuentoVigente(db, {
+        productoId: item.productoId,
+        puntoId,
+        ahora,
+      });
+      return { ...item, precioUnitario: aplicarDescuento(item.precioUnitario, descuento) };
+    })
+  );
+  const total = itemsConDescuento.reduce((suma, item) => suma + item.cantidad * item.precioUnitario, 0);
 
   await db.withTransactionAsync(async () => {
     const numeroRecibo = await generarNumeroRecibo(db, dispositivoId);
 
     await db.runAsync(
-      `INSERT INTO ventas (id, numero_recibo, promotor_id, ts_cliente, metodo_pago, total, dispositivo_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, numeroRecibo, datos.promotorId, ahora, datos.metodoPago, total, dispositivoId]
+      `INSERT INTO ventas (id, numero_recibo, promotor_id, punto_id, ts_cliente, metodo_pago, total, dispositivo_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, numeroRecibo, datos.promotorId, puntoId, ahora, datos.metodoPago, total, dispositivoId]
     );
 
     const ubicacionPromotor = await obtenerOCrearUbicacionPromotor(
@@ -95,7 +125,7 @@ export async function registrarVenta(
       dispositivoId
     );
 
-    for (const item of datos.items) {
+    for (const item of itemsConDescuento) {
       await db.runAsync(
         `INSERT INTO venta_items (venta_id, producto_id, cantidad, precio_unitario, ts_cliente, dispositivo_id)
          VALUES (?, ?, ?, ?, ?, ?)`,
@@ -130,6 +160,7 @@ export async function listarVentas(
     `SELECT ${COLUMNAS_VENTA}
      FROM ventas v
      JOIN usuarios u ON u.id = v.promotor_id
+     LEFT JOIN puntos pt ON pt.id = v.punto_id
      WHERE ${condicion}
      ORDER BY v.ts_cliente DESC`
   );
@@ -144,6 +175,7 @@ export async function obtenerVenta(
     `SELECT ${COLUMNAS_VENTA}
      FROM ventas v
      JOIN usuarios u ON u.id = v.promotor_id
+     LEFT JOIN puntos pt ON pt.id = v.punto_id
      WHERE v.id = ?`,
     [id]
   );

@@ -9,6 +9,9 @@ import { migracion0006VentasSinEvento } from './0006_ventas_sin_evento';
 import { migracion0007CodigoBarrasUnico } from './0007_codigo_barras_unico';
 import { migracion0008AnulacionVentas } from './0008_anulacion_ventas';
 import { migracion0009SeguridadPin } from './0009_seguridad_pin';
+import { migracion0010ConteoCierre } from './0010_conteo_cierre';
+import { migracion0011PuntosYMarca } from './0011_puntos_y_marca';
+import { migracion0012Descuentos } from './0012_descuentos';
 
 export interface Migracion {
   version: number;
@@ -29,6 +32,9 @@ const migraciones: Migracion[] = [
   migracion0007CodigoBarrasUnico,
   migracion0008AnulacionVentas,
   migracion0009SeguridadPin,
+  migracion0010ConteoCierre,
+  migracion0011PuntosYMarca,
+  migracion0012Descuentos,
 ];
 
 /**

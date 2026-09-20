@@ -38,6 +38,9 @@
 | 0007 | `codigo_barras_unico` | Índice `UNIQUE` sobre `productos.codigo_barras` (los `NULL` no chocan entre sí en SQLite). |
 | 0008 | `anulacion_ventas` | `ventas` gana `anulada`/`motivo_anulacion`. Recrea `movimientos` para agregar `ANULACION_VENTA` al `CHECK` de `tipo` (ver ADR 0004). |
 | 0009 | `seguridad_pin` | Tres tablas nuevas para el bloqueo por intentos fallidos de PIN: `intentos_pin_fallidos`, `desbloqueos_pin`, `logins_exitosos_pin`. |
+| 0010 | `conteo_cierre` | Recrea `conteos`: `evento_id` pasa a opcional y se agrega `promotor_id` (mismo motivo que ADR 0002). Activa `conteos`/`conteo_lineas`. |
+| 0011 | `puntos_y_marca` | Tabla nueva `puntos` (sede de una `empresa`). Recrea `eventos` con `punto_id` y lo activa como asignación vigente de promotor→punto. `productos` gana `marca`, `ventas` gana `punto_id` (ver ADR 0005). |
+| 0012 | `descuentos` | Tabla nueva `descuentos`: reglas por producto y/o punto, con vigencia (ver ADR 0005). |
 
 ## Tablas (estado real, no el diseño original)
 
@@ -47,12 +50,14 @@
 | `ubicaciones` | Bodega (una sola fila, singleton) y el inventario "virtual" de cada promotor. Todo saldo vive contra una ubicación. Se crean perezosamente (`src/db/ubicaciones.ts`), no por migración ni seed. | En uso (solo tipos `BODEGA` y `PROMOTOR`; `CAMION` sin usar) |
 | `productos` | Catálogo: ponqués y licor. `precio` en pesos enteros; `categoria`/`costo` opcionales, sin dato todavía. `foto_uri` apunta a un archivo local (no un blob en SQLite). `activo=0` = "eliminado" (nunca `DELETE`). | En uso |
 | `lotes` | Agrupar unidades por fecha de vencimiento. | En uso (opcional) — `crearLote` (`src/db/lotes.ts`) se llama solo si "ingresar pedido" trae fecha de vencimiento |
-| `empresas` | Cliente donde ocurre un evento/feria. | Sin usar |
-| `eventos` | Una jornada de venta: empresa + fecha + promotor + conductor + camión. | Sin usar — ver ADR 0002, no se pidió gestión de eventos |
-| `movimientos` | El libro contable del inventario. Cada fila es un hecho inmutable. Tipos en uso hoy: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega → promotor), `VENTA` (promotor → afuera), `ANULACION_VENTA` (afuera → promotor, revierte una venta anulada — ADR 0004). | En uso (parcial) |
-| `ventas` | Cabecera de una venta (recibo interno, sin valor fiscal). `numero_recibo` = primeros 4 caracteres del UUID de dispositivo + consecutivo (`src/db/ventas.ts`). `evento_id` opcional (ADR 0002). `anulada`/`motivo_anulacion`: nunca se borra una venta, se anula (ADR 0004). | En uso |
-| `venta_items` | Líneas de una venta. | En uso |
-| `conteos` / `conteo_lineas` | Conteo de cierre: teórico vs. contado, con motivo y aprobación cuando hay descuadre (R7). | Sin usar — Fase 2, no construido |
+| `empresas` | Cliente donde ocurre un evento/feria (ej. Falabella). | En uso — gestión propia en `app/admin/empresas/` |
+| `puntos` | Sede de una empresa (ej. Falabella Norte, Falabella Sur). `empresa_id` FK. | En uso desde la 0011 — ver ADR 0005 |
+| `eventos` | Hoy representa la **asignación vigente** de un promotor a un punto (`estado = 'EN_CURSO'`), no todavía una jornada con fecha/calendario real. El admin la crea/reasigna en `app/admin/puntos-asignados/`. | En uso (parcial) desde la 0011 — ver ADR 0005; el calendario real de eventos sigue sin construirse |
+| `movimientos` | El libro contable del inventario. Cada fila es un hecho inmutable. Tipos en uso hoy: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega → promotor), `VENTA` (promotor → afuera), `ANULACION_VENTA` (afuera → promotor, revierte una venta anulada — ADR 0004), `AJUSTE_CONTEO` (conteo de cierre). | En uso (parcial) |
+| `ventas` | Cabecera de una venta (recibo interno, sin valor fiscal). `numero_recibo` = primeros 4 caracteres del UUID de dispositivo + consecutivo (`src/db/ventas.ts`). `evento_id` opcional (ADR 0002). `punto_id` opcional, resuelto una sola vez al vender desde el punto vigente del promotor (ADR 0005). `anulada`/`motivo_anulacion`: nunca se borra una venta, se anula (ADR 0004). | En uso |
+| `venta_items` | Líneas de una venta. El `precio_unitario` ya trae aplicado cualquier descuento vigente (ADR 0005). | En uso |
+| `conteos` / `conteo_lineas` | Conteo de cierre: teórico vs. contado. `promotor_id` (0010) y `evento_id` opcional (mismo motivo que ADR 0002). La aprobación de descuadres por encima de un umbral (R7) sigue sin implementar — el umbral en pesos no está definido. | En uso desde la 0010 (sin la aprobación de R7) |
+| `descuentos` | Reglas de descuento por producto y/o punto, con vigencia. `producto_id`/`punto_id` opcionales de forma independiente; `NULL` = aplica a todos en esa dimensión. Prioridad al resolver: producto+punto > solo producto > solo punto (ver ADR 0005). | En uso desde la 0012 |
 | `niveles_objetivo` | Insumo para la recarga sugerida. | Sin usar — Fase 6 |
 | `intentos_pin_fallidos` | Un intento de PIN fallido, por dispositivo+modo. Nunca guarda el PIN tecleado. | En uso |
 | `desbloqueos_pin` | Un admin desbloqueando un dispositivo+modo bloqueado, tecleando su propio PIN. `admin_id` obligatorio. | En uso |
@@ -79,12 +84,24 @@ vuelo:
    (ver ADR 0003).
 3. **Promotor → afuera:** al cobrar una venta
    (`app/promotor/index.tsx` → `registrarVenta`) → un `VENTA` por producto,
-   origen = la ubicación del promotor, destino `NULL`.
+   origen = la ubicación del promotor, destino `NULL`. Antes de escribir
+   nada, se resuelve el punto vigente del promotor
+   (`obtenerPuntoVigentePromotor`, `src/db/eventos.ts`) y, para cada línea,
+   el descuento vigente para ese producto+punto (`obtenerDescuentoVigente`,
+   `src/db/descuentos.ts`); el precio que se guarda en `venta_items` ya
+   trae ese descuento aplicado, y `ventas.punto_id` queda grabado con el
+   punto resuelto (ver ADR 0005). Si el promotor no tiene punto asignado,
+   la venta sigue funcionando sin descuento y `punto_id` queda `NULL`.
 4. **Afuera → promotor (anulación):** al anular una venta
    (`app/admin/ventas/[id].tsx` → `anularVenta`) → un `ANULACION_VENTA` por
    producto, origen `NULL`, destino = la ubicación del promotor — revierte
    exactamente el `VENTA` original. La venta se marca `anulada`, nunca se
    borra (ver ADR 0004).
+5. **Conteo de cierre:** el promotor cuenta físicamente su inventario
+   (`app/promotor/conteo-cierre.tsx` → `registrarConteo`,
+   `src/db/conteos.ts`); por cada producto con diferencia entre teórico y
+   contado, un `AJUSTE_CONTEO` hace converger el saldo real a lo contado
+   (bodega→promotor si sobra, promotor→afuera si falta).
 
 `calcularSaldosPorProducto(movimientos, ubicacionId)` sirve para cualquier
 ubicación (bodega o promotor) — es la misma función, sin distinguir tipos.

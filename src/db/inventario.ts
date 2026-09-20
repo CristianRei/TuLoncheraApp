@@ -68,6 +68,20 @@ export async function obtenerSaldoProducto(
   return saldos.get(productoId) ?? 0;
 }
 
+/**
+ * Todos los saldos del promotor (incluye ceros, a diferencia de
+ * `listarInventarioPromotor`) — para el conteo de cierre, que necesita
+ * poder contradecir el teórico incluso en productos que ya llegaron a 0.
+ */
+export async function obtenerSaldosPromotor(
+  db: SQLiteDatabase,
+  promotorId: string
+): Promise<Map<string, number>> {
+  const ubicacion = await buscarUbicacionPromotor(db, promotorId);
+  if (!ubicacion) return new Map();
+  return calcularSaldosUbicacion(db, ubicacion);
+}
+
 /** Stock de bodega, solo lo que tiene saldo > 0 — para la pantalla de Inventario. */
 export async function listarInventarioBodega(db: SQLiteDatabase): Promise<ItemInventario[]> {
   const ubicacion = await buscarUbicacionBodega(db);

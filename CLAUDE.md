@@ -181,23 +181,37 @@ tulonchera/
     comercial/propuesta/     ← propuesta técnico-comercial (negocio, no arquitectura)
   app/
     index.tsx                  ← login: un solo PIN, sin contraseña
-    promotor/index.tsx          ← venta: grilla de inventario + ticket + escáner + cobrar
+    promotor/
+      index.tsx                  ← venta: grilla de inventario + ticket + escáner + cobrar
+      conteo-cierre.tsx           ← conteo de cierre: teórico vs. contado por producto
     admin/
       index.tsx                  ← menú de módulos
       catalogo/                   ← alta / edición / baja de productos
       inventario/                  ← stock de bodega + registrar entradas
       cargue/                       ← asignar cargue a un promotor (sale de bodega)
       ventas/                        ← listado + detalle de ventas registradas
+      conteos/                       ← listado + detalle de conteos de cierre (solo lectura)
+      dashboard/                      ← KPIs, filtros, desgloses por promotor/punto/categoría
+      empresas/                        ← empresas cliente y sus puntos (sedes)
+      puntos-asignados/                 ← asignar promotor a un punto vigente
+      descuentos/                        ← crear / ver descuentos por producto y/o punto
     bodega/index.tsx             ← es directamente "ingresar pedido" (única función de Bodega hoy, sin menú)
     _layout.tsx                 ← migra la DB al arrancar, envuelve todo en SesionProvider
   src/
     core/                       ← lógica de dominio, SIN dependencias de React ni Expo
       auth/                       ← modo de login (promotor/admin/bodega) → roles permitidos
-      dinero/                      ← formatearPesos / parsearPesos
-      inventario/                   ← calcularSaldosPorProducto + su property test
-      tipos/                         ← tipos de dominio compartidos
+      analitica/                   ← agruparVentasPorHora (zona horaria Bogotá)
+      descuentos/                   ← aplicarDescuento + su test
+      dinero/                        ← formatearPesos / parsearPesos
+      inventario/                     ← calcularSaldosPorProducto + su property test
+      seguridadPin/                    ← backoff/bloqueo de PIN
+      tipos/                             ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0009, versionadas, nunca se editan una vez aplicadas
+      migraciones/                ← 0001 a 0012, versionadas, nunca se editan una vez aplicadas
+      conteos.ts                   ← conteo de cierre
+      descuentos.ts                 ← reglas de descuento + resolución del vigente
+      empresas.ts / puntos.ts        ← empresas cliente y sus puntos
+      eventos.ts                      ← asignación vigente de promotor a punto
     ui/                         ← componentes y hooks compartidos (sí usan React/Expo)
       ContenedorAncho.tsx         ← centra contenido con ancho máximo en tablet/pantalla ancha
       useEsPantallaAncha.ts        ← breakpoint 768px, lo usan Admin y Bodega
@@ -214,7 +228,7 @@ panel web el día que exista.
 
 ## 7. Modelo de datos (resumen)
 
-Estado real después de las migraciones 0001-0009. Detalle completo y
+Estado real después de las migraciones 0001-0012. Detalle completo y
 razonamiento en `docs/02-modelo-datos.md`.
 
 ```
@@ -223,29 +237,60 @@ ubicaciones       (id, tipo[BODEGA|CAMION|PROMOTOR], nombre, responsable_id)
                   ← BODEGA es una sola fila (singleton); cada promotor tiene
                     la suya. Ambas se crean perezosamente, no por migración.
 productos         (id, sku, codigo_barras, nombre, categoria[opcional],
-                   es_licor, es_perecedero, precio, costo[opcional],
-                   unidad_empaque, foto_uri[opcional], activo)
-                  ← categoria/costo opcionales: no vinieron en la carga
+                   marca[opcional], es_licor, es_perecedero, precio,
+                   costo[opcional], unidad_empaque, foto_uri[opcional], activo)
+                  ← categoria/costo/marca opcionales: no vinieron en la carga
                     inicial. "Eliminar" = activo=0, nunca DELETE.
 lotes             (id, producto_id, fecha_vencimiento)         ← en uso, opcional: se crea
                   al "ingresar pedido" solo si se teclea fecha de vencimiento
-empresas          (id, nombre, direccion, sector, contacto)     ← sin usar todavía
-eventos           (id, empresa_id, fecha, promotor_id, conductor_id,
-                   camion_id, estado)                             ← sin usar todavía
+empresas          (id, nombre, direccion, sector, contacto)
+                  ← en uso desde la 0011 (ver ADR 0005). Cliente donde
+                    ocurre un evento/feria (ej. Falabella).
+puntos            (id, empresa_id, nombre, direccion[opcional], activo)
+                  ← en uso desde la 0011. Sede de una empresa (ej. Norte,
+                    Sur). Gestión en app/admin/empresas/.
+eventos           (id, empresa_id, punto_id, fecha, promotor_id, conductor_id,
+                   camion_id, estado[PLANEADO|EN_CURSO|CERRADO])
+                  ← en uso (parcial) desde la 0011. Hoy representa la
+                    asignación vigente de un promotor a un punto
+                    (estado=EN_CURSO), no todavía una jornada con calendario
+                    real — ver ADR 0005. Admin la crea/reasigna en
+                    app/admin/puntos-asignados/.
 movimientos       (id UUID PK, tipo, producto_id, lote_id, cantidad,
                    ubicacion_origen_id, ubicacion_destino_id, evento_id[opcional],
                    usuario_id, motivo, ts_cliente, dispositivo_id)
                   ← el libro contable real. Ver ADR 0002/0003 para el porqué
                     de evento_id opcional y de que RECARGA tenga origen real.
 ventas            (id UUID PK, numero_recibo, evento_id[opcional], promotor_id,
-                   ts_cliente, metodo_pago[EFECTIVO|TRANSFERENCIA|LIBRANZA],
+                   punto_id[opcional], ts_cliente,
+                   metodo_pago[EFECTIVO|TRANSFERENCIA|LIBRANZA],
                    total, dispositivo_id, anulada, motivo_anulacion[opcional])
-                  ← anulada nunca se borra la fila (ver ADR 0004)
+                  ← anulada nunca se borra la fila (ver ADR 0004). punto_id
+                    se resuelve una sola vez al vender, desde el punto
+                    vigente del promotor en ese momento (ver ADR 0005).
 venta_items       (venta_id, producto_id, cantidad, precio_unitario,
                    ts_cliente, dispositivo_id)
-conteos           (id UUID PK, evento_id, ts_cliente, estado, firmado_por)  ← sin usar todavía
+                  ← precio_unitario ya trae aplicado cualquier descuento
+                    vigente resuelto al momento de la venta.
+conteos           (id UUID PK, evento_id[opcional], promotor_id, ts_cliente,
+                   estado, firmado_por)
+                  ← evento_id opcional y promotor_id agregado en la
+                    migración 0010, mismo motivo que ADR 0002 (ventas).
+                    estado hoy siempre CERRADO al crear: no hay aprobación
+                    todavía (ver R7, sección 11).
 conteo_lineas     (conteo_id, producto_id, teorico, contado,
-                   diferencia, motivo, aprobado_por)                         ← sin usar todavía
+                   diferencia, motivo, aprobado_por)
+                  ← en uso desde la 0010. Una diferencia ≠ 0 genera un
+                    AJUSTE_CONTEO (bodega→promotor si sobra, promotor→afuera
+                    si falta) para que el saldo real converja a lo contado.
+descuentos        (id UUID PK, producto_id[opcional], punto_id[opcional],
+                   tipo[PORCENTAJE|MONTO_FIJO], valor, desde, hasta, activo,
+                   creado_por, ts_cliente, dispositivo_id)
+                  ← en uso desde la 0012 (ver ADR 0005). producto_id/punto_id
+                    NULL = "aplica a todos" en esa dimensión. Prioridad al
+                    resolver: producto+punto > solo producto > solo punto.
+                    activo se puede apagar antes de tiempo; el valor/vigencia
+                    nunca se edita — se crea una regla nueva.
 niveles_objetivo  (promotor_id, producto_id, cantidad, actualizado_ts)        ← sin usar todavía
 intentos_pin_fallidos (id UUID PK, dispositivo_id, modo, ts_cliente)          ← en uso
 desbloqueos_pin       (id UUID PK, dispositivo_id, modo, admin_id, ts_cliente) ← en uso
@@ -262,8 +307,10 @@ logins_exitosos_pin   (id UUID PK, dispositivo_id, modo, ts_cliente)          �
 `AJUSTE_CONTEO`, `AVERIA`, `DEGUSTACION`, `OBSEQUIO`, `DEVOLUCION_VENCIMIENTO`,
 `ANULACION_VENTA`.
 Hoy en uso: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega →
-promotor), `VENTA` (promotor → afuera) y `ANULACION_VENTA` (revierte una
-venta: afuera → promotor, ver ADR 0004). El resto sigue sin implementarse.
+promotor), `VENTA` (promotor → afuera), `ANULACION_VENTA` (revierte una
+venta: afuera → promotor, ver ADR 0004) y `AJUSTE_CONTEO` (conteo de cierre:
+bodega→promotor si sobra, promotor→afuera si falta). El resto sigue sin
+implementarse.
 
 **Reposición por nivel objetivo** (Fase 6, sin construir):
 ```
@@ -326,11 +373,11 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | Base local: SQLite, migraciones, catálogo de productos, usuarios y roles, escáner funcionando | ✅ |
-| 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | 🔄 Recarga y saldos listos; falta conteo de cierre |
+| 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | ✅ Recarga, saldos y conteo de cierre listos. Falta solo la aprobación de descuadres de R7 (bloqueada por el umbral sin definir, ver sección 11) |
 | 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta y recibo interno listos; falta arqueo |
 | 4 | Bodega: alistamiento por escáner, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega y entrada de inventario listos; falta alistamiento por escáner, niveles objetivo, alertas de vencimiento, y pantalla propia del rol Bodega |
 | 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | ⬜ |
-| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard de ventas listo (ver abajo); recomendador de recarga sigue sin construir |
+| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido con filtros, puntos y descuentos listo (ver abajo); recomendador de recarga sigue sin construir |
 
 ### Qué existe hoy, concretamente
 
@@ -345,13 +392,20 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   Panel de admin en `app/admin/intentos-pin/` para ver dispositivos
   bloqueados e intentos fallidos.
 - **Dashboard de ventas** (`app/admin/dashboard/`, `src/db/analitica.ts`,
-  `src/core/analitica/`): KPIs (total vendido, cantidad de ventas, saldo en
-  bodega), desglose por método de pago, ventas por hora del día en Bogotá
-  (offset fijo UTC-5) y top de productos. Filtra por hoy / 7 días / 30 días.
-  Solo pantalla ancha, como el resto de Admin. El valor estimado de bodega
-  solo cuenta productos con `costo` capturado — la UI muestra la cobertura
-  (ej. "12 de 123 productos") cuando es parcial, para no leerse como un
-  total cuando no lo es.
+  `src/core/analitica/`): KPIs (total vendido, cantidad de ventas, ticket
+  promedio, saldo en bodega), desglose por método de pago, por promotor,
+  por punto, por categoría, ventas por hora del día en Bogotá (offset fijo
+  UTC-5) y top de productos. Filtra por hoy / 7 días / 30 días / rango
+  personalizado, y por promotor, punto, categoría, marca, producto y método
+  de pago (combinables). Se refresca solo cada 15s mientras la pantalla
+  está enfocada — "tiempo real" dentro de este dispositivo, sin
+  sincronización con otros dispositivos (eso es Fase 5, sin construir; ver
+  ADR 0005). Enlace directo a Ventas para ver recibos. Solo pantalla ancha,
+  como el resto de Admin. El valor estimado de bodega solo cuenta productos
+  con `costo` capturado — la UI muestra la cobertura (ej. "12 de 123
+  productos") cuando es parcial, para no leerse como un total cuando no lo
+  es. Los filtros de categoría/marca no tendrán opciones hasta que se cargue
+  esa información en el catálogo (hoy vacía para los 123 productos reales).
 - **Catálogo** (`app/admin/catalogo/`): alta, edición (nombre, precio, foto,
   código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
   Catálogo real del cliente ya cargado (123 productos, migración 0005).
@@ -367,15 +421,42 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 - **Cargue** (`app/admin/cargue/`): admin asigna productos del stock de
   bodega a un promotor (`RECARGA`, bodega → promotor); no deja asignar más
   de lo disponible.
+- **Empresas y puntos** (`app/admin/empresas/`, `src/db/empresas.ts`,
+  `src/db/puntos.ts`, migración 0011): admin crea empresas cliente (ej.
+  Falabella) y sus puntos/sedes (ej. Norte, Sur). Sin edición ni baja
+  todavía — solo alta y listado.
+- **Asignar punto a promotor** (`app/admin/puntos-asignados/`,
+  `src/db/eventos.ts`): admin elige un promotor y le asigna un punto
+  vigente (reutiliza `eventos`, ver ADR 0005) — el promotor no elige nada,
+  ya entra con su punto asignado. Reasignar cierra la asignación anterior y
+  crea una nueva. Sin calendario ni reasignación en caliente todavía.
+- **Descuentos** (`app/admin/descuentos/`, `src/db/descuentos.ts`,
+  `src/core/descuentos/`, migración 0012): admin crea reglas de descuento
+  (porcentaje o monto fijo) por producto y/o punto, con vigencia. Se
+  aplican automáticamente al cobrar (ver "Venta del promotor" abajo). Listar
+  vigentes/vencidos, desactivar antes de tiempo — nunca se edita una regla
+  ya creada.
 - **Venta del promotor** (`app/promotor/index.tsx`): grilla de su propio
   inventario con buscador, escáner de código de barras, ticket (carrito) y
   cobro con los 3 medios de pago. Topa la cantidad vendible al saldo
-  calculado tanto al tocar la grilla como al escanear — los descuadres
-  reales se resuelven en el conteo de cierre, que todavía no existe.
+  calculado tanto al tocar la grilla como al escanear. Al cobrar, resuelve
+  el punto vigente del promotor y aplica automáticamente cualquier
+  descuento vigente para cada producto en ese punto (ver ADR 0005) — el
+  precio que queda en el recibo ya es el precio con descuento. Los
+  descuadres reales se resuelven en el conteo de cierre.
 - **Ventas del admin** (`app/admin/ventas/`): listado (promotor + total,
   pestañas Activas/Anuladas) y detalle (líneas) de cada venta. Se puede
   anular una venta con motivo obligatorio — nunca se borra, se marca y se
   revierte con un movimiento compensatorio (ver ADR 0004).
+- **Conteo de cierre** (`app/promotor/conteo-cierre.tsx`, `app/admin/conteos/`,
+  `src/db/conteos.ts`, migración 0010): el promotor cuenta físicamente cada
+  producto de su inventario y lo compara contra el teórico calculado por el
+  sistema; una diferencia ≠ 0 genera un `AJUSTE_CONTEO` que hace converger
+  el saldo real a lo contado (nunca se pisa el saldo, R1). Admin puede ver
+  el listado de conteos y su detalle (teórico/contado/diferencia por
+  producto), pero **no hay aprobación de descuadres todavía**: todo conteo
+  queda `CERRADO` de una vez y no bloquea la siguiente recarga — R7 sigue
+  pendiente del umbral en pesos (sección 11).
 - **Exportar a Excel** (`src/db/exportarExcel.ts`, `xlsx` + `expo-sharing`):
   botón "Exportar" en catálogo, ventas e inventario; genera un `.xlsx` y
   abre el diálogo nativo de compartir. Etiquetado como demo en el código —
@@ -411,6 +492,11 @@ reportes) sigue sin construirse — no asumir que existe.
   stock de bodega real y lo descuenta; nueva forma de entrada de inventario.
 - **0004 — Anulación de ventas.** Nunca se borra: se marca y se revierte
   con un movimiento compensatorio (`ANULACION_VENTA`), motivo obligatorio.
+- **0005 — Puntos, asignación de promotor y descuentos.** Activa
+  `empresas`/`eventos` (corrige parcialmente el 0002): `eventos` pasa a
+  representar la asignación vigente de un promotor a un punto, no todavía
+  una jornada con calendario. Descuentos por producto y/o punto con
+  vigencia, resueltos y aplicados una sola vez al momento de la venta.
 
 **Regla de despliegue:** ningún promotor deja de usar su método actual sin dos
 semanas de operación en paralelo. Si la app falla en un evento, ese día no se vende.
@@ -421,9 +507,17 @@ semanas de operación en paralelo. Si la app falla en un evento, ese día no se 
 
 No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 
-- [ ] ¿Cuál es el umbral en pesos para aprobación de descuadres?
-- [ ] ¿Los promotores rotan entre empresas o cada uno tiene ruta fija?
-      Determina si el nivel objetivo se calcula por promotor o por empresa.
+- [ ] ¿Cuál es el umbral en pesos para aprobación de descuadres? El conteo
+      de cierre (sección 10) ya calcula y registra el descuadre por
+      producto en cada conteo — falta esto para poder bloquear la siguiente
+      recarga según R7.
+- [ ] ¿Cuándo se construye el calendario real de eventos (fecha, hora,
+      reasignación en caliente si un evento se cancela a media mañana,
+      vista de calendario en el perfil del promotor)? Hoy `eventos` solo
+      representa la asignación vigente de un promotor a un punto, sin
+      fecha real ni historial de reasignaciones del mismo día (ver ADR 0005).
+      El nivel objetivo también depende de esto: ¿se calcula por promotor o
+      por punto?
 - [ ] ¿El recibo se imprime, se muestra en pantalla, o se envía por WhatsApp?
       Si se imprime, hace falta impresora Bluetooth y development build. Hoy
       el recibo interno solo existe como registro en la base de datos,

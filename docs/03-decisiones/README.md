@@ -8,9 +8,10 @@ referencia y explica qué cambió — no se edita el anterior.
 | ADR | Título | Estado |
 |---|---|---|
 | [0001](0001-metodo-autenticacion.md) | Método de autenticación | Aceptado |
-| [0002](0002-ventas-sin-evento.md) | Ventas y recargas sin `evento` (por ahora) | Aceptado, parcialmente superado por [0003](0003-stock-de-bodega.md) |
+| [0002](0002-ventas-sin-evento.md) | Ventas y recargas sin `evento` (por ahora) | Aceptado, parcialmente superado por [0003](0003-stock-de-bodega.md) y [0005](0005-puntos-y-descuentos.md) |
 | [0003](0003-stock-de-bodega.md) | Stock de bodega real | Aceptado. Corrige parcialmente [0002](0002-ventas-sin-evento.md) |
 | [0004](0004-anulacion-de-ventas.md) | Anulación de ventas (movimiento compensatorio, no borrado) | Aceptado |
+| [0005](0005-puntos-y-descuentos.md) | Puntos, asignación de promotor y descuentos | Aceptado. Activa `empresas`/`eventos`, corrige parcialmente [0002](0002-ventas-sin-evento.md) |
 
 ## Cómo agregar un ADR nuevo
 

@@ -64,12 +64,55 @@ export interface Producto {
   codigoBarras: string | null;
   nombre: string;
   categoria: string | null;
+  marca: string | null;
   esLicor: boolean;
   esPerecedero: boolean;
   precio: Pesos;
   costo: Pesos | null;
   unidadEmpaque: number;
   fotoUri: string | null;
+  activo: boolean;
+}
+
+export interface Empresa {
+  id: string;
+  nombre: string;
+  direccion: string | null;
+  sector: string | null;
+  contacto: string | null;
+}
+
+export interface Punto {
+  id: string;
+  empresaId: string;
+  empresaNombre: string;
+  nombre: string;
+  direccion: string | null;
+  activo: boolean;
+}
+
+export interface Evento {
+  id: string;
+  empresaId: string;
+  puntoId: string;
+  puntoNombre: string;
+  fecha: string;
+  promotorId: string | null;
+  estado: EstadoEvento;
+}
+
+export type TipoDescuento = 'PORCENTAJE' | 'MONTO_FIJO';
+
+export interface Descuento {
+  id: string;
+  productoId: string | null;
+  productoNombre: string | null;
+  puntoId: string | null;
+  puntoNombre: string | null;
+  tipo: TipoDescuento;
+  valor: number;
+  desde: string;
+  hasta: string;
   activo: boolean;
 }
 
@@ -93,6 +136,8 @@ export interface Venta {
   numeroRecibo: string;
   promotorId: string;
   promotorNombre: string;
+  puntoId: string | null;
+  puntoNombre: string | null;
   tsCliente: string;
   metodoPago: MetodoPago;
   total: Pesos;
@@ -105,6 +150,23 @@ export interface VentaItem {
   productoNombre: string;
   cantidad: number;
   precioUnitario: Pesos;
+}
+
+export interface Conteo {
+  id: string;
+  promotorId: string;
+  promotorNombre: string;
+  tsCliente: string;
+  estado: EstadoConteo;
+}
+
+export interface ConteoLinea {
+  productoId: string;
+  productoNombre: string;
+  teorico: number;
+  contado: number;
+  diferencia: number;
+  motivo: string | null;
 }
 
 /**

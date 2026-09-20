@@ -30,6 +30,26 @@ const MODULOS = [
     descripcion: 'Ver las ventas registradas por los promotores.',
   },
   {
+    ruta: '/admin/conteos',
+    titulo: 'Conteos de cierre',
+    descripcion: 'Ver los conteos de cierre de los promotores y sus descuadres.',
+  },
+  {
+    ruta: '/admin/empresas',
+    titulo: 'Empresas y puntos',
+    descripcion: 'Clientes y sus sedes (ej. Falabella Norte, Falabella Sur).',
+  },
+  {
+    ruta: '/admin/puntos-asignados',
+    titulo: 'Asignar punto a promotor',
+    descripcion: 'Asignar a cada promotor el punto donde está vendiendo.',
+  },
+  {
+    ruta: '/admin/descuentos',
+    titulo: 'Descuentos',
+    descripcion: 'Crear y ver descuentos por producto y/o punto, con vigencia.',
+  },
+  {
     ruta: '/admin/dashboard',
     titulo: 'Dashboard',
     descripcion: 'Ventas, productos top y saldo de bodega.',

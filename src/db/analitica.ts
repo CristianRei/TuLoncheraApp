@@ -21,6 +21,8 @@ export interface ProductoMasVendido {
 export interface ResumenVentasPeriodo {
   totalVendido: Pesos;
   cantidadVentas: number;
+  /** Promedio del total de cada venta (`totalVendido / cantidadVentas`). 0 si no hubo ventas. */
+  ticketPromedio: Pesos;
   porMetodoPago: TotalPorMetodoPago[];
   topProductos: ProductoMasVendido[];
   porHora: VentasPorHora[];
@@ -33,24 +35,107 @@ export interface RangoFechas {
   hasta: string;
 }
 
+/** Filtros opcionales del dashboard — todos combinables (AND). */
+export interface FiltrosVentas {
+  promotorId?: string;
+  puntoId?: string;
+  empresaId?: string;
+  categoria?: string;
+  marca?: string;
+  productoId?: string;
+  metodoPago?: MetodoPago;
+}
+
 /**
- * Resumen agregado de ventas activas (no anuladas) en un rango de fechas.
- * `porMetodoPago` y `topProductos` se agregan en SQL (no dependen de zona
- * horaria); `porHora` se agrega en TypeScript puro porque SQLite no
- * convierte zonas horarias (ver src/core/analitica).
+ * Resuelve los IDs de venta (activas, no anuladas) que cumplen el rango y
+ * todos los filtros — un solo lugar donde vive la lógica de filtrado, que
+ * cada agregación de abajo reutiliza con `v.id IN (...)`. Evita duplicar
+ * condiciones WHERE ligeramente distintas en cada query y el riesgo de que
+ * se desincronicen.
+ */
+async function resolverVentaIdsFiltradas(
+  db: SQLiteDatabase,
+  rango: RangoFechas,
+  filtros: FiltrosVentas
+): Promise<string[]> {
+  const condiciones = ['v.anulada = 0', 'v.ts_cliente BETWEEN ? AND ?'];
+  const parametros: (string | number)[] = [rango.desde, rango.hasta];
+  const requiereProducto = Boolean(filtros.categoria || filtros.marca || filtros.productoId);
+
+  if (filtros.promotorId) {
+    condiciones.push('v.promotor_id = ?');
+    parametros.push(filtros.promotorId);
+  }
+  if (filtros.puntoId) {
+    condiciones.push('v.punto_id = ?');
+    parametros.push(filtros.puntoId);
+  }
+  if (filtros.empresaId) {
+    condiciones.push('pt.empresa_id = ?');
+    parametros.push(filtros.empresaId);
+  }
+  if (filtros.metodoPago) {
+    condiciones.push('v.metodo_pago = ?');
+    parametros.push(filtros.metodoPago);
+  }
+  if (filtros.categoria) {
+    condiciones.push('pr.categoria = ?');
+    parametros.push(filtros.categoria);
+  }
+  if (filtros.marca) {
+    condiciones.push('pr.marca = ?');
+    parametros.push(filtros.marca);
+  }
+  if (filtros.productoId) {
+    condiciones.push('pr.id = ?');
+    parametros.push(filtros.productoId);
+  }
+
+  const filas = await db.getAllAsync<{ id: string }>(
+    `SELECT DISTINCT v.id
+     FROM ventas v
+     LEFT JOIN puntos pt ON pt.id = v.punto_id
+     ${requiereProducto ? 'JOIN venta_items vi ON vi.venta_id = v.id JOIN productos pr ON pr.id = vi.producto_id' : ''}
+     WHERE ${condiciones.join(' AND ')}`,
+    parametros
+  );
+  return filas.map((fila) => fila.id);
+}
+
+function clausulaIn(ids: string[]): string {
+  return ids.map(() => '?').join(', ');
+}
+
+/**
+ * Resumen agregado de ventas activas (no anuladas) en un rango de fechas,
+ * con filtros opcionales combinables. `porMetodoPago` y `topProductos` se
+ * agregan en SQL (no dependen de zona horaria); `porHora` se agrega en
+ * TypeScript puro porque SQLite no convierte zonas horarias (ver
+ * src/core/analitica).
  */
 export async function obtenerResumenVentas(
   db: SQLiteDatabase,
-  rango: RangoFechas
+  rango: RangoFechas,
+  filtros: FiltrosVentas = {}
 ): Promise<ResumenVentasPeriodo> {
-  const filtro = 'v.anulada = 0 AND v.ts_cliente BETWEEN ? AND ?';
-  const parametros = [rango.desde, rango.hasta];
+  const ids = await resolverVentaIdsFiltradas(db, rango, filtros);
+
+  if (ids.length === 0) {
+    return {
+      totalVendido: 0,
+      cantidadVentas: 0,
+      ticketPromedio: 0,
+      porMetodoPago: [],
+      topProductos: [],
+      porHora: [],
+    };
+  }
+
+  const enLista = clausulaIn(ids);
 
   const totales = await db.getFirstAsync<{ total: number | null; cantidad: number }>(
-    `SELECT SUM(v.total) as total, COUNT(*) as cantidad
-     FROM ventas v
-     WHERE ${filtro}`,
-    parametros
+    `SELECT SUM(total) as total, COUNT(*) as cantidad FROM ventas WHERE id IN (${enLista})`,
+    ids
   );
 
   const porMetodoPagoFilas = await db.getAllAsync<{
@@ -58,11 +143,10 @@ export async function obtenerResumenVentas(
     total: number;
     cantidad: number;
   }>(
-    `SELECT v.metodo_pago, SUM(v.total) as total, COUNT(*) as cantidad
-     FROM ventas v
-     WHERE ${filtro}
-     GROUP BY v.metodo_pago`,
-    parametros
+    `SELECT metodo_pago, SUM(total) as total, COUNT(*) as cantidad
+     FROM ventas WHERE id IN (${enLista})
+     GROUP BY metodo_pago`,
+    ids
   );
 
   const topProductosFilas = await db.getAllAsync<{
@@ -74,25 +158,26 @@ export async function obtenerResumenVentas(
     `SELECT vi.producto_id, p.nombre, SUM(vi.cantidad) as unidades,
             SUM(vi.cantidad * vi.precio_unitario) as total
      FROM venta_items vi
-     JOIN ventas v ON v.id = vi.venta_id
      JOIN productos p ON p.id = vi.producto_id
-     WHERE ${filtro}
+     WHERE vi.venta_id IN (${enLista})
      GROUP BY vi.producto_id
      ORDER BY unidades DESC
      LIMIT 10`,
-    parametros
+    ids
   );
 
   const ventasCrudas = await db.getAllAsync<{ ts_cliente: string; total: number }>(
-    `SELECT v.ts_cliente, v.total
-     FROM ventas v
-     WHERE ${filtro}`,
-    parametros
+    `SELECT ts_cliente, total FROM ventas WHERE id IN (${enLista})`,
+    ids
   );
 
+  const totalVendido = totales?.total ?? 0;
+  const cantidadVentas = totales?.cantidad ?? 0;
+
   return {
-    totalVendido: totales?.total ?? 0,
-    cantidadVentas: totales?.cantidad ?? 0,
+    totalVendido,
+    cantidadVentas,
+    ticketPromedio: cantidadVentas === 0 ? 0 : Math.round(totalVendido / cantidadVentas),
     porMetodoPago: porMetodoPagoFilas.map((fila) => ({
       metodoPago: fila.metodo_pago,
       total: fila.total,
@@ -108,6 +193,120 @@ export async function obtenerResumenVentas(
       ventasCrudas.map((fila) => ({ tsCliente: fila.ts_cliente, total: fila.total }))
     ),
   };
+}
+
+export interface TotalPorPromotor {
+  promotorId: string;
+  promotorNombre: string;
+  totalVendido: Pesos;
+  cantidadVentas: number;
+}
+
+export interface TotalPorPunto {
+  puntoId: string;
+  puntoNombre: string;
+  empresaNombre: string;
+  totalVendido: Pesos;
+  cantidadVentas: number;
+}
+
+export interface TotalPorCategoria {
+  categoria: string;
+  totalVendido: Pesos;
+  unidadesVendidas: number;
+}
+
+/** Desglose de ventas activas por promotor, mismo rango/filtros que el resumen. */
+export async function obtenerVentasPorPromotor(
+  db: SQLiteDatabase,
+  rango: RangoFechas,
+  filtros: FiltrosVentas = {}
+): Promise<TotalPorPromotor[]> {
+  const ids = await resolverVentaIdsFiltradas(db, rango, filtros);
+  if (ids.length === 0) return [];
+
+  const filas = await db.getAllAsync<{
+    promotor_id: string;
+    promotor_nombre: string;
+    total: number;
+    cantidad: number;
+  }>(
+    `SELECT v.promotor_id, u.nombre as promotor_nombre, SUM(v.total) as total, COUNT(*) as cantidad
+     FROM ventas v
+     JOIN usuarios u ON u.id = v.promotor_id
+     WHERE v.id IN (${clausulaIn(ids)})
+     GROUP BY v.promotor_id
+     ORDER BY total DESC`,
+    ids
+  );
+  return filas.map((fila) => ({
+    promotorId: fila.promotor_id,
+    promotorNombre: fila.promotor_nombre,
+    totalVendido: fila.total,
+    cantidadVentas: fila.cantidad,
+  }));
+}
+
+/** Desglose de ventas activas por punto (sede), mismo rango/filtros que el resumen. */
+export async function obtenerVentasPorPunto(
+  db: SQLiteDatabase,
+  rango: RangoFechas,
+  filtros: FiltrosVentas = {}
+): Promise<TotalPorPunto[]> {
+  const ids = await resolverVentaIdsFiltradas(db, rango, filtros);
+  if (ids.length === 0) return [];
+
+  const filas = await db.getAllAsync<{
+    punto_id: string;
+    punto_nombre: string;
+    empresa_nombre: string;
+    total: number;
+    cantidad: number;
+  }>(
+    `SELECT v.punto_id, pt.nombre as punto_nombre, e.nombre as empresa_nombre,
+            SUM(v.total) as total, COUNT(*) as cantidad
+     FROM ventas v
+     JOIN puntos pt ON pt.id = v.punto_id
+     JOIN empresas e ON e.id = pt.empresa_id
+     WHERE v.id IN (${clausulaIn(ids)})
+     GROUP BY v.punto_id
+     ORDER BY total DESC`,
+    ids
+  );
+  return filas.map((fila) => ({
+    puntoId: fila.punto_id,
+    puntoNombre: fila.punto_nombre,
+    empresaNombre: fila.empresa_nombre,
+    totalVendido: fila.total,
+    cantidadVentas: fila.cantidad,
+  }));
+}
+
+/** Desglose de ventas activas por categoría de producto, mismo rango/filtros que el resumen. */
+export async function obtenerVentasPorCategoria(
+  db: SQLiteDatabase,
+  rango: RangoFechas,
+  filtros: FiltrosVentas = {}
+): Promise<TotalPorCategoria[]> {
+  const ids = await resolverVentaIdsFiltradas(db, rango, filtros);
+  if (ids.length === 0) return [];
+
+  const filas = await db.getAllAsync<{ categoria: string | null; total: number; unidades: number }>(
+    `SELECT p.categoria, SUM(vi.cantidad * vi.precio_unitario) as total, SUM(vi.cantidad) as unidades
+     FROM venta_items vi
+     JOIN productos p ON p.id = vi.producto_id
+     WHERE vi.venta_id IN (${clausulaIn(ids)})
+     GROUP BY p.categoria
+     ORDER BY total DESC`,
+    ids
+  );
+  return filas
+    .filter((fila) => fila.categoria !== null)
+    .map((fila) => ({
+      categoria: fila.categoria as string,
+      totalVendido: fila.total,
+      unidadesVendidas: fila.unidades,
+    }));
 }
 
 export interface SaldoTotalBodega {
