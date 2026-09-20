@@ -80,52 +80,103 @@ function calcularRango(periodo: Exclude<Periodo, 'PERSONALIZADO'>): RangoFechas 
 
 const ALTURA_MAXIMA_BARRA = 96;
 
-function colorBarraHora(cantidad: number, maximo: number): string {
-  if (cantidad === 0) return COLORES_ADMIN.bordeSuave;
-  const proporcion = cantidad / maximo;
-  if (proporcion >= 0.9) return COLORES_ADMIN.vino;
-  if (proporcion >= 0.5) return COLORES_ADMIN.dorado;
-  return COLORES_ADMIN.superficieMasAlta;
-}
-
 function GraficoHoras({ porHora }: { porHora: ResumenVentasPeriodo['porHora'] }) {
+  const [horaSeleccionada, setHoraSeleccionada] = useState<number | null>(null);
+
   const porHoraCompleto = useMemo(() => {
-    const mapa = new Map(porHora.map((h) => [h.hora, h.cantidadVentas]));
-    return Array.from({ length: 24 }, (_, hora) => mapa.get(hora) ?? 0);
+    const mapa = new Map(porHora.map((h) => [h.hora, h]));
+    return Array.from({ length: 24 }, (_, hora) => mapa.get(hora) ?? { hora, cantidadVentas: 0, totalVendido: 0, porPromotor: [] });
   }, [porHora]);
 
-  const maximo = Math.max(1, ...porHoraCompleto);
-  const horaPico = porHoraCompleto.indexOf(maximo);
+  const maximo = Math.max(1, ...porHoraCompleto.map((h) => h.cantidadVentas));
+  const horaPico = porHoraCompleto.reduce((mejor, h) => (h.cantidadVentas > mejor.cantidadVentas ? h : mejor));
+  const detalle = horaSeleccionada !== null ? porHoraCompleto[horaSeleccionada] : null;
 
   return (
     <View style={styles.graficoBloque}>
-      {maximo > 0 && (
+      {horaPico.cantidadVentas > 0 && (
         <View style={styles.graficoPicoFila}>
           <View style={styles.graficoPicoPunto} />
           <Text style={styles.graficoPicoTexto}>
-            Hora pico: <Text style={styles.graficoPicoTextoFuerte}>{horaPico}:00 ({maximo} ventas)</Text>
+            Hora pico:{' '}
+            <Text style={styles.graficoPicoTextoFuerte}>
+              {horaPico.hora}:00 ({horaPico.cantidadVentas} ventas)
+            </Text>
           </Text>
         </View>
       )}
-      <View style={styles.grafico}>
-        {porHoraCompleto.map((cantidad, hora) => (
-          <View key={hora} style={styles.barraColumna}>
-            {cantidad > 0 && cantidad === maximo && (
-              <Text style={styles.barraEtiquetaPico}>{cantidad}v.</Text>
-            )}
-            <View
-              style={[
-                styles.barra,
-                {
-                  height: Math.max(3, (cantidad / maximo) * ALTURA_MAXIMA_BARRA),
-                  backgroundColor: colorBarraHora(cantidad, maximo),
-                },
-              ]}
-            />
-            {hora % 3 === 0 && <Text style={styles.barraEtiqueta}>{hora}</Text>}
-          </View>
-        ))}
+      <View style={styles.graficoContenedor}>
+        <View style={styles.grafico}>
+          {porHoraCompleto.map((datosHora) => {
+            const { hora, cantidadVentas } = datosHora;
+            const seleccionada = hora === horaSeleccionada;
+            return (
+              <Pressable
+                key={hora}
+                style={styles.barraColumna}
+                disabled={cantidadVentas === 0}
+                onPress={() => setHoraSeleccionada(seleccionada ? null : hora)}
+              >
+                <View style={styles.barraEtiquetaPicoContenedor}>
+                  {cantidadVentas > 0 && cantidadVentas === maximo && (
+                    <Text style={styles.barraEtiquetaPico}>{cantidadVentas}v.</Text>
+                  )}
+                </View>
+                <View
+                  style={[
+                    styles.barra,
+                    {
+                      height: Math.max(3, (cantidadVentas / maximo) * ALTURA_MAXIMA_BARRA),
+                      backgroundColor:
+                        cantidadVentas === 0
+                          ? COLORES_ADMIN.superficieAlta
+                          : seleccionada
+                            ? COLORES_ADMIN.vino
+                            : COLORES_ADMIN.dorado,
+                    },
+                  ]}
+                />
+              </Pressable>
+            );
+          })}
+        </View>
+        <View style={styles.graficoEje} />
+        <View style={styles.graficoEtiquetas}>
+          {porHoraCompleto.map(({ hora }) => (
+            <View key={hora} style={styles.graficoEtiquetaColumna}>
+              {hora % 3 === 0 && <Text style={styles.barraEtiqueta}>{hora}</Text>}
+            </View>
+          ))}
+        </View>
       </View>
+
+      {detalle && detalle.cantidadVentas > 0 && (
+        <View style={styles.desgloseHora}>
+          <View style={styles.desgloseHoraEncabezado}>
+            <Text style={styles.desgloseHoraTitulo}>
+              {String(detalle.hora).padStart(2, '0')}:00 — {formatearPesos(detalle.totalVendido)} ·{' '}
+              {detalle.cantidadVentas} venta{detalle.cantidadVentas === 1 ? '' : 's'}
+            </Text>
+            <Pressable onPress={() => setHoraSeleccionada(null)}>
+              <Ionicons name="close" size={16} color={COLORES_ADMIN.textoSecundario} />
+            </Pressable>
+          </View>
+          {detalle.porPromotor.map((p) => {
+            const porcentaje = detalle.totalVendido === 0 ? 0 : (p.totalVendido / detalle.totalVendido) * 100;
+            return (
+              <View key={p.promotorId} style={styles.desgloseHoraFila}>
+                <Text style={styles.desgloseHoraPromotor} numberOfLines={1}>
+                  {p.promotorNombre}
+                </Text>
+                <View style={styles.desgloseHoraBarraTrack}>
+                  <View style={[styles.desgloseHoraBarraFill, { width: `${porcentaje}%` }]} />
+                </View>
+                <Text style={styles.desgloseHoraMonto}>{formatearPesos(p.totalVendido)}</Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
     </View>
   );
 }
@@ -1280,25 +1331,48 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
   },
+  graficoContenedor: {
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingTop: 24,
+    paddingBottom: 8,
+  },
   grafico: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 4,
-    height: ALTURA_MAXIMA_BARRA + 24,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    borderRadius: 12,
-    padding: 10,
+    height: ALTURA_MAXIMA_BARRA,
   },
   barraColumna: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    gap: 4,
+  },
+  barraEtiquetaPicoContenedor: {
+    height: 16,
+    justifyContent: 'flex-end',
+    marginBottom: 3,
   },
   barra: {
     width: '100%',
-    borderRadius: 3,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
     minWidth: 4,
+  },
+  graficoEje: {
+    height: 1,
+    backgroundColor: COLORES_ADMIN.bordeSuave,
+    marginTop: 2,
+  },
+  graficoEtiquetas: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 6,
+  },
+  graficoEtiquetaColumna: {
+    flex: 1,
+    alignItems: 'center',
   },
   barraEtiqueta: {
     fontSize: 9,
@@ -1314,6 +1388,52 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 3,
     overflow: 'hidden',
+  },
+  desgloseHora: {
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderRadius: 10,
+    padding: 14,
+    gap: 10,
+  },
+  desgloseHoraEncabezado: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  desgloseHoraTitulo: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
+  },
+  desgloseHoraFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  desgloseHoraPromotor: {
+    width: 100,
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.texto,
+  },
+  desgloseHoraBarraTrack: {
+    flex: 1,
+    height: 8,
+    backgroundColor: COLORES_ADMIN.superficie,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  desgloseHoraBarraFill: {
+    height: '100%',
+    backgroundColor: COLORES_ADMIN.dorado,
+    borderRadius: 4,
+  },
+  desgloseHoraMonto: {
+    width: 90,
+    textAlign: 'right',
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    color: COLORES_ADMIN.vino,
   },
   grilla2Columnas: {
     flexDirection: 'row',

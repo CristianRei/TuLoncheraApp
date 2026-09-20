@@ -166,8 +166,16 @@ export async function obtenerResumenVentas(
     ids
   );
 
-  const ventasCrudas = await db.getAllAsync<{ ts_cliente: string; total: number }>(
-    `SELECT ts_cliente, total FROM ventas WHERE id IN (${enLista})`,
+  const ventasCrudas = await db.getAllAsync<{
+    ts_cliente: string;
+    total: number;
+    promotor_id: string;
+    promotor_nombre: string;
+  }>(
+    `SELECT v.ts_cliente, v.total, v.promotor_id, u.nombre as promotor_nombre
+     FROM ventas v
+     JOIN usuarios u ON u.id = v.promotor_id
+     WHERE v.id IN (${enLista})`,
     ids
   );
 
@@ -190,7 +198,12 @@ export async function obtenerResumenVentas(
       totalVendido: fila.total,
     })),
     porHora: agruparVentasPorHora(
-      ventasCrudas.map((fila) => ({ tsCliente: fila.ts_cliente, total: fila.total }))
+      ventasCrudas.map((fila) => ({
+        tsCliente: fila.ts_cliente,
+        total: fila.total,
+        promotorId: fila.promotor_id,
+        promotorNombre: fila.promotor_nombre,
+      }))
     ),
   };
 }

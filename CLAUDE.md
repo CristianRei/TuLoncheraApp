@@ -428,6 +428,14 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   de mes con navegación, toque para elegir desde/hasta, sin dependencias
   nuevas (usa `tema.ts`, no `@react-native-community/datetimepicker`, para
   poder mantener la paleta/tipografía del rediseño en ambas plataformas).
+  El gráfico "Hora del día con más ventas" usa una sola barra sólida
+  (dorado, vino cuando está seleccionada) — nunca el degradé de intensidad
+  de la primera versión, se veía confuso. Tocar una barra abre un desglose
+  por promotor de esa hora (barras de progreso + monto), calculado por
+  `agruparVentasPorHora` (`src/core/analitica/index.ts`, ya traía
+  `promotorId`/`promotorNombre` por venta para esto). Como es React Native
+  (también corre en tablet/móvil), la interacción es tocar/clic, no hover
+  — no hay hover real fuera de web.
 - **Datos de demo** (`src/db/seedDemo.ts`, solo bajo `__DEV__`, idempotente
   igual que los demás seeds): puebla 2 promotores extra, 2 empresas con 3
   puntos, cada promotor asignado a un punto, un descuento vigente, y ~30

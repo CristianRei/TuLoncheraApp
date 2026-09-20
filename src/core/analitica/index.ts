@@ -7,6 +7,15 @@ export interface VentaParaAgrupar {
   /** ISO 8601, normalmente en UTC (con o sin offset explícito). */
   tsCliente: string;
   total: number;
+  promotorId: string;
+  promotorNombre: string;
+}
+
+export interface VentaPorPromotorEnHora {
+  promotorId: string;
+  promotorNombre: string;
+  cantidadVentas: number;
+  totalVendido: number;
 }
 
 export interface VentasPorHora {
@@ -14,6 +23,8 @@ export interface VentasPorHora {
   hora: number;
   cantidadVentas: number;
   totalVendido: number;
+  /** Desglose de esta hora por promotor, ordenado de mayor a menor total — para el detalle al tocar la barra. */
+  porPromotor: VentaPorPromotorEnHora[];
 }
 
 /**
@@ -49,22 +60,46 @@ export function calcularRangoHoyBogota(ahora: Date = new Date()): RangoIso {
 }
 
 /**
- * Agrupa ventas por hora del día en horario de Bogotá. Solo devuelve horas
- * con al menos una venta; la UI rellena las horas faltantes con cero.
+ * Agrupa ventas por hora del día en horario de Bogotá, con desglose por
+ * promotor dentro de cada hora (para el detalle al tocar una barra del
+ * gráfico). Solo devuelve horas con al menos una venta; la UI rellena las
+ * horas faltantes con cero.
  */
 export function agruparVentasPorHora(ventas: VentaParaAgrupar[]): VentasPorHora[] {
-  const acumulado = new Map<number, { cantidadVentas: number; totalVendido: number }>();
+  const acumulado = new Map<
+    number,
+    { cantidadVentas: number; totalVendido: number; porPromotor: Map<string, VentaPorPromotorEnHora> }
+  >();
 
   for (const venta of ventas) {
     const hora = horaBogota(venta.tsCliente);
-    const actual = acumulado.get(hora) ?? { cantidadVentas: 0, totalVendido: 0 };
-    acumulado.set(hora, {
-      cantidadVentas: actual.cantidadVentas + 1,
-      totalVendido: actual.totalVendido + venta.total,
-    });
+    const actual = acumulado.get(hora) ?? {
+      cantidadVentas: 0,
+      totalVendido: 0,
+      porPromotor: new Map<string, VentaPorPromotorEnHora>(),
+    };
+    actual.cantidadVentas += 1;
+    actual.totalVendido += venta.total;
+
+    const promotorActual = actual.porPromotor.get(venta.promotorId) ?? {
+      promotorId: venta.promotorId,
+      promotorNombre: venta.promotorNombre,
+      cantidadVentas: 0,
+      totalVendido: 0,
+    };
+    promotorActual.cantidadVentas += 1;
+    promotorActual.totalVendido += venta.total;
+    actual.porPromotor.set(venta.promotorId, promotorActual);
+
+    acumulado.set(hora, actual);
   }
 
   return [...acumulado.entries()]
-    .map(([hora, datos]) => ({ hora, ...datos }))
+    .map(([hora, datos]) => ({
+      hora,
+      cantidadVentas: datos.cantidadVentas,
+      totalVendido: datos.totalVendido,
+      porPromotor: [...datos.porPromotor.values()].sort((a, b) => b.totalVendido - a.totalVendido),
+    }))
     .sort((a, b) => a.hora - b.hora);
 }

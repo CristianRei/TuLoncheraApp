@@ -12,39 +12,72 @@ function mezclar<T>(items: T[]): T[] {
   return copia;
 }
 
+function venta(tsCliente: string, total: number, promotorId = 'p1', promotorNombre = 'Cristian'): VentaParaAgrupar {
+  return { tsCliente, total, promotorId, promotorNombre };
+}
+
 test('una venta a las 03:00 UTC cae en las 22:00 de Bogotá del día anterior', () => {
-  const ventas: VentaParaAgrupar[] = [{ tsCliente: '2026-01-02T03:00:00.000Z', total: 10_000 }];
+  const ventas = [venta('2026-01-02T03:00:00.000Z', 10_000)];
   const resultado = agruparVentasPorHora(ventas);
-  assert.deepEqual(resultado, [{ hora: 22, cantidadVentas: 1, totalVendido: 10_000 }]);
+  assert.equal(resultado.length, 1);
+  assert.equal(resultado[0].hora, 22);
+  assert.equal(resultado[0].cantidadVentas, 1);
+  assert.equal(resultado[0].totalVendido, 10_000);
 });
 
 test('una venta a mediodía UTC cae en las 07:00 de Bogotá', () => {
-  const ventas: VentaParaAgrupar[] = [{ tsCliente: '2026-01-02T12:00:00.000Z', total: 5_000 }];
+  const ventas = [venta('2026-01-02T12:00:00.000Z', 5_000)];
   const resultado = agruparVentasPorHora(ventas);
-  assert.deepEqual(resultado, [{ hora: 7, cantidadVentas: 1, totalVendido: 5_000 }]);
+  assert.equal(resultado[0].hora, 7);
+  assert.equal(resultado[0].totalVendido, 5_000);
 });
 
 test('varias ventas en la misma hora se suman', () => {
-  const ventas: VentaParaAgrupar[] = [
-    { tsCliente: '2026-01-02T20:00:00.000Z', total: 10_000 },
-    { tsCliente: '2026-01-02T20:30:00.000Z', total: 20_000 },
+  const ventas = [
+    venta('2026-01-02T20:00:00.000Z', 10_000),
+    venta('2026-01-02T20:30:00.000Z', 20_000),
   ];
   const resultado = agruparVentasPorHora(ventas);
-  assert.deepEqual(resultado, [{ hora: 15, cantidadVentas: 2, totalVendido: 30_000 }]);
+  assert.equal(resultado.length, 1);
+  assert.equal(resultado[0].hora, 15);
+  assert.equal(resultado[0].cantidadVentas, 2);
+  assert.equal(resultado[0].totalVendido, 30_000);
 });
 
 test('horas sin ventas no aparecen en el resultado', () => {
-  const ventas: VentaParaAgrupar[] = [{ tsCliente: '2026-01-02T20:00:00.000Z', total: 10_000 }];
+  const ventas = [venta('2026-01-02T20:00:00.000Z', 10_000)];
   const resultado = agruparVentasPorHora(ventas);
   assert.equal(resultado.length, 1);
 });
 
+test('el desglose por promotor de una hora suma por separado y ordena de mayor a menor', () => {
+  const ventas = [
+    venta('2026-01-02T20:00:00.000Z', 10_000, 'p1', 'Cristian'),
+    venta('2026-01-02T20:10:00.000Z', 30_000, 'p2', 'Laura'),
+    venta('2026-01-02T20:20:00.000Z', 5_000, 'p1', 'Cristian'),
+  ];
+  const resultado = agruparVentasPorHora(ventas);
+  assert.equal(resultado[0].porPromotor.length, 2);
+  assert.deepEqual(resultado[0].porPromotor[0], {
+    promotorId: 'p2',
+    promotorNombre: 'Laura',
+    cantidadVentas: 1,
+    totalVendido: 30_000,
+  });
+  assert.deepEqual(resultado[0].porPromotor[1], {
+    promotorId: 'p1',
+    promotorNombre: 'Cristian',
+    cantidadVentas: 2,
+    totalVendido: 15_000,
+  });
+});
+
 test('propiedad: el orden de entrada no cambia el resultado agrupado', () => {
-  const ventas: VentaParaAgrupar[] = [
-    { tsCliente: '2026-01-02T13:00:00.000Z', total: 10_000 },
-    { tsCliente: '2026-01-02T13:15:00.000Z', total: 5_000 },
-    { tsCliente: '2026-01-02T23:00:00.000Z', total: 7_000 },
-    { tsCliente: '2026-01-03T02:00:00.000Z', total: 3_000 },
+  const ventas = [
+    venta('2026-01-02T13:00:00.000Z', 10_000, 'p1', 'Cristian'),
+    venta('2026-01-02T13:15:00.000Z', 5_000, 'p2', 'Laura'),
+    venta('2026-01-02T23:00:00.000Z', 7_000, 'p1', 'Cristian'),
+    venta('2026-01-03T02:00:00.000Z', 3_000, 'p2', 'Laura'),
   ];
 
   const resultadoOriginal = agruparVentasPorHora(ventas);
