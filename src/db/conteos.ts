@@ -179,3 +179,26 @@ export async function obtenerConteo(
     })),
   };
 }
+
+/**
+ * Cuántos conteos de cierre en el rango tienen al menos un producto con
+ * descuadre (diferencia ≠ 0) — para el indicador "por revisar" del menú
+ * admin. No implica aprobación (R7 sigue sin umbral, ver CLAUDE.md sección 11).
+ */
+export async function contarConteosConDescuadre(
+  db: SQLiteDatabase,
+  rango: { desde: string; hasta: string }
+): Promise<number> {
+  const fila = await db.getFirstAsync<{ total: number }>(
+    `SELECT COUNT(*) as total FROM (
+       SELECT cl.conteo_id
+       FROM conteo_lineas cl
+       JOIN conteos c ON c.id = cl.conteo_id
+       WHERE c.ts_cliente BETWEEN ? AND ?
+       GROUP BY cl.conteo_id
+       HAVING SUM(ABS(cl.diferencia)) > 0
+     )`,
+    [rango.desde, rango.hasta]
+  );
+  return fila?.total ?? 0;
+}

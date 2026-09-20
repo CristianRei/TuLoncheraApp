@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { agruparVentasPorHora, type VentaParaAgrupar } from './index.ts';
+import { agruparVentasPorHora, calcularRangoHoyBogota, type VentaParaAgrupar } from './index.ts';
 
 function mezclar<T>(items: T[]): T[] {
   const copia = [...items];
@@ -53,4 +53,17 @@ test('propiedad: el orden de entrada no cambia el resultado agrupado', () => {
     const resultadoMezclado = agruparVentasPorHora(mezclar(ventas));
     assert.deepEqual(resultadoMezclado, resultadoOriginal);
   }
+});
+
+test('calcularRangoHoyBogota: mediodía UTC cae después de medianoche Bogotá del mismo día', () => {
+  const ahora = new Date('2026-01-02T12:00:00.000Z');
+  const rango = calcularRangoHoyBogota(ahora);
+  assert.equal(rango.desde, '2026-01-02T05:00:00.000Z');
+  assert.equal(rango.hasta, ahora.toISOString());
+});
+
+test('calcularRangoHoyBogota: 03:00 UTC todavía es "ayer" en Bogotá, desde cae un día antes', () => {
+  const ahora = new Date('2026-01-02T03:00:00.000Z');
+  const rango = calcularRangoHoyBogota(ahora);
+  assert.equal(rango.desde, '2026-01-01T05:00:00.000Z');
 });

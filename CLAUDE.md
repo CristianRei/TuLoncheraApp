@@ -215,6 +215,8 @@ tulonchera/
     ui/                         ← componentes y hooks compartidos (sí usan React/Expo)
       ContenedorAncho.tsx         ← centra contenido con ancho máximo en tablet/pantalla ancha
       useEsPantallaAncha.ts        ← breakpoint 768px, lo usan Admin y Bodega
+      tema.ts                       ← paleta + tipografía del rediseño (Stitch) de menú admin/dashboard
+      TarjetaModulo.tsx               ← tarjeta de módulo del menú admin, usa tema.ts
   assets/
   eslint.config.js            ← eslint-config-expo, `npm run lint`
   metro.config.js             ← headers COOP/COEP para expo-sqlite en web — funciona en dev server, no en `expo export --platform web` (ver sección 5)
@@ -406,6 +408,21 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   productos") cuando es parcial, para no leerse como un total cuando no lo
   es. Los filtros de categoría/marca no tendrán opciones hasta que se cargue
   esa información en el catálogo (hoy vacía para los 123 productos reales).
+- **Rediseño visual de menú admin y dashboard** (`app/admin/index.tsx`,
+  `app/admin/dashboard/`, `src/ui/tema.ts`, `src/ui/TarjetaModulo.tsx`):
+  generado a partir de mockups de Google Stitch y adaptado a datos y
+  funcionalidad reales. Introduce un sistema de diseño propio para estas
+  dos pantallas — tipografías Hanken Grotesk (texto) y JetBrains Mono
+  (cualquier cifra: dinero, cantidades, porcentajes), cargadas vía
+  `@expo-google-fonts` en `app/_layout.tsx` (`useFonts`, gateado junto con
+  la migración de la DB). El banner del menú admin muestra 3 métricas
+  reales (promotores con punto vigente, conteos con descuadre de hoy,
+  ventas de hoy) — nunca datos ficticios (CLAUDE.md sección 8). **No** se
+  extendió a las demás pantallas de admin (catálogo, inventario, cargue,
+  ventas, conteos, empresas, puntos-asignados, descuentos, seguridad) —
+  siguen con `COLORES`/`src/ui/colores.ts`. Si se rediseña otra pantalla,
+  decidir explícitamente si se extiende `src/ui/tema.ts` o se define un
+  sistema aparte.
 - **Catálogo** (`app/admin/catalogo/`): alta, edición (nombre, precio, foto,
   código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
   Catálogo real del cliente ya cargado (123 productos, migración 0005).

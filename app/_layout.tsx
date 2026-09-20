@@ -1,3 +1,15 @@
+import {
+  HankenGrotesk_400Regular,
+  HankenGrotesk_500Medium,
+  HankenGrotesk_600SemiBold,
+  HankenGrotesk_700Bold,
+} from '@expo-google-fonts/hanken-grotesk';
+import {
+  JetBrainsMono_400Regular,
+  JetBrainsMono_500Medium,
+  JetBrainsMono_600SemiBold,
+} from '@expo-google-fonts/jetbrains-mono';
+import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -17,6 +29,15 @@ interface EstadoDb {
 
 export default function RootLayout() {
   const [estado, setEstado] = useState<EstadoDb>({ listo: false });
+  const [fuentesCargadas] = useFonts({
+    HankenGrotesk_400Regular,
+    HankenGrotesk_500Medium,
+    HankenGrotesk_600SemiBold,
+    HankenGrotesk_700Bold,
+    JetBrainsMono_400Regular,
+    JetBrainsMono_500Medium,
+    JetBrainsMono_600SemiBold,
+  });
 
   useEffect(() => {
     let cancelado = false;
@@ -57,7 +78,7 @@ export default function RootLayout() {
     );
   }
 
-  if (!estado.listo) {
+  if (!estado.listo || !fuentesCargadas) {
     return (
       <View style={styles.centrado}>
         <ActivityIndicator size="large" />

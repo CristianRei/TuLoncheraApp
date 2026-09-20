@@ -49,6 +49,14 @@ export async function obtenerPuntoVigentePromotor(
   return fila ? aEvento(fila) : null;
 }
 
+/** Cuántos promotores distintos tienen un punto vigente asignado ahora mismo. */
+export async function contarPromotoresConPuntoVigente(db: SQLiteDatabase): Promise<number> {
+  const fila = await db.getFirstAsync<{ total: number }>(
+    "SELECT COUNT(DISTINCT promotor_id) as total FROM eventos WHERE estado = 'EN_CURSO'"
+  );
+  return fila?.total ?? 0;
+}
+
 /**
  * El admin asigna un promotor a un punto: cierra la asignación vigente
  * anterior (si existe) y crea una nueva EN_CURSO. `estado` es la única

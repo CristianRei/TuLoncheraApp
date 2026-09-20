@@ -28,6 +28,26 @@ function horaBogota(tsCliente: string): number {
   return (horaUtc - OFFSET_BOGOTA_HORAS + 24) % 24;
 }
 
+export interface RangoIso {
+  /** ISO 8601 en UTC, límite inferior inclusive. */
+  desde: string;
+  /** ISO 8601 en UTC, límite superior inclusive. */
+  hasta: string;
+}
+
+/** Medianoche de hoy en Bogotá hasta ahora, en ISO UTC — para filtrar "hoy". */
+export function calcularRangoHoyBogota(ahora: Date = new Date()): RangoIso {
+  const offsetMs = OFFSET_BOGOTA_HORAS * 60 * 60 * 1000;
+  const ahoraBogota = new Date(ahora.getTime() - offsetMs);
+  const medianocheBogota = new Date(
+    Date.UTC(ahoraBogota.getUTCFullYear(), ahoraBogota.getUTCMonth(), ahoraBogota.getUTCDate())
+  );
+  return {
+    desde: new Date(medianocheBogota.getTime() + offsetMs).toISOString(),
+    hasta: ahora.toISOString(),
+  };
+}
+
 /**
  * Agrupa ventas por hora del día en horario de Bogotá. Solo devuelve horas
  * con al menos una venta; la UI rellena las horas faltantes con cero.
