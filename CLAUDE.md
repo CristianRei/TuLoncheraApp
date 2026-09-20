@@ -217,6 +217,7 @@ tulonchera/
       useEsPantallaAncha.ts        ← breakpoint 768px, lo usan Admin y Bodega
       tema.ts                       ← paleta + tipografía del rediseño (Stitch) de menú admin/dashboard
       TarjetaModulo.tsx               ← tarjeta de módulo del menú admin, usa tema.ts
+      CalendarioRango.tsx              ← calendario de mes para "Rango personalizado" del dashboard
   assets/
   eslint.config.js            ← eslint-config-expo, `npm run lint`
   metro.config.js             ← headers COOP/COEP para expo-sqlite en web — funciona en dev server, no en `expo export --platform web` (ver sección 5)
@@ -422,7 +423,22 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   ventas, conteos, empresas, puntos-asignados, descuentos, seguridad) —
   siguen con `COLORES`/`src/ui/colores.ts`. Si se rediseña otra pantalla,
   decidir explícitamente si se extiende `src/ui/tema.ts` o se define un
-  sistema aparte.
+  sistema aparte. El "Rango personalizado" del dashboard abre un calendario
+  propio (`src/ui/CalendarioRango.tsx`) en vez de inputs de texto — grilla
+  de mes con navegación, toque para elegir desde/hasta, sin dependencias
+  nuevas (usa `tema.ts`, no `@react-native-community/datetimepicker`, para
+  poder mantener la paleta/tipografía del rediseño en ambas plataformas).
+- **Datos de demo** (`src/db/seedDemo.ts`, solo bajo `__DEV__`, idempotente
+  igual que los demás seeds): puebla 2 promotores extra, 2 empresas con 3
+  puntos, cada promotor asignado a un punto, un descuento vigente, y ~30
+  días de ventas distribuidas de forma realista (más ventas en horario de
+  almuerzo, mezcla de métodos de pago, categoría/marca asignada a un
+  subconjunto del catálogo real) — para que el dashboard tenga contenido
+  real que mostrar en vez de estados vacíos. Las ventas se insertan
+  directo en las tablas (no vía `registrarVenta`, que siempre usa
+  `new Date()`) porque necesitan timestamps pasados — única excepción
+  documentada a "usar la función real", justificada porque es
+  infraestructura de desarrollo, no un caso de uso del dominio.
 - **Catálogo** (`app/admin/catalogo/`): alta, edición (nombre, precio, foto,
   código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
   Catálogo real del cliente ya cargado (123 productos, migración 0005).

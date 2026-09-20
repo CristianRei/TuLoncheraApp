@@ -9,7 +9,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +33,7 @@ import {
 import { listarCategoriasDistintas, listarMarcasDistintas, listarProductos } from '@/db/productos';
 import { listarPuntos } from '@/db/puntos';
 import { listarPromotores } from '@/db/usuarios';
+import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
@@ -43,7 +43,6 @@ type Periodo = 'HOY' | 'SEMANA' | 'MES' | 'PERSONALIZADO';
 
 const OFFSET_BOGOTA_MS = 5 * 60 * 60 * 1000;
 const REFRESCO_MS = 15000;
-const PATRON_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 const ETIQUETAS_PERIODO: Record<Exclude<Periodo, 'PERSONALIZADO'>, string> = {
   HOY: 'Hoy',
@@ -77,13 +76,6 @@ function calcularRango(periodo: Exclude<Periodo, 'PERSONALIZADO'>): RangoFechas 
     desde: new Date(desdeBogota.getTime() + OFFSET_BOGOTA_MS).toISOString(),
     hasta: new Date().toISOString(),
   };
-}
-
-/** "20260315" tecleado en number-pad → "2026-03-15", insertando guiones. */
-function formatearEntradaFecha(texto: string): string {
-  const digitos = texto.replace(/\D/g, '').slice(0, 8);
-  const partes = [digitos.slice(0, 4), digitos.slice(4, 6), digitos.slice(6, 8)].filter(Boolean);
-  return partes.join('-');
 }
 
 const ALTURA_MAXIMA_BARRA = 96;
@@ -170,8 +162,9 @@ export default function Dashboard() {
   const usuario = useRequiereSesion(['ADMIN']);
   const anchaPantalla = useEsPantallaAncha();
   const [periodo, setPeriodo] = useState<Periodo>('HOY');
-  const [desdePersonalizado, setDesdePersonalizado] = useState('');
-  const [hastaPersonalizado, setHastaPersonalizado] = useState('');
+  const [desdePersonalizado, setDesdePersonalizado] = useState<string | null>(null);
+  const [hastaPersonalizado, setHastaPersonalizado] = useState<string | null>(null);
+  const [calendarioVisible, setCalendarioVisible] = useState(false);
   const [filtros, setFiltros] = useState<FiltrosVentas>({});
   const [modalFiltroVisible, setModalFiltroVisible] = useState<CampoFiltro | null>(null);
 
@@ -189,8 +182,7 @@ export default function Dashboard() {
 
   const rango: RangoFechas | null = useMemo(() => {
     if (periodo === 'PERSONALIZADO') {
-      if (!PATRON_FECHA.test(desdePersonalizado) || !PATRON_FECHA.test(hastaPersonalizado)) return null;
-      if (desdePersonalizado > hastaPersonalizado) return null;
+      if (!desdePersonalizado || !hastaPersonalizado) return null;
       return {
         desde: new Date(`${desdePersonalizado}T00:00:00-05:00`).toISOString(),
         hasta: new Date(`${hastaPersonalizado}T23:59:59-05:00`).toISOString(),
@@ -340,7 +332,10 @@ export default function Dashboard() {
                   ))}
                   <Pressable
                     style={[styles.tab, periodo === 'PERSONALIZADO' && styles.tabActivo]}
-                    onPress={() => setPeriodo('PERSONALIZADO')}
+                    onPress={() => {
+                      setPeriodo('PERSONALIZADO');
+                      setCalendarioVisible(true);
+                    }}
                   >
                     <Ionicons
                       name="calendar-outline"
@@ -350,7 +345,10 @@ export default function Dashboard() {
                     <Text
                       style={[styles.tabTexto, periodo === 'PERSONALIZADO' && styles.tabTextoActivo]}
                     >
-                      {' '}Rango personalizado
+                      {' '}
+                      {periodo === 'PERSONALIZADO' && desdePersonalizado && hastaPersonalizado
+                        ? `${desdePersonalizado} — ${hastaPersonalizado}`
+                        : 'Rango personalizado'}
                     </Text>
                   </Pressable>
                 </View>
@@ -364,29 +362,6 @@ export default function Dashboard() {
                   </Pressable>
                 </View>
               </View>
-
-              {periodo === 'PERSONALIZADO' && (
-                <View style={styles.rangoPersonalizado}>
-                  <TextInput
-                    style={styles.rangoInput}
-                    placeholder="Desde AAAA-MM-DD"
-                    placeholderTextColor="#A8988F"
-                    value={desdePersonalizado}
-                    onChangeText={(t) => setDesdePersonalizado(formatearEntradaFecha(t))}
-                    keyboardType="number-pad"
-                    maxLength={10}
-                  />
-                  <TextInput
-                    style={styles.rangoInput}
-                    placeholder="Hasta AAAA-MM-DD"
-                    placeholderTextColor="#A8988F"
-                    value={hastaPersonalizado}
-                    onChangeText={(t) => setHastaPersonalizado(formatearEntradaFecha(t))}
-                    keyboardType="number-pad"
-                    maxLength={10}
-                  />
-                </View>
-              )}
 
               <View style={styles.selectoresFila}>
                 <SelectorFiltro
@@ -730,6 +705,35 @@ export default function Dashboard() {
         </ScrollView>
       )}
 
+      <Modal visible={calendarioVisible} animationType="fade" transparent>
+        <View style={styles.fondoModal}>
+          <View style={styles.tarjetaModalCalendario}>
+            <Text style={styles.modalCalendarioTitulo}>Elige el rango de fechas</Text>
+            <CalendarioRango
+              desde={desdePersonalizado}
+              hasta={hastaPersonalizado}
+              onCambiar={(desde, hasta) => {
+                setDesdePersonalizado(desde);
+                setHastaPersonalizado(hasta);
+              }}
+            />
+            <Pressable
+              style={[
+                styles.modalCalendarioConfirmar,
+                (!desdePersonalizado || !hastaPersonalizado) && styles.botonDeshabilitado,
+              ]}
+              disabled={!desdePersonalizado || !hastaPersonalizado}
+              onPress={() => setCalendarioVisible(false)}
+            >
+              <Text style={styles.modalCalendarioConfirmarTexto}>Aplicar rango</Text>
+            </Pressable>
+            <Pressable style={styles.modalCerrar} onPress={() => setCalendarioVisible(false)}>
+              <Text style={styles.modalCerrarTexto}>Cerrar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={modalFiltroVisible !== null} animationType="slide" transparent>
         <View style={styles.fondoModal}>
           <View style={styles.tarjetaModalFiltro}>
@@ -1033,22 +1037,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.superficieBaja,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  rangoPersonalizado: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  rangoInput: {
-    flex: 1,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
   },
   selectoresFila: {
     flexDirection: 'row',
@@ -1555,6 +1543,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(41,23,15,0.45)',
     justifyContent: 'flex-end',
+  },
+  tarjetaModalCalendario: {
+    alignSelf: 'center',
+    backgroundColor: COLORES_ADMIN.background,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 40,
+    gap: 12,
+  },
+  modalCalendarioTitulo: {
+    fontSize: 15,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
+    textAlign: 'center',
+  },
+  modalCalendarioConfirmar: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCalendarioConfirmarTexto: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#FFFFFF',
+  },
+  botonDeshabilitado: {
+    opacity: 0.5,
   },
   tarjetaModalFiltro: {
     backgroundColor: COLORES_ADMIN.background,

@@ -18,6 +18,7 @@ import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { aplicarMigracionesPendientes } from '@/db/migraciones';
 import { sembrarUsuariosDePrueba } from '@/db/seed';
+import { sembrarDatosDemo } from '@/db/seedDemo';
 import { sembrarInventarioDePrueba } from '@/db/seedInventario';
 import { buscarUsuarioPorPin } from '@/db/usuarios';
 import { SesionProvider } from '@/ui/SesionContext';
@@ -52,6 +53,9 @@ export default function RootLayout() {
           const promotor = await buscarUsuarioPorPin(db, '8509', ['PROMOTOR']);
           if (admin && promotor) {
             await sembrarInventarioDePrueba(db, admin.id, promotor.id, promotor.nombre, dispositivoId);
+          }
+          if (admin) {
+            await sembrarDatosDemo(db, admin.id, dispositivoId);
           }
         }
         if (!cancelado) setEstado({ listo: true });
