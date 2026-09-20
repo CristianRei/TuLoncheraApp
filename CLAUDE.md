@@ -148,9 +148,14 @@ pasa por una única función**, nunca `if (rol === 'admin')` disperso por la UI.
 **Calidad:** `eslint-config-expo` (`npm run lint`) — corre limpio, tratar
 cualquier error nuevo como bloqueante, no solo advertencia. **Excel:** `xlsx`
 + `expo-sharing` para exportar reportes (`src/db/exportarExcel.ts`). **Web:**
-se intentó soporte de `expo-sqlite` (headers COOP/COEP en `metro.config.js` y
-`app.json`) — **no funciona, bloqueado por un bug del propio paquete**; no es
-el objetivo del stack, no reinventar esto sin motivo nuevo.
+`npx expo start` → abrir en navegador funciona bien, incluyendo `expo-sqlite`
+(headers COOP/COEP configurados en `metro.config.js` y `app.json`). Lo que
+**no funciona es `expo export --platform web`** (el build estático de
+producción): ahí `expo-sqlite` se cuelga sin error, verificado 2026-09-20.
+No es el objetivo del stack (el destino real es móvil), así que no vale la
+pena perseguir el build estático — pero el dev server en navegador sí sirve
+para probar rápido sin sacar el celular. No reintentar el build de
+producción sin revisar si ya lo arreglaron upstream.
 
 Todo lo del SDK de Expo funciona en **Expo Go**. Solo hace falta un development
 build si se agrega un módulo nativo fuera del SDK (por ejemplo impresora térmica
@@ -192,13 +197,13 @@ tulonchera/
       inventario/                   ← calcularSaldosPorProducto + su property test
       tipos/                         ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0008, versionadas, nunca se editan una vez aplicadas
+      migraciones/                ← 0001 a 0009, versionadas, nunca se editan una vez aplicadas
     ui/                         ← componentes y hooks compartidos (sí usan React/Expo)
       ContenedorAncho.tsx         ← centra contenido con ancho máximo en tablet/pantalla ancha
       useEsPantallaAncha.ts        ← breakpoint 768px, lo usan Admin y Bodega
   assets/
   eslint.config.js            ← eslint-config-expo, `npm run lint`
-  metro.config.js             ← intento de expo-sqlite en web, bloqueado por bug del paquete — no reintentar sin revisar si ya lo arreglaron upstream
+  metro.config.js             ← headers COOP/COEP para expo-sqlite en web — funciona en dev server, no en `expo export --platform web` (ver sección 5)
 ```
 
 **`src/core` no importa React ni nada de Expo.** Es TypeScript puro. Se puede
