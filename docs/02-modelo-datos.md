@@ -1,7 +1,7 @@
 # Modelo de datos
 
 > Resumido en `CLAUDE.md` sección 7. La fuente de verdad ejecutable son las
-> migraciones en `src/db/migraciones/` (0001 a 0008 al momento de escribir
+> migraciones en `src/db/migraciones/` (0001 a 0009 al momento de escribir
 > esto) — este documento explica el razonamiento y el estado real, no
 > reemplaza leer el SQL cuando haga falta precisión exacta.
 
@@ -37,6 +37,7 @@
 | 0006 | `ventas_sin_evento` | Recrea `ventas`: `evento_id` pasa a opcional; el `CHECK` de `metodo_pago` cambia a `EFECTIVO`/`TRANSFERENCIA`/`LIBRANZA` (ver ADR 0002). |
 | 0007 | `codigo_barras_unico` | Índice `UNIQUE` sobre `productos.codigo_barras` (los `NULL` no chocan entre sí en SQLite). |
 | 0008 | `anulacion_ventas` | `ventas` gana `anulada`/`motivo_anulacion`. Recrea `movimientos` para agregar `ANULACION_VENTA` al `CHECK` de `tipo` (ver ADR 0004). |
+| 0009 | `seguridad_pin` | Tres tablas nuevas para el bloqueo por intentos fallidos de PIN: `intentos_pin_fallidos`, `desbloqueos_pin`, `logins_exitosos_pin`. |
 
 ## Tablas (estado real, no el diseño original)
 
@@ -53,6 +54,9 @@
 | `venta_items` | Líneas de una venta. | En uso |
 | `conteos` / `conteo_lineas` | Conteo de cierre: teórico vs. contado, con motivo y aprobación cuando hay descuadre (R7). | Sin usar — Fase 2, no construido |
 | `niveles_objetivo` | Insumo para la recarga sugerida. | Sin usar — Fase 6 |
+| `intentos_pin_fallidos` | Un intento de PIN fallido, por dispositivo+modo. Nunca guarda el PIN tecleado. | En uso |
+| `desbloqueos_pin` | Un admin desbloqueando un dispositivo+modo bloqueado, tecleando su propio PIN. `admin_id` obligatorio. | En uso |
+| `logins_exitosos_pin` | Un login correcto, por dispositivo+modo — resetea el conteo de fallos consecutivos. | En uso |
 
 ## Cómo se mueve el inventario, en la práctica
 
@@ -84,6 +88,17 @@ vuelo:
 
 `calcularSaldosPorProducto(movimientos, ubicacionId)` sirve para cualquier
 ubicación (bodega o promotor) — es la misma función, sin distinguir tipos.
+
+## Seguridad de PIN: el mismo patrón de "libro de movimientos"
+
+`obtenerEstadoIntentos` (`src/db/intentosPin.ts`) nunca lee un contador
+guardado: cuenta filas de `intentos_pin_fallidos` posteriores al evento más
+reciente entre `desbloqueos_pin` y `logins_exitosos_pin`, para esa combinación
+`dispositivo_id` + `modo`. Tres tablas separadas en vez de una sola de
+"eventos" porque `desbloqueos_pin` tiene una columna obligatoria
+(`admin_id`) que no aplica a las otras dos. El backoff y el umbral de
+bloqueo son puros (`src/core/seguridadPin/`, con tests de propiedad) —
+reciben el conteo de fallos y deciden NORMAL / ESPERANDO / BLOQUEADO.
 
 ## Pendiente para cuando se resuelvan las preguntas abiertas
 

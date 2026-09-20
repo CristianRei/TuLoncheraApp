@@ -209,7 +209,7 @@ panel web el día que exista.
 
 ## 7. Modelo de datos (resumen)
 
-Estado real después de las migraciones 0001-0008. Detalle completo y
+Estado real después de las migraciones 0001-0009. Detalle completo y
 razonamiento en `docs/02-modelo-datos.md`.
 
 ```
@@ -242,6 +242,14 @@ conteos           (id UUID PK, evento_id, ts_cliente, estado, firmado_por)  ← 
 conteo_lineas     (conteo_id, producto_id, teorico, contado,
                    diferencia, motivo, aprobado_por)                         ← sin usar todavía
 niveles_objetivo  (promotor_id, producto_id, cantidad, actualizado_ts)        ← sin usar todavía
+intentos_pin_fallidos (id UUID PK, dispositivo_id, modo, ts_cliente)          ← en uso
+desbloqueos_pin       (id UUID PK, dispositivo_id, modo, admin_id, ts_cliente) ← en uso
+logins_exitosos_pin   (id UUID PK, dispositivo_id, modo, ts_cliente)          ← en uso
+                  ← backoff/bloqueo de PIN (ver sección 10). El conteo de
+                    fallos consecutivos nunca es una columna: se deriva
+                    contando filas de intentos_pin_fallidos posteriores al
+                    evento más reciente entre las otras dos tablas — mismo
+                    espíritu de R1.
 ```
 
 **Tipos de movimiento:**
@@ -317,7 +325,7 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 | 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta y recibo interno listos; falta arqueo |
 | 4 | Bodega: alistamiento por escáner, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega y entrada de inventario listos; falta alistamiento por escáner, niveles objetivo, alertas de vencimiento, y pantalla propia del rol Bodega |
 | 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | ⬜ |
-| 6 | Reportes administrativos. Recomendador de recarga afinado | ⬜ |
+| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard de ventas listo (ver abajo); recomendador de recarga sigue sin construir |
 
 ### Qué existe hoy, concretamente
 
@@ -325,6 +333,20 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   rol; modo promotor por defecto, botones para entrar como administrador o
   bodega. Usuarios de prueba solo en `__DEV__` (`src/db/seed.ts`): Admin
   `0000`, Cristian/promotor `8509`, Bodega `1234`.
+- **Seguridad de PIN** (`src/core/seguridadPin/`, `src/db/intentosPin.ts`):
+  backoff progresivo (3, 8, 20, 45, 90s) tras 3 fallos consecutivos y bloqueo
+  duro a los 8, por dispositivo+modo. Un admin desbloquea tecleando su propio
+  PIN (`src/ui/ModalDesbloqueoPin.tsx`). Nunca se guarda el PIN tecleado.
+  Panel de admin en `app/admin/intentos-pin/` para ver dispositivos
+  bloqueados e intentos fallidos.
+- **Dashboard de ventas** (`app/admin/dashboard/`, `src/db/analitica.ts`,
+  `src/core/analitica/`): KPIs (total vendido, cantidad de ventas, saldo en
+  bodega), desglose por método de pago, ventas por hora del día en Bogotá
+  (offset fijo UTC-5) y top de productos. Filtra por hoy / 7 días / 30 días.
+  Solo pantalla ancha, como el resto de Admin. El valor estimado de bodega
+  solo cuenta productos con `costo` capturado — la UI muestra la cobertura
+  (ej. "12 de 123 productos") cuando es parcial, para no leerse como un
+  total cuando no lo es.
 - **Catálogo** (`app/admin/catalogo/`): alta, edición (nombre, precio, foto,
   código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
   Catálogo real del cliente ya cargado (123 productos, migración 0005).
