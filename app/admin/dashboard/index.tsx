@@ -170,6 +170,8 @@ export default function Dashboard() {
                     {saldoBodega.valorEstimado !== null && (
                       <Text style={styles.kpiSubtexto}>
                         ≈ {formatearPesos(saldoBodega.valorEstimado)}
+                        {saldoBodega.productosConCosto < saldoBodega.productosTotal &&
+                          ` · ${saldoBodega.productosConCosto} de ${saldoBodega.productosTotal} productos con costo`}
                       </Text>
                     )}
                   </View>

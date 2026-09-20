@@ -114,11 +114,22 @@ export interface SaldoTotalBodega {
   totalUnidades: number;
   /** null si ningún producto en bodega tiene costo capturado todavía. */
   valorEstimado: Pesos | null;
+  /** Cuántos de los productos con saldo en bodega tienen costo capturado. */
+  productosConCosto: number;
+  /** Total de productos distintos con saldo en bodega. */
+  productosTotal: number;
 }
 
 /**
  * Reutiliza `listarInventarioBodega` (ya respeta R1: saldo agregado sobre
  * movimientos) — no reimplementa el cálculo de saldos.
+ *
+ * `valorEstimado` solo suma los productos con costo capturado: si la mayoría
+ * no lo tiene (hoy es el caso real, ver ADR 0003), la cifra puede ser una
+ * fracción pequeña del valor real de la bodega. `productosConCosto` /
+ * `productosTotal` existen para que la UI muestre esa cobertura y la cifra
+ * no se lea como un total cuando no lo es (CLAUDE.md sección 8: nada de
+ * datos ficticios en la UI).
  */
 export async function obtenerSaldoTotalBodega(db: SQLiteDatabase): Promise<SaldoTotalBodega> {
   const items = await listarInventarioBodega(db);
@@ -131,5 +142,10 @@ export async function obtenerSaldoTotalBodega(db: SQLiteDatabase): Promise<Saldo
       ? null
       : itemsConCosto.reduce((suma, item) => suma + item.saldo * (item.producto.costo ?? 0), 0);
 
-  return { totalUnidades, valorEstimado };
+  return {
+    totalUnidades,
+    valorEstimado,
+    productosConCosto: itemsConCosto.length,
+    productosTotal: items.length,
+  };
 }
