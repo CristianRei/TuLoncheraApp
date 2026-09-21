@@ -94,6 +94,13 @@ const MODULOS: {
     soloPantallaAncha: true,
   },
   {
+    ruta: '/admin/analisis',
+    titulo: 'Análisis',
+    descripcion: 'Qué se repite por punto, cómo rinde cada promotor, y qué cruces valen la pena.',
+    icono: 'analytics-outline',
+    soloPantallaAncha: true,
+  },
+  {
     ruta: '/admin/notificaciones',
     titulo: 'Notificaciones',
     descripcion: 'Stock bajo, lotes por vencer y otras alertas del negocio.',

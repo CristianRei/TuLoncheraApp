@@ -201,6 +201,7 @@ tulonchera/
       empresas/                          ← empresas cliente y sus puntos (sedes)
       descuentos/                         ← crear / ver descuentos por producto y/o punto
       dashboard/                           ← KPIs, filtros, desgloses por promotor/punto/categoría
+      analisis/                             ← repetibilidad por punto, rendimiento por promotor, cruces punto×promotor×producto
       notificaciones/                       ← stock bajo, lote por vencer, cargue a revisar
       intentos-pin/                          ← dispositivos bloqueados e intentos fallidos de PIN
       sync/                                   ← diagnóstico de la cola de sincronización (sin entrada en el menú)
@@ -213,6 +214,7 @@ tulonchera/
     core/                       ← lógica de dominio, SIN dependencias de React ni Expo
       auth/                       ← modo de login (promotor/admin/bodega) → roles permitidos
       analitica/                   ← agruparVentasPorHora (zona horaria Bogotá), fechaHoyBogota
+      analisis/                     ← repetibilidad/rendimiento/cruce punto×promotor×producto + property tests
       descuentos/                   ← aplicarDescuento + su test
       dinero/                        ← formatearPesos / parsearPesos
       eventos/                        ← calcularOcurrencias (series recurrentes del calendario) + property test
@@ -223,6 +225,7 @@ tulonchera/
       migraciones/                ← 0001 a 0018, versionadas, nunca se editan una vez aplicadas
       cargues.ts                   ← planear/reducir/entregar cargue (cabecera + líneas)
       cargue.ts                     ← RECARGA real bodega→promotor, usado por cargues.ts
+      analisis.ts                    ← trae líneas de venta con contexto, envuelve core/analisis
       conteos.ts                     ← conteo de cierre
       descuentos.ts                   ← reglas de descuento + resolución del vigente
       empresas.ts / puntos.ts          ← empresas cliente y sus puntos
@@ -453,7 +456,7 @@ construida (solo turnos/comprobantes).**
 | 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta, recibo interno y comprobante de transferencia listos; falta arqueo |
 | 4 | Bodega: cargue por escáner en dos pasos, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega, entrada de inventario, y cargue en dos pasos (admin planea/bodega entrega por escáner) listos; falta niveles objetivo y alertas de vencimiento por producto próximo a vencer (sí existe notificación de cargue a revisar) |
 | 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 Primera rebanada: turnos y comprobantes de transferencia sincronizan a Supabase (ADR 0006). El resto del motor de inventario/ventas sigue 100% local. Sin panel web todavía |
-| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido con filtros, puntos y descuentos listo (ver abajo); recomendador de recarga sigue sin construir |
+| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido con filtros, puntos y descuentos listo; sección Análisis (repetibilidad/rendimiento/cruces, ver abajo) también lista; recomendador de recarga sigue sin construir |
 
 ### Qué existe hoy, concretamente
 
@@ -482,6 +485,25 @@ construida (solo turnos/comprobantes).**
   productos") cuando es parcial, para no leerse como un total cuando no lo
   es. Los filtros de categoría/marca no tendrán opciones hasta que se cargue
   esa información en el catálogo (hoy vacía para los 123 productos reales).
+- **Análisis** (`app/admin/analisis/`, `src/db/analisis.ts`,
+  `src/core/analisis/`): distinto del Dashboard — no agrega dentro de un
+  rango, compara entre **eventos** (fechas de feria distintas en un mismo
+  punto) para detectar qué se repite. Tres bloques: (1) por punto, qué
+  productos aparecen en el top-5 de unidades evento tras evento, con
+  tendencia (subiendo/estable/bajando) calculada comparando la mitad más
+  reciente de apariciones contra la más antigua; (2) por promotor, ticket
+  promedio por evento y qué productos vende muy por encima/debajo
+  (≥20%) del promedio de **los demás promotores** (nunca se compara un
+  promotor contra un promedio que lo incluye a él mismo — diluye la
+  desviación); (3) hallazgos cruzados punto×promotor×producto, mismo
+  cálculo de desviación pero acotado a un punto específico, como lista de
+  insights ordenada por magnitud, no una matriz completa. Umbral mínimo de
+  3 apariciones antes de calificar algo como "repetible" o generar un
+  hallazgo — con menos, se marca `datosInsuficientes` en vez de inventar
+  una tendencia (CLAUDE.md sección 8). Períodos: 30/90 días o todo el
+  historial — no comparte los filtros combinables del dashboard porque el
+  cálculo necesita ver *todas* las apariciones de un punto/promotor para
+  que la tasa de repetición sea correcta. Solo pantalla ancha.
 - **Rediseño visual de menú admin y dashboard** (`app/admin/index.tsx`,
   `app/admin/dashboard/`, `src/ui/tema.ts`, `src/ui/TarjetaModulo.tsx`):
   generado a partir de mockups de Google Stitch y adaptado a datos y

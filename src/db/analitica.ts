@@ -53,7 +53,7 @@ export interface FiltrosVentas {
  * condiciones WHERE ligeramente distintas en cada query y el riesgo de que
  * se desincronicen.
  */
-async function resolverVentaIdsFiltradas(
+export async function resolverVentaIdsFiltradas(
   db: SQLiteDatabase,
   rango: RangoFechas,
   filtros: FiltrosVentas
@@ -102,7 +102,7 @@ async function resolverVentaIdsFiltradas(
   return filas.map((fila) => fila.id);
 }
 
-function clausulaIn(ids: string[]): string {
+export function clausulaIn(ids: string[]): string {
   return ids.map(() => '?').join(', ');
 }
 

@@ -1,0 +1,496 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import type { HallazgoCruzado, RendimientoPromotor, RepetibilidadPunto, Tendencia } from '@/core/analisis';
+import { formatearPesos } from '@/core/dinero';
+import type { RangoFechas } from '@/db/analitica';
+import {
+  obtenerCrucePuntoPromotorProducto,
+  obtenerRendimientoPorPromotor,
+  obtenerRepetibilidadPorPunto,
+} from '@/db/analisis';
+import { getDb } from '@/db/client';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { useRequiereSesion } from '@/ui/useRequiereSesion';
+
+type Periodo = 'MES' | 'TRIMESTRE' | 'TODO';
+
+const ETIQUETAS_PERIODO: Record<Periodo, string> = {
+  MES: 'Últimos 30 días',
+  TRIMESTRE: 'Últimos 90 días',
+  TODO: 'Todo el historial',
+};
+
+const DIAS_POR_PERIODO: Record<Exclude<Periodo, 'TODO'>, number> = {
+  MES: 30,
+  TRIMESTRE: 90,
+};
+
+const OFFSET_BOGOTA_MS = 5 * 60 * 60 * 1000;
+
+/** "Todo" arranca desde una fecha lo bastante atrás como para cubrir cualquier dato real cargado hoy — sin depender de una fecha de fundación hardcodeada con significado de negocio. */
+const DESDE_TODO_ISO = '2020-01-01T00:00:00.000Z';
+
+function calcularRango(periodo: Periodo): RangoFechas {
+  if (periodo === 'TODO') {
+    return { desde: DESDE_TODO_ISO, hasta: new Date().toISOString() };
+  }
+  const ahoraBogota = new Date(Date.now() - OFFSET_BOGOTA_MS);
+  const medianocheBogota = new Date(
+    Date.UTC(ahoraBogota.getUTCFullYear(), ahoraBogota.getUTCMonth(), ahoraBogota.getUTCDate())
+  );
+  const desdeBogota = new Date(
+    medianocheBogota.getTime() - (DIAS_POR_PERIODO[periodo] - 1) * 24 * 60 * 60 * 1000
+  );
+  return {
+    desde: new Date(desdeBogota.getTime() + OFFSET_BOGOTA_MS).toISOString(),
+    hasta: new Date().toISOString(),
+  };
+}
+
+const ICONO_TENDENCIA: Record<Tendencia, keyof typeof Ionicons.glyphMap> = {
+  SUBIENDO: 'trending-up-outline',
+  ESTABLE: 'remove-outline',
+  BAJANDO: 'trending-down-outline',
+};
+
+const COLOR_TENDENCIA: Record<Tendencia, string> = {
+  SUBIENDO: COLORES_ADMIN.positivo,
+  ESTABLE: COLORES_ADMIN.textoSecundario,
+  BAJANDO: COLORES_ADMIN.error,
+};
+
+function TarjetaPunto({ punto }: { punto: RepetibilidadPunto }) {
+  const [expandido, setExpandido] = useState(false);
+  const productosDestacados = punto.productos.filter((p) => p.apariciones >= 1).slice(0, expandido ? undefined : 3);
+
+  return (
+    <View style={styles.tarjeta}>
+      <Pressable style={styles.tarjetaEncabezado} onPress={() => setExpandido((v) => !v)}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.tarjetaTitulo}>{punto.puntoNombre}</Text>
+          <Text style={styles.tarjetaSubtitulo}>
+            {punto.totalApariciones} evento{punto.totalApariciones === 1 ? '' : 's'} con venta registrada
+          </Text>
+        </View>
+        {punto.datosInsuficientes ? (
+          <View style={styles.badgeInsuficiente}>
+            <Text style={styles.badgeInsuficienteTexto}>Historial corto</Text>
+          </View>
+        ) : (
+          <Ionicons
+            name={expandido ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={COLORES_ADMIN.textoSecundario}
+          />
+        )}
+      </Pressable>
+
+      {punto.datosInsuficientes ? (
+        <Text style={styles.textoAviso}>
+          Todavía no hay suficientes eventos en este punto para saber qué se repite. Se necesitan al menos 3.
+        </Text>
+      ) : (
+        <View style={styles.listaProductos}>
+          {productosDestacados.map((producto) => (
+            <View key={producto.productoId} style={styles.filaProducto}>
+              <Text style={styles.filaProductoNombre} numberOfLines={1}>
+                {producto.productoNombre}
+              </Text>
+              <Text style={styles.filaProductoDato}>
+                {producto.vecesEnTopN}/{producto.apariciones} veces en el top
+              </Text>
+              {producto.tendencia && (
+                <Ionicons
+                  name={ICONO_TENDENCIA[producto.tendencia]}
+                  size={15}
+                  color={COLOR_TENDENCIA[producto.tendencia]}
+                />
+              )}
+            </View>
+          ))}
+          {!expandido && punto.productos.length > 3 && (
+            <Pressable onPress={() => setExpandido(true)}>
+              <Text style={styles.verMasTexto}>Ver los {punto.productos.length} productos</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function TarjetaPromotor({ promotor }: { promotor: RendimientoPromotor }) {
+  return (
+    <View style={styles.tarjeta}>
+      <View style={styles.tarjetaEncabezado}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.tarjetaTitulo}>{promotor.promotorNombre}</Text>
+          <Text style={styles.tarjetaSubtitulo}>
+            {promotor.eventosTrabajados} evento{promotor.eventosTrabajados === 1 ? '' : 's'} · Ticket promedio{' '}
+            {formatearPesos(promotor.ticketPromedioPorEvento)}/evento
+          </Text>
+        </View>
+      </View>
+
+      {promotor.mixDestacado.length === 0 ? (
+        <Text style={styles.textoAviso}>Sin desviaciones notables frente al resto de promotores todavía.</Text>
+      ) : (
+        <View style={styles.listaProductos}>
+          {promotor.mixDestacado.map((desviacion) => (
+            <View key={desviacion.productoId} style={styles.filaProducto}>
+              <Text style={styles.filaProductoNombre} numberOfLines={1}>
+                {desviacion.productoNombre}
+              </Text>
+              <Text
+                style={[
+                  styles.filaProductoDato,
+                  { color: desviacion.desviacionPct > 0 ? COLORES_ADMIN.positivo : COLORES_ADMIN.error },
+                ]}
+              >
+                {desviacion.desviacionPct > 0 ? '+' : ''}
+                {desviacion.desviacionPct}% vs. resto
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function TarjetaHallazgo({ hallazgo }: { hallazgo: HallazgoCruzado }) {
+  const positivo = hallazgo.desviacionPct > 0;
+  return (
+    <View style={styles.tarjetaHallazgo}>
+      <Ionicons
+        name={positivo ? 'trending-up-outline' : 'trending-down-outline'}
+        size={18}
+        color={positivo ? COLORES_ADMIN.positivo : COLORES_ADMIN.error}
+      />
+      <Text style={styles.textoHallazgo}>
+        <Text style={styles.textoHallazgoFuerte}>{hallazgo.promotorNombre}</Text> vende{' '}
+        <Text style={styles.textoHallazgoFuerte}>
+          {positivo ? '+' : ''}
+          {hallazgo.desviacionPct}%
+        </Text>{' '}
+        de <Text style={styles.textoHallazgoFuerte}>{hallazgo.productoNombre}</Text> en{' '}
+        <Text style={styles.textoHallazgoFuerte}>{hallazgo.puntoNombre}</Text> frente al resto de promotores ahí (
+        {hallazgo.aparicionesEnPunto} eventos).
+      </Text>
+    </View>
+  );
+}
+
+export default function Analisis() {
+  const usuario = useRequiereSesion(['ADMIN']);
+  const anchaPantalla = useEsPantallaAncha();
+  const insets = useSafeAreaInsets();
+  const [periodo, setPeriodo] = useState<Periodo>('MES');
+  const [cargando, setCargando] = useState(true);
+  const [porPunto, setPorPunto] = useState<RepetibilidadPunto[]>([]);
+  const [porPromotor, setPorPromotor] = useState<RendimientoPromotor[]>([]);
+  const [hallazgos, setHallazgos] = useState<HallazgoCruzado[]>([]);
+
+  const rango = useMemo(() => calcularRango(periodo), [periodo]);
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      const db = await getDb();
+      const [repetibilidad, rendimiento, cruce] = await Promise.all([
+        obtenerRepetibilidadPorPunto(db, rango),
+        obtenerRendimientoPorPromotor(db, rango),
+        obtenerCrucePuntoPromotorProducto(db, rango),
+      ]);
+      setPorPunto(repetibilidad);
+      setPorPromotor(rendimiento);
+      setHallazgos(cruce);
+    } finally {
+      setCargando(false);
+    }
+  }, [rango]);
+
+  useFocusEffect(
+    useCallback(() => {
+      cargar();
+    }, [cargar])
+  );
+
+  if (!usuario) return null;
+
+  return (
+    <View style={styles.contenedor}>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 16 }]}>
+        <ContenedorAncho anchoMaximo={1200}>
+          <View style={styles.encabezadoFila}>
+            <Pressable style={styles.volverBoton} onPress={() => router.back()}>
+              <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
+              <Text style={styles.volverTexto}>Admin</Text>
+            </Pressable>
+            <Text style={styles.titulo}>Análisis</Text>
+          </View>
+        </ContenedorAncho>
+      </View>
+
+      {!anchaPantalla ? (
+        <View style={styles.centrado}>
+          <Text style={styles.avisoAngosto}>
+            Esta sección está optimizada para pantalla ancha. Ábrela desde un computador o tablet.
+          </Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <ContenedorAncho anchoMaximo={1200}>
+            <View style={styles.tabs}>
+              {(Object.keys(ETIQUETAS_PERIODO) as Periodo[]).map((p) => (
+                <Pressable
+                  key={p}
+                  style={[styles.tab, periodo === p && styles.tabActivo]}
+                  onPress={() => setPeriodo(p)}
+                >
+                  <Text style={[styles.tabTexto, periodo === p && styles.tabTextoActivo]}>
+                    {ETIQUETAS_PERIODO[p]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {cargando ? (
+              <View style={styles.centrado}>
+                <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
+              </View>
+            ) : (
+              <View style={styles.cuerpo}>
+                <Text style={styles.seccionTitulo}>Qué se repite por punto</Text>
+                <Text style={styles.seccionSubtitulo}>
+                  Productos que aparecen entre los más vendidos evento tras evento en cada punto — para decidir
+                  qué cargue armar la próxima vez.
+                </Text>
+                {porPunto.length === 0 ? (
+                  <Text style={styles.textoAviso}>Sin ventas con punto asignado en este período.</Text>
+                ) : (
+                  porPunto.map((punto) => <TarjetaPunto key={punto.puntoId} punto={punto} />)
+                )}
+
+                <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>Rendimiento por promotor</Text>
+                <Text style={styles.seccionSubtitulo}>
+                  Ticket promedio por evento y en qué productos cada promotor se desvía del resto.
+                </Text>
+                {porPromotor.length === 0 ? (
+                  <Text style={styles.textoAviso}>Sin ventas con punto asignado en este período.</Text>
+                ) : (
+                  porPromotor.map((promotor) => <TarjetaPromotor key={promotor.promotorId} promotor={promotor} />)
+                )}
+
+                <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>Hallazgos cruzados</Text>
+                <Text style={styles.seccionSubtitulo}>
+                  Combinaciones punto + promotor + producto con la desviación más marcada frente al resto,
+                  ordenadas de mayor a menor.
+                </Text>
+                {hallazgos.length === 0 ? (
+                  <Text style={styles.textoAviso}>
+                    Todavía no hay suficiente historial para encontrar cruces con señal clara.
+                  </Text>
+                ) : (
+                  hallazgos
+                    .slice(0, 20)
+                    .map((hallazgo, i) => (
+                      <TarjetaHallazgo key={`${hallazgo.puntoId}-${hallazgo.promotorId}-${hallazgo.productoId}-${i}`} hallazgo={hallazgo} />
+                    ))
+                )}
+              </View>
+            )}
+          </ContenedorAncho>
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  contenedor: {
+    flex: 1,
+    backgroundColor: COLORES_ADMIN.background,
+  },
+  encabezado: {
+    backgroundColor: COLORES_ADMIN.vino,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  encabezadoFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  volverBoton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  volverTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: '#FFE9E2',
+  },
+  titulo: {
+    fontSize: 17,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#FFFFFF',
+  },
+  centrado: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  avisoAngosto: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  scroll: {
+    paddingBottom: 40,
+  },
+  tabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    padding: 4,
+    borderRadius: 10,
+    margin: 20,
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
+  tab: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  tabActivo: {
+    backgroundColor: COLORES_ADMIN.vino,
+  },
+  tabTexto: {
+    fontSize: 12.5,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  tabTextoActivo: {
+    color: '#FFFFFF',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  cuerpo: {
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  seccionTitulo: {
+    fontSize: 15,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.texto,
+  },
+  seccionEspaciada: {
+    marginTop: 20,
+  },
+  seccionSubtitulo: {
+    fontSize: 12.5,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    marginBottom: 4,
+  },
+  tarjeta: {
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: 16,
+    gap: 10,
+  },
+  tarjetaEncabezado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  tarjetaTitulo: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.texto,
+  },
+  tarjetaSubtitulo: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    marginTop: 2,
+  },
+  badgeInsuficiente: {
+    backgroundColor: COLORES_ADMIN.superficieAlta,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  badgeInsuficienteTexto: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  textoAviso: {
+    fontSize: 12.5,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  listaProductos: {
+    gap: 8,
+  },
+  filaProducto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  filaProductoNombre: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.texto,
+  },
+  filaProductoDato: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.monoMedio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  verMasTexto: {
+    fontSize: 12.5,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.vino,
+  },
+  tarjetaHallazgo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: 14,
+  },
+  textoHallazgo: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.texto,
+    lineHeight: 19,
+  },
+  textoHallazgoFuerte: {
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+});
