@@ -510,6 +510,11 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   botón "Exportar" en catálogo, ventas e inventario; genera un `.xlsx` y
   abre el diálogo nativo de compartir. Etiquetado como demo en el código —
   sin manejo de archivos grandes ni formato avanzado.
+- **PDF de cierre de turno** (`src/db/exportarCierreTurno.ts`, `expo-print`
+  + `expo-sharing`): al finalizar turno, el promotor puede descargar un
+  comprobante en PDF con inventario final, resumen de ventas del turno por
+  método de pago, y datos del check-in/check-out (sin la selfie) — evento
+  del calendario si tenía uno asignado ese día.
 - **Tablet / pantalla ancha** (`ContenedorAncho`, `useEsPantallaAncha`):
   Admin y Bodega se adaptan a partir de 768px de ancho (grilla de 2 columnas,
   contenido centrado con ancho máximo) — el celular no cambia.

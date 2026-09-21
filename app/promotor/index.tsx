@@ -14,13 +14,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { formatearPesos } from '@/core/dinero';
 import type { Evento, MetodoPago, Turno } from '@/core/tipos';
+import { obtenerResumenVentas } from '@/db/analitica';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { guardarFotoComprobante } from '@/db/fotos';
 import { existeConteoHoy } from '@/db/conteos';
+import { generarPdfCierreTurno } from '@/db/exportarCierreTurno';
+import { guardarFotoComprobante } from '@/db/fotos';
 import { obtenerSaldoProducto, listarInventarioPromotor, type ItemInventario } from '@/db/inventario';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
 import { finalizarTurno, obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
@@ -124,12 +127,43 @@ export default function HomePromotor() {
             setTicketVisible(false);
             setCobrarVisible(false);
             setEscanerVisible(false);
+            const horaFin = new Date().toISOString();
             await finalizarTurno(db, { turnoId: turno.id });
             await cargarTurno(usuarioActual.id);
+            ofrecerDescargarPdf(db, { ...turno, horaFin }, eventoHoy);
           },
         },
       ]
     );
+  }
+
+  function ofrecerDescargarPdf(db: SQLiteDatabase, turnoCerrado: Turno, evento: Evento | null) {
+    Alert.alert('Turno finalizado', '¿Quieres descargar el comprobante en PDF?', [
+      { text: 'Ahora no', style: 'cancel' },
+      {
+        text: 'Descargar PDF',
+        onPress: async () => {
+          try {
+            const [inventarioFinal, resumenVentas] = await Promise.all([
+              listarInventarioPromotor(db, turnoCerrado.promotorId),
+              obtenerResumenVentas(
+                db,
+                { desde: turnoCerrado.horaInicio, hasta: turnoCerrado.horaFin ?? new Date().toISOString() },
+                { promotorId: turnoCerrado.promotorId }
+              ),
+            ]);
+            await generarPdfCierreTurno({
+              turno: turnoCerrado,
+              eventoHoy: evento,
+              inventario: inventarioFinal,
+              resumenVentas,
+            });
+          } catch {
+            Alert.alert('No se pudo generar el PDF', 'Intenta de nuevo en un momento.');
+          }
+        },
+      },
+    ]);
   }
 
   function mostrarAvisoEscaner(texto: string) {
