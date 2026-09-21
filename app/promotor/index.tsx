@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -42,6 +43,7 @@ export default function HomePromotor() {
   const [escanerVisible, setEscanerVisible] = useState(false);
   const [procesandoVenta, setProcesandoVenta] = useState(false);
   const [avisoEscaner, setAvisoEscaner] = useState<string | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
   const avisoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cargarInventario = useCallback(async (promotorId: string) => {
@@ -151,18 +153,48 @@ export default function HomePromotor() {
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
         <Text style={styles.saludo}>Hola, {usuario.nombre}</Text>
-        <View style={styles.encabezadoAcciones}>
-          <Pressable onPress={() => router.push('/promotor/calendario')}>
-            <Text style={styles.cerrarSesion}>Mi calendario</Text>
-          </Pressable>
-          <Pressable onPress={() => router.push('/promotor/conteo-cierre')}>
-            <Text style={styles.cerrarSesion}>Conteo de cierre</Text>
-          </Pressable>
-          <Pressable onPress={salir}>
-            <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
-          </Pressable>
-        </View>
+        <Pressable style={styles.botonMenu} onPress={() => setMenuVisible(true)}>
+          <Ionicons name="menu-outline" size={24} color="#3A2400" />
+        </Pressable>
       </View>
+
+      <Modal visible={menuVisible} animationType="fade" transparent onRequestClose={() => setMenuVisible(false)}>
+        <Pressable style={styles.fondoMenu} onPress={() => setMenuVisible(false)}>
+          <View style={styles.tarjetaMenu}>
+            <Pressable
+              style={styles.opcionMenu}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push('/promotor/calendario');
+              }}
+            >
+              <Ionicons name="calendar-outline" size={20} color={COLORES.oscuro} />
+              <Text style={styles.opcionMenuTexto}>Mi calendario</Text>
+            </Pressable>
+            <Pressable
+              style={styles.opcionMenu}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push('/promotor/conteo-cierre');
+              }}
+            >
+              <Ionicons name="clipboard-outline" size={20} color={COLORES.oscuro} />
+              <Text style={styles.opcionMenuTexto}>Conteo de cierre</Text>
+            </Pressable>
+            <View style={styles.separadorMenu} />
+            <Pressable
+              style={styles.opcionMenu}
+              onPress={() => {
+                setMenuVisible(false);
+                salir();
+              }}
+            >
+              <Ionicons name="log-out-outline" size={20} color="#B00020" />
+              <Text style={[styles.opcionMenuTexto, styles.opcionMenuTextoSalir]}>Cerrar sesión</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
 
       <View style={styles.barraAcciones}>
         <TextInput
@@ -317,15 +349,51 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#3A2400',
   },
-  encabezadoAcciones: {
+  botonMenu: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fondoMenu: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'flex-end',
+  },
+  tarjetaMenu: {
+    marginTop: 108,
+    marginRight: 16,
+    minWidth: 220,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  opcionMenu: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
   },
-  cerrarSesion: {
-    fontSize: 13,
-    color: '#3A2400',
-    textDecorationLine: 'underline',
+  opcionMenuTexto: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  opcionMenuTextoSalir: {
+    color: '#B00020',
+  },
+  separadorMenu: {
+    height: 1,
+    backgroundColor: '#F0DDB8',
+    marginVertical: 4,
   },
   barraAcciones: {
     flexDirection: 'row',
