@@ -20,3 +20,40 @@ export async function encolarSync(
     [Crypto.randomUUID(), datos.tabla, datos.entidadId, datos.tipoTarea, new Date().toISOString()]
   );
 }
+
+export interface TareaSyncVista {
+  id: string;
+  tabla: TablaSync;
+  entidadId: string;
+  tipoTarea: TipoTareaSync;
+  intentos: number;
+  ultimoError: string | null;
+  creadoTs: string;
+  completadoTs: string | null;
+}
+
+/** Estado completo de la cola (pendientes y completadas), más reciente primero — para diagnóstico en app/admin/sync/. */
+export async function listarColaSync(db: SQLiteDatabase): Promise<TareaSyncVista[]> {
+  const filas = await db.getAllAsync<{
+    id: string;
+    tabla: TablaSync;
+    entidad_id: string;
+    tipo_tarea: TipoTareaSync;
+    intentos: number;
+    ultimo_error: string | null;
+    creado_ts: string;
+    completado_ts: string | null;
+  }>(`SELECT id, tabla, entidad_id, tipo_tarea, intentos, ultimo_error, creado_ts, completado_ts
+      FROM _sync_pendiente
+      ORDER BY creado_ts DESC`);
+  return filas.map((fila) => ({
+    id: fila.id,
+    tabla: fila.tabla,
+    entidadId: fila.entidad_id,
+    tipoTarea: fila.tipo_tarea,
+    intentos: fila.intentos,
+    ultimoError: fila.ultimo_error,
+    creadoTs: fila.creado_ts,
+    completadoTs: fila.completado_ts,
+  }));
+}

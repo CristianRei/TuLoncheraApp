@@ -26,7 +26,10 @@ let corriendo = false;
  * desde `app/_layout.tsx`, disparado por conectividad/timer/foco de app.
  */
 export async function drenarColaSync(): Promise<void> {
-  if (corriendo) return;
+  if (corriendo) {
+    console.log('[sync] ya hay un ciclo corriendo, se omite este disparo');
+    return;
+  }
   corriendo = true;
   try {
     const db = await getDb();
@@ -36,18 +39,20 @@ export async function drenarColaSync(): Promise<void> {
        WHERE completado_ts IS NULL
        ORDER BY creado_ts ASC`
     );
+    console.log(`[sync] ${pendientes.length} tarea(s) pendiente(s)`);
     if (pendientes.length === 0) return;
 
     let supabase;
     try {
       supabase = await getSupabaseClient();
-    } catch {
-      // Sin red o sin sesión — nada que hacer este ciclo, se reintenta en el siguiente.
+    } catch (error) {
+      console.log('[sync] no se pudo obtener sesión de Supabase, se reintenta después:', error);
       return;
     }
 
     for (const tarea of pendientes) {
       try {
+        console.log(`[sync] subiendo ${tarea.tabla}/${tarea.tipo_tarea} (${tarea.entidad_id}), intento ${tarea.intentos + 1}`);
         if (tarea.tipo_tarea === 'FILA') {
           await subirFila(db, supabase, tarea);
         } else {
@@ -57,10 +62,13 @@ export async function drenarColaSync(): Promise<void> {
           new Date().toISOString(),
           tarea.id,
         ]);
+        console.log(`[sync] ✓ ${tarea.tabla}/${tarea.tipo_tarea} (${tarea.entidad_id})`);
       } catch (error) {
+        const mensaje = error instanceof Error ? error.message : String(error);
+        console.log(`[sync] ✗ ${tarea.tabla}/${tarea.tipo_tarea} (${tarea.entidad_id}):`, mensaje);
         await db.runAsync(
           'UPDATE _sync_pendiente SET intentos = intentos + 1, ultimo_error = ? WHERE id = ?',
-          [error instanceof Error ? error.message : String(error), tarea.id]
+          [mensaje, tarea.id]
         );
       }
     }
