@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config';
+import { requerirCredenciales } from './config';
 
 let clientePromise: Promise<SupabaseClient> | null = null;
 
@@ -16,7 +16,8 @@ let clientePromise: Promise<SupabaseClient> | null = null;
 export async function getSupabaseClient(): Promise<SupabaseClient> {
   if (!clientePromise) {
     clientePromise = (async () => {
-      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      const { url, anonKey } = requerirCredenciales();
+      const supabase = createClient(url, anonKey, {
         auth: {
           storage: AsyncStorage,
           autoRefreshToken: true,
