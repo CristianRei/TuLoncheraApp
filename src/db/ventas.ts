@@ -7,6 +7,7 @@ import type { MetodoPago, Pesos, Venta, VentaItem } from '@/core/tipos';
 import { obtenerDescuentoVigente } from './descuentos';
 import { obtenerPuntoVigentePromotor } from './eventos';
 import { registrarMovimiento } from './movimientos';
+import { encolarSync } from './syncCola';
 import { obtenerTurnoAbiertoHoy } from './turnos';
 import { obtenerOCrearUbicacionPromotor } from './ubicaciones';
 
@@ -143,6 +144,11 @@ export async function registrarVenta(
         datos.comprobanteUri ?? null,
       ]
     );
+
+    if (datos.comprobanteUri) {
+      await encolarSync(db, { tabla: 'comprobantes_venta', entidadId: id, tipoTarea: 'FILA' });
+      await encolarSync(db, { tabla: 'comprobantes_venta', entidadId: id, tipoTarea: 'FOTO' });
+    }
 
     const ubicacionPromotor = await obtenerOCrearUbicacionPromotor(
       db,

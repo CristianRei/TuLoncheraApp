@@ -12,6 +12,7 @@ referencia y explica qué cambió — no se edita el anterior.
 | [0003](0003-stock-de-bodega.md) | Stock de bodega real | Aceptado. Corrige parcialmente [0002](0002-ventas-sin-evento.md) |
 | [0004](0004-anulacion-de-ventas.md) | Anulación de ventas (movimiento compensatorio, no borrado) | Aceptado |
 | [0005](0005-puntos-y-descuentos.md) | Puntos, asignación de promotor y descuentos | Aceptado. Activa `empresas`/`eventos`, corrige parcialmente [0002](0002-ventas-sin-evento.md) |
+| [0006](0006-sincronizacion-turnos-comprobantes.md) | Sincronización: turnos y comprobantes de transferencia (Fase 5, primera rebanada) | Aceptado |
 
 ## Cómo agregar un ADR nuevo
 

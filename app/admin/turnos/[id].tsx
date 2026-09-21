@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Turno } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { obtenerTurno } from '@/db/turnos';
+import { listarTurnosRemotos } from '@/db/turnosRemotos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -24,8 +25,21 @@ export default function DetalleTurno() {
   useEffect(() => {
     (async () => {
       const db = await getDb();
-      setTurno(await obtenerTurno(db, id));
-      setCargando(false);
+      const local = await obtenerTurno(db, id);
+      if (local) {
+        setTurno(local);
+        setCargando(false);
+        return;
+      }
+      // No está en este dispositivo — puede ser un turno originado en otro.
+      try {
+        const remotos = await listarTurnosRemotos();
+        setTurno(remotos.find((t) => t.id === id) ?? null);
+      } catch {
+        setTurno(null);
+      } finally {
+        setCargando(false);
+      }
     })();
   }, [id]);
 

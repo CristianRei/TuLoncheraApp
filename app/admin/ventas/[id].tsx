@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatearPesos } from '@/core/dinero';
 import type { Venta, VentaItem } from '@/core/tipos';
 import { getDb } from '@/db/client';
+import { obtenerComprobanteRemoto } from '@/db/comprobantesRemotos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { anularVenta, obtenerVenta, VentaYaAnuladaError } from '@/db/ventas';
 import { COLORES } from '@/ui/colores';
@@ -46,20 +47,31 @@ export default function DetalleVenta() {
   const insets = useSafeAreaInsets();
 
   async function cargar() {
+    setCargando(true);
     const db = await getDb();
     const resultado = await obtenerVenta(db, id);
-    setVenta(resultado?.venta ?? null);
+    let ventaResuelta = resultado?.venta ?? null;
+
+    // Si es transferencia y este dispositivo no tiene el comprobante local
+    // (la venta pudo registrarse en otro dispositivo), intenta completarlo
+    // con lo ya sincronizado a Supabase.
+    if (ventaResuelta && ventaResuelta.metodoPago === 'TRANSFERENCIA' && !ventaResuelta.comprobanteUri) {
+      try {
+        const remoto = await obtenerComprobanteRemoto(ventaResuelta.id);
+        if (remoto) ventaResuelta = { ...ventaResuelta, comprobanteUri: remoto.comprobanteUri };
+      } catch {
+        // Sin red o Supabase no disponible — se queda sin comprobante, sin error visible.
+      }
+    }
+
+    setVenta(ventaResuelta);
     setItems(resultado?.items ?? []);
     setCargando(false);
   }
 
   useEffect(() => {
     (async () => {
-      const db = await getDb();
-      const resultado = await obtenerVenta(db, id);
-      setVenta(resultado?.venta ?? null);
-      setItems(resultado?.items ?? []);
-      setCargando(false);
+      await cargar();
     })();
   }, [id]);
 

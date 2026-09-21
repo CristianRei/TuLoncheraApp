@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Turno } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarTurnos } from '@/db/turnos';
+import { listarTurnosRemotos } from '@/db/turnosRemotos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -14,21 +15,45 @@ function formatearHora(ts: string): string {
   return new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+/** Fusiona locales + remotos por id — se prefiere la fila local (más actualizada que lo último sincronizado). */
+function fusionarTurnos(locales: Turno[], remotos: Turno[]): Turno[] {
+  const porId = new Map(remotos.map((t) => [t.id, t]));
+  for (const local of locales) porId.set(local.id, local);
+  return [...porId.values()].sort((a, b) => b.horaInicio.localeCompare(a.horaInicio));
+}
+
 export default function Turnos() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [actualizando, setActualizando] = useState(false);
   const insets = useSafeAreaInsets();
 
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
       const db = await getDb();
-      setTurnos(await listarTurnos(db));
+      const locales = await listarTurnos(db);
+      setTurnos(locales);
+      try {
+        const remotos = await listarTurnosRemotos();
+        setTurnos(fusionarTurnos(locales, remotos));
+      } catch {
+        // Sin red o Supabase no disponible — se queda con lo local, sin error visible.
+      }
     } finally {
       setCargando(false);
     }
   }, []);
+
+  async function actualizar() {
+    setActualizando(true);
+    try {
+      await cargar();
+    } finally {
+      setActualizando(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -47,7 +72,13 @@ export default function Turnos() {
               <Text style={styles.volver}>‹ Admin</Text>
             </Pressable>
             <Text style={styles.titulo}>Turnos</Text>
-            <View style={{ width: 60 }} />
+            <Pressable onPress={actualizar} disabled={actualizando}>
+              {actualizando ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.volver}>Actualizar</Text>
+              )}
+            </Pressable>
           </View>
         </ContenedorAncho>
       </View>

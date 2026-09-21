@@ -9,6 +9,7 @@ import {
   JetBrainsMono_500Medium,
   JetBrainsMono_600SemiBold,
 } from '@expo-google-fonts/jetbrains-mono';
+import NetInfo from '@react-native-community/netinfo';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -21,7 +22,13 @@ import { sembrarUsuariosDePrueba } from '@/db/seed';
 import { sembrarDatosDemo } from '@/db/seedDemo';
 import { sembrarInventarioDePrueba } from '@/db/seedInventario';
 import { buscarUsuarioPorPin } from '@/db/usuarios';
+import { drenarColaSync } from '@/sync/motor';
 import { SesionProvider } from '@/ui/SesionContext';
+
+// Sync periódica, no tiempo real (decisión ya tomada) — cada 2 minutos
+// mientras la app está en foreground basta para "el admin ve datos con
+// minutos de retraso, no segundos".
+const INTERVALO_SYNC_MS = 2 * 60 * 1000;
 
 interface EstadoDb {
   listo: boolean;
@@ -72,6 +79,28 @@ export default function RootLayout() {
       cancelado = true;
     };
   }, []);
+
+  // Motor de sincronización (turnos + comprobantes de transferencia, ver
+  // docs/03-decisiones/0006-sincronizacion-turnos-comprobantes.md): corre
+  // en background, disparado por conectividad y un intervalo simple. Nunca
+  // bloquea el arranque ni ninguna operación de negocio (R5) — arranca solo
+  // después de que la DB local ya está lista.
+  useEffect(() => {
+    if (!estado.listo) return;
+
+    drenarColaSync();
+    const cancelarNetInfo = NetInfo.addEventListener((red) => {
+      if (red.isConnected && red.isInternetReachable !== false) {
+        drenarColaSync();
+      }
+    });
+    const intervalo = setInterval(drenarColaSync, INTERVALO_SYNC_MS);
+
+    return () => {
+      cancelarNetInfo();
+      clearInterval(intervalo);
+    };
+  }, [estado.listo]);
 
   if (estado.error) {
     return (

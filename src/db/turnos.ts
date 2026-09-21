@@ -4,6 +4,8 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
 import type { Turno } from '@/core/tipos';
 
+import { encolarSync } from './syncCola';
+
 interface FilaTurno {
   id: string;
   promotor_id: string;
@@ -67,11 +69,15 @@ export async function iniciarTurno(
   const id = Crypto.randomUUID();
   const ahora = new Date().toISOString();
 
-  await db.runAsync(
-    `INSERT INTO turnos (id, promotor_id, selfie_uri, latitud, longitud, hora_inicio, hora_fin, ts_cliente, dispositivo_id)
-     VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
-    [id, datos.promotorId, datos.selfieUri, datos.latitud, datos.longitud, ahora, ahora, dispositivoId]
-  );
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO turnos (id, promotor_id, selfie_uri, latitud, longitud, hora_inicio, hora_fin, ts_cliente, dispositivo_id)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?)`,
+      [id, datos.promotorId, datos.selfieUri, datos.latitud, datos.longitud, ahora, ahora, dispositivoId]
+    );
+    await encolarSync(db, { tabla: 'turnos', entidadId: id, tipoTarea: 'FILA' });
+    await encolarSync(db, { tabla: 'turnos', entidadId: id, tipoTarea: 'FOTO' });
+  });
 
   const fila = await db.getFirstAsync<FilaTurno>(
     `SELECT ${COLUMNAS_TURNO} FROM turnos t JOIN usuarios u ON u.id = t.promotor_id WHERE t.id = ?`,
@@ -83,10 +89,16 @@ export async function iniciarTurno(
 
 /** Cierra un turno abierto marcando `hora_fin` — no es un movimiento de inventario, R1/R2 no aplican. */
 export async function finalizarTurno(db: SQLiteDatabase, datos: { turnoId: string }): Promise<void> {
-  await db.runAsync('UPDATE turnos SET hora_fin = ? WHERE id = ? AND hora_fin IS NULL', [
-    new Date().toISOString(),
-    datos.turnoId,
-  ]);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE turnos SET hora_fin = ? WHERE id = ? AND hora_fin IS NULL', [
+      new Date().toISOString(),
+      datos.turnoId,
+    ]);
+    // El motor de sync hace upsert de la fila completa por cada tarea FILA
+    // pendiente — una nueva tarea aquí sube el hora_fin actualizado. La
+    // política RLS remota solo permite tocar esa columna en un UPDATE.
+    await encolarSync(db, { tabla: 'turnos', entidadId: datos.turnoId, tipoTarea: 'FILA' });
+  });
 }
 
 /** Todos los turnos, más reciente primero — para el panel de admin. */

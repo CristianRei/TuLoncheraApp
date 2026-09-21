@@ -15,6 +15,7 @@ import { migracion0012Descuentos } from './0012_descuentos';
 import { migracion0013Notificaciones } from './0013_notificaciones';
 import { migracion0014CalendarioEventos } from './0014_calendario_eventos';
 import { migracion0015ComprobantesYTurnos } from './0015_comprobantes_y_turnos';
+import { migracion0016ColaSync } from './0016_cola_sync';
 
 export interface Migracion {
   version: number;
@@ -41,6 +42,7 @@ const migraciones: Migracion[] = [
   migracion0013Notificaciones,
   migracion0014CalendarioEventos,
   migracion0015ComprobantesYTurnos,
+  migracion0016ColaSync,
 ];
 
 /**
