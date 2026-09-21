@@ -105,12 +105,6 @@ const MODULOS: {
     descripcion: 'Dispositivos bloqueados e intentos fallidos de PIN.',
     icono: 'lock-closed-outline',
   },
-  {
-    ruta: '/admin/sync',
-    titulo: 'Sincronización',
-    descripcion: 'Qué turnos y comprobantes faltan por subir, y por qué.',
-    icono: 'cloud-upload-outline',
-  },
 ];
 
 interface Indicadores {
