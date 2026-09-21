@@ -220,7 +220,6 @@ export default function HomePromotor() {
       setCobrarVisible(false);
       setTicketVisible(false);
       await cargarInventario(usuarioActual.id);
-      Alert.alert('Venta registrada', 'La venta quedó guardada correctamente.');
     } finally {
       setProcesandoVenta(false);
     }
