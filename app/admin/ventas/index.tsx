@@ -1,18 +1,22 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { calcularRangoDiaBogota, calcularRangoHoyBogota } from '@/core/analitica';
 import { formatearPesos } from '@/core/dinero';
 import type { Venta } from '@/core/tipos';
 import { exportarAExcel } from '@/db/exportarExcel';
 import { getDb } from '@/db/client';
 import { listarVentas } from '@/db/ventas';
 import { COLORES } from '@/ui/colores';
+import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'ACTIVAS' | 'ANULADAS';
+type FiltroFecha = 'TODOS' | 'HOY' | 'ESPECIFICA';
 
 function formatearFecha(tsCliente: string): string {
   const fecha = new Date(tsCliente);
@@ -22,10 +26,18 @@ function formatearFecha(tsCliente: string): string {
   });
 }
 
+/** "AAAA-MM-DD" → "15 ene" — para el chip de fecha específica. */
+function formatearFechaCorta(fecha: string): string {
+  return new Date(`${fecha}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' });
+}
+
 export default function Ventas() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('ACTIVAS');
+  const [filtroFecha, setFiltroFecha] = useState<FiltroFecha>('TODOS');
+  const [fechaEspecifica, setFechaEspecifica] = useState<string | null>(null);
+  const [calendarioVisible, setCalendarioVisible] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
   const insets = useSafeAreaInsets();
@@ -50,20 +62,29 @@ export default function Ventas() {
     }
   }
 
-  const cargar = useCallback(async (filtroActual: Filtro) => {
-    setCargando(true);
-    try {
-      const db = await getDb();
-      setVentas(await listarVentas(db, { incluirAnuladas: filtroActual === 'ANULADAS' }));
-    } finally {
-      setCargando(false);
-    }
-  }, []);
+  const cargar = useCallback(
+    async (filtroActual: Filtro, filtroFechaActual: FiltroFecha, fechaActual: string | null) => {
+      setCargando(true);
+      try {
+        const db = await getDb();
+        const rango =
+          filtroFechaActual === 'HOY'
+            ? calcularRangoHoyBogota()
+            : filtroFechaActual === 'ESPECIFICA' && fechaActual
+              ? calcularRangoDiaBogota(fechaActual)
+              : undefined;
+        setVentas(await listarVentas(db, { incluirAnuladas: filtroActual === 'ANULADAS', rango }));
+      } finally {
+        setCargando(false);
+      }
+    },
+    []
+  );
 
   useFocusEffect(
     useCallback(() => {
-      cargar(filtro);
-    }, [cargar, filtro])
+      cargar(filtro, filtroFecha, fechaEspecifica);
+    }, [cargar, filtro, filtroFecha, fechaEspecifica])
   );
 
   if (!usuario) return null;
@@ -107,6 +128,41 @@ export default function Ventas() {
             </Text>
           </Pressable>
         </View>
+
+        <View style={[styles.tabs, styles.tabsFecha]}>
+          <Pressable
+            style={[styles.tab, filtroFecha === 'TODOS' && styles.tabActivo]}
+            onPress={() => {
+              setFiltroFecha('TODOS');
+              setFechaEspecifica(null);
+            }}
+          >
+            <Text style={[styles.tabTexto, filtroFecha === 'TODOS' && styles.tabTextoActivo]}>
+              Todos los días
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, filtroFecha === 'HOY' && styles.tabActivo]}
+            onPress={() => setFiltroFecha('HOY')}
+          >
+            <Text style={[styles.tabTexto, filtroFecha === 'HOY' && styles.tabTextoActivo]}>Hoy</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tab, styles.tabFecha, filtroFecha === 'ESPECIFICA' && styles.tabActivo]}
+            onPress={() => setCalendarioVisible(true)}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={13}
+              color={filtroFecha === 'ESPECIFICA' ? '#FFFFFF' : '#666'}
+            />
+            <Text style={[styles.tabTexto, filtroFecha === 'ESPECIFICA' && styles.tabTextoActivo]}>
+              {filtroFecha === 'ESPECIFICA' && fechaEspecifica
+                ? formatearFechaCorta(fechaEspecifica)
+                : 'Elegir fecha'}
+            </Text>
+          </Pressable>
+        </View>
       </ContenedorAncho>
 
       {cargando ? (
@@ -116,9 +172,13 @@ export default function Ventas() {
       ) : ventas.length === 0 ? (
         <View style={styles.centrado}>
           <Text style={styles.vacio}>
-            {filtro === 'ACTIVAS'
-              ? 'Todavía no se ha registrado ninguna venta.'
-              : 'No hay ventas anuladas.'}
+            {filtroFecha === 'TODOS'
+              ? filtro === 'ACTIVAS'
+                ? 'Todavía no se ha registrado ninguna venta.'
+                : 'No hay ventas anuladas.'
+              : filtro === 'ACTIVAS'
+                ? 'No hay ventas registradas ese día.'
+                : 'No hay ventas anuladas ese día.'}
           </Text>
         </View>
       ) : (
@@ -154,6 +214,30 @@ export default function Ventas() {
           />
         </ContenedorAncho>
       )}
+
+      <Modal visible={calendarioVisible} animationType="fade" transparent>
+        <View style={styles.fondoModal}>
+          <View style={styles.tarjetaCalendario}>
+            <Text style={styles.modalTitulo}>Elige el día</Text>
+            <CalendarioRango
+              desde={fechaEspecifica}
+              hasta={fechaEspecifica}
+              onCambiar={(desde) => {
+                if (desde) {
+                  setFechaEspecifica(desde);
+                  setFiltroFecha('ESPECIFICA');
+                  setCalendarioVisible(false);
+                } else {
+                  setFechaEspecifica(null);
+                }
+              }}
+            />
+            <Pressable style={styles.modalCerrar} onPress={() => setCalendarioVisible(false)}>
+              <Text style={styles.modalCerrarTexto}>Cerrar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -214,6 +298,41 @@ const styles = StyleSheet.create({
   },
   tabTextoActivo: {
     color: '#FFFFFF',
+  },
+  tabsFecha: {
+    paddingTop: 10,
+  },
+  tabFecha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fondoModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  tarjetaCalendario: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    gap: 14,
+    alignItems: 'center',
+  },
+  modalTitulo: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  modalCerrar: {
+    paddingVertical: 6,
+  },
+  modalCerrarTexto: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#888',
   },
   centrado: {
     flex: 1,

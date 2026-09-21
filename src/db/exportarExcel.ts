@@ -22,9 +22,27 @@ export async function exportarAExcel(
   filas: Record<string, unknown>[],
   nombreArchivo: string
 ): Promise<void> {
+  await exportarVariasHojasAExcel([{ nombre: nombreHoja, filas }], nombreArchivo);
+}
+
+export interface HojaExcel {
+  nombre: string;
+  filas: Record<string, unknown>[];
+}
+
+/**
+ * Igual que `exportarAExcel` pero con varias hojas en un solo libro — para
+ * el informe del Dashboard (resumen, por promotor, por producto, etc. cada
+ * uno en su propia pestaña del mismo archivo). Un nombre de hoja vacío o con
+ * datos vacíos no rompe nada: xlsx simplemente genera una hoja sin filas.
+ */
+export async function exportarVariasHojasAExcel(hojas: HojaExcel[], nombreArchivo: string): Promise<void> {
   const libro = XLSX.utils.book_new();
-  const hoja = XLSX.utils.json_to_sheet(filas);
-  XLSX.utils.book_append_sheet(libro, hoja, nombreHoja);
+  for (const { nombre, filas } of hojas) {
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    // Los nombres de hoja de Excel no aceptan más de 31 caracteres.
+    XLSX.utils.book_append_sheet(libro, hoja, nombre.slice(0, 31));
+  }
 
   const base64 = XLSX.write(libro, { bookType: 'xlsx', type: 'base64' });
 
@@ -37,7 +55,7 @@ export async function exportarAExcel(
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(archivo.uri, {
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      dialogTitle: nombreHoja,
+      dialogTitle: nombreArchivo,
     });
   }
 }

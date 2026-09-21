@@ -72,6 +72,70 @@ export function calcularRangoHoyBogota(ahora: Date = new Date()): RangoIso {
 }
 
 /**
+ * Rango del día calendario "AAAA-MM-DD" en Bogotá — para filtrar ventas de
+ * un día específico (ver app/admin/ventas). Si `fecha` resulta ser hoy,
+ * `hasta` se topa a `ahora` en vez de la medianoche del día siguiente —
+ * mismo criterio que `calcularRangoHoyBogota` — para que elegir "hoy" en el
+ * calendario y tocar el atajo "Hoy" den siempre el mismo resultado. Sin este
+ * tope, un timestamp fabricado más tarde en el día (ej. datos de demo) podía
+ * aparecer en uno y no en el otro, según la hora real a la que se consultara.
+ */
+export function calcularRangoDiaBogota(fecha: string, ahora: Date = new Date()): RangoIso {
+  const offsetMs = OFFSET_BOGOTA_HORAS * 60 * 60 * 1000;
+  const [anio, mes, dia] = fecha.split('-').map(Number);
+  const desdeMs = Date.UTC(anio, mes - 1, dia) + offsetMs;
+  const finDelDiaMs = Date.UTC(anio, mes - 1, dia + 1) + offsetMs;
+  const hastaMs = Math.max(Math.min(finDelDiaMs, ahora.getTime()), desdeMs);
+  return {
+    desde: new Date(desdeMs).toISOString(),
+    hasta: new Date(hastaMs).toISOString(),
+  };
+}
+
+/** "AAAA-MM" del mes actual en Bogotá — clave de `metas.mes` (ver src/db/metas.ts). */
+export function mesActualBogota(ahora: Date = new Date()): string {
+  return fechaHoyBogota(ahora).slice(0, 7);
+}
+
+/** Cuántos días tiene el mes "AAAA-MM" dado. */
+export function diasEnMes(mes: string): number {
+  const [anio, mesNumero] = mes.split('-').map(Number);
+  return new Date(Date.UTC(anio, mesNumero, 0)).getUTCDate();
+}
+
+/**
+ * Rango del mes calendario "AAAA-MM" en Bogotá, mismo truco de offset que
+ * `calcularRangoHoyBogota`. Si es el mes en curso, `hasta` se topa a `ahora`
+ * en vez del fin de mes — sin eso, un promedio "vendido / días transcurridos"
+ * quedaría mal si el rango incluyera días que todavía no pasan.
+ */
+export function calcularRangoMesBogota(mes: string, ahora: Date = new Date()): RangoIso {
+  const offsetMs = OFFSET_BOGOTA_HORAS * 60 * 60 * 1000;
+  const [anio, mesNumero] = mes.split('-').map(Number);
+  const inicioMesUtcMs = Date.UTC(anio, mesNumero - 1, 1) + offsetMs;
+  const inicioMesSiguienteUtcMs = Date.UTC(anio, mesNumero, 1) + offsetMs;
+  const esMesActual = mes === mesActualBogota(ahora);
+  return {
+    desde: new Date(inicioMesUtcMs).toISOString(),
+    hasta: new Date(esMesActual ? ahora.getTime() : inicioMesSiguienteUtcMs).toISOString(),
+  };
+}
+
+/**
+ * Proyección lineal simple de cierre de mes: `totalVendidoMes / díasTranscurridos * díasTotales`.
+ * `null` si `mes` no es el mes en curso (proyectar un mes ya cerrado no tiene sentido).
+ */
+export function calcularProyeccionMes(
+  totalVendidoMes: number,
+  mes: string,
+  ahora: Date = new Date()
+): number | null {
+  if (mes !== mesActualBogota(ahora)) return null;
+  const diaDelMes = Number(fechaHoyBogota(ahora).slice(8, 10));
+  return Math.round((totalVendidoMes / diaDelMes) * diasEnMes(mes));
+}
+
+/**
  * Agrupa ventas por hora del día en horario de Bogotá, con desglose por
  * promotor dentro de cada hora (para el detalle al tocar una barra del
  * gráfico). Solo devuelve horas con al menos una venta; la UI rellena las
