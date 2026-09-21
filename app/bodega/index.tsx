@@ -1,10 +1,10 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { PantallaIngresarPedido } from '@/ui/PantallaIngresarPedido';
 import { useSesion } from '@/ui/SesionContext';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -35,8 +35,27 @@ export default function HomeBodega() {
           </View>
         </ContenedorAncho>
       </View>
+
       <ContenedorAncho anchoMaximo={640} llenarAlto>
-        <PantallaIngresarPedido usuarioId={usuario.id} />
+        <View style={styles.opciones}>
+          <Pressable style={styles.tarjeta} onPress={() => router.push('/bodega/pedido')}>
+            <View style={styles.tarjetaIcono}>
+              <Ionicons name="arrow-down-circle-outline" size={28} color={COLORES.oscuro} />
+            </View>
+            <Text style={styles.tarjetaTitulo}>Ingresar pedido</Text>
+            <Text style={styles.tarjetaDescripcion}>Registra lo que llegó a bodega.</Text>
+          </Pressable>
+
+          <Pressable style={styles.tarjeta} onPress={() => router.push('/bodega/cargues')}>
+            <View style={styles.tarjetaIcono}>
+              <Ionicons name="arrow-up-circle-outline" size={28} color={COLORES.oscuro} />
+            </View>
+            <Text style={styles.tarjetaTitulo}>Entregar cargues</Text>
+            <Text style={styles.tarjetaDescripcion}>
+              Entrega a cada promotor lo que admin ya planeó.
+            </Text>
+          </Pressable>
+        </View>
       </ContenedorAncho>
     </View>
   );
@@ -72,5 +91,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#FFFFFF',
     textDecorationLine: 'underline',
+  },
+  opciones: {
+    padding: 20,
+    gap: 14,
+  },
+  tarjeta: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    gap: 6,
+  },
+  tarjetaIcono: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FBEDED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  tarjetaTitulo: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#333',
+  },
+  tarjetaDescripcion: {
+    fontSize: 13,
+    color: '#888',
   },
 });

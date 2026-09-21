@@ -1,10 +1,10 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Producto, UsuarioSesion } from '@/core/tipos';
-import { registrarCargue, StockInsuficienteError } from '@/db/cargue';
+import type { Cargue, Producto, UsuarioSesion } from '@/core/tipos';
+import { crearCargue, listarCargues, StockInsuficienteError } from '@/db/cargues';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { obtenerSaldosBodega } from '@/db/inventario';
@@ -15,8 +15,19 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
-export default function Cargue() {
+const ETIQUETAS_ESTADO: Record<Cargue['estado'], string> = {
+  PLANEADO: 'Planeado',
+  ENTREGADO: 'Entregado',
+  CANCELADO: 'Cancelado',
+};
+
+function formatearFecha(ts: string): string {
+  return new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+export default function PantallaCargue() {
   const usuario = useRequiereSesion(['ADMIN']);
+  const [pestana, setPestana] = useState<'nuevo' | 'planeados'>('nuevo');
   const [promotores, setPromotores] = useState<UsuarioSesion[]>([]);
   const [promotor, setPromotor] = useState<UsuarioSesion | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -25,22 +36,29 @@ export default function Cargue() {
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [cargues, setCargues] = useState<Cargue[]>([]);
   const insets = useSafeAreaInsets();
 
-  useEffect(() => {
-    (async () => {
-      const db = await getDb();
-      const [listaPromotores, listaProductos, saldosBodega] = await Promise.all([
-        listarPromotores(db),
-        listarProductos(db),
-        obtenerSaldosBodega(db),
-      ]);
-      setPromotores(listaPromotores);
-      setProductos(listaProductos);
-      setDisponibles(Object.fromEntries(saldosBodega));
-      setCargando(false);
-    })();
+  const cargarBase = useCallback(async () => {
+    const db = await getDb();
+    const [listaPromotores, listaProductos, saldosBodega, listaCargues] = await Promise.all([
+      listarPromotores(db),
+      listarProductos(db),
+      obtenerSaldosBodega(db),
+      listarCargues(db),
+    ]);
+    setPromotores(listaPromotores);
+    setProductos(listaProductos);
+    setDisponibles(Object.fromEntries(saldosBodega));
+    setCargues(listaCargues);
+    setCargando(false);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      cargarBase();
+    }, [cargarBase])
+  );
 
   if (!usuario) return null;
   const usuarioActual = usuario;
@@ -65,21 +83,21 @@ export default function Cargue() {
         .filter(([, cantidad]) => cantidad > 0)
         .map(([productoId, cantidad]) => ({ productoId, cantidad }));
 
-      await registrarCargue(
+      await crearCargue(
         db,
         {
           promotorId: promotor.id,
           promotorNombre: promotor.nombre,
-          adminId: usuarioActual.id,
           items,
+          creadoPor: usuarioActual.id,
         },
         dispositivoId
       );
 
-      Alert.alert('Cargue asignado', `Se le asignó el cargue a ${promotor.nombre}.`);
+      Alert.alert('Cargue planeado', `Bodega ya puede entregarle el cargue a ${promotor.nombre}.`);
       setCantidades({});
       setPromotor(null);
-      setDisponibles(Object.fromEntries(await obtenerSaldosBodega(db)));
+      await cargarBase();
     } catch (error) {
       if (error instanceof StockInsuficienteError) {
         Alert.alert('Stock insuficiente', error.message);
@@ -104,31 +122,34 @@ export default function Cargue() {
         </ContenedorAncho>
       </View>
 
+      {!promotor && (
+        <ContenedorAncho anchoMaximo={720}>
+          <View style={styles.pestanas}>
+            <Pressable
+              style={[styles.pestana, pestana === 'nuevo' && styles.pestanaActiva]}
+              onPress={() => setPestana('nuevo')}
+            >
+              <Text style={[styles.pestanaTexto, pestana === 'nuevo' && styles.pestanaTextoActiva]}>
+                Nuevo cargue
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.pestana, pestana === 'planeados' && styles.pestanaActiva]}
+              onPress={() => setPestana('planeados')}
+            >
+              <Text style={[styles.pestanaTexto, pestana === 'planeados' && styles.pestanaTextoActiva]}>
+                Cargues planeados
+              </Text>
+            </Pressable>
+          </View>
+        </ContenedorAncho>
+      )}
+
       {cargando ? (
         <View style={styles.centrado}>
           <ActivityIndicator size="large" color={COLORES.oscuro} />
         </View>
-      ) : !promotor ? (
-        promotores.length === 0 ? (
-          <View style={styles.centrado}>
-            <Text style={styles.vacio}>No hay promotores activos.</Text>
-          </View>
-        ) : (
-          <ContenedorAncho anchoMaximo={720} llenarAlto>
-            <FlatList
-              data={promotores}
-              keyExtractor={(p) => p.id}
-              contentContainerStyle={styles.lista}
-              renderItem={({ item }) => (
-                <Pressable style={styles.filaPromotor} onPress={() => setPromotor(item)}>
-                  <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
-                  <Text style={styles.filaPromotorFlecha}>›</Text>
-                </Pressable>
-              )}
-            />
-          </ContenedorAncho>
-        )
-      ) : (
+      ) : promotor ? (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <SelectorProductosConCantidad
             productos={productos}
@@ -153,11 +174,63 @@ export default function Cargue() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={styles.botonConfirmarTexto}>
-                  Confirmar cargue{totalUnidades > 0 ? ` (${totalUnidades} unidades)` : ''}
+                  Planear cargue{totalUnidades > 0 ? ` (${totalUnidades} unidades)` : ''}
                 </Text>
               )}
             </Pressable>
           </View>
+        </ContenedorAncho>
+      ) : pestana === 'nuevo' ? (
+        promotores.length === 0 ? (
+          <View style={styles.centrado}>
+            <Text style={styles.vacio}>No hay promotores activos.</Text>
+          </View>
+        ) : (
+          <ContenedorAncho anchoMaximo={720} llenarAlto>
+            <FlatList
+              data={promotores}
+              keyExtractor={(p) => p.id}
+              contentContainerStyle={styles.lista}
+              renderItem={({ item }) => (
+                <Pressable style={styles.filaPromotor} onPress={() => setPromotor(item)}>
+                  <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
+                  <Text style={styles.filaPromotorFlecha}>›</Text>
+                </Pressable>
+              )}
+            />
+          </ContenedorAncho>
+        )
+      ) : cargues.length === 0 ? (
+        <View style={styles.centrado}>
+          <Text style={styles.vacio}>Todavía no se ha planeado ningún cargue.</Text>
+        </View>
+      ) : (
+        <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <FlatList
+            data={cargues}
+            keyExtractor={(c) => c.id}
+            contentContainerStyle={styles.lista}
+            renderItem={({ item }) => (
+              <Pressable
+                style={styles.filaCargue}
+                onPress={() => router.push(`/admin/cargue/${item.id}`)}
+              >
+                <View style={styles.filaCargueTexto}>
+                  <Text style={styles.filaPromotorNombre}>{item.promotorNombre}</Text>
+                  <Text style={styles.filaCargueDetalle}>{formatearFecha(item.tsCliente)}</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.badgeEstado,
+                    item.estado === 'ENTREGADO' && styles.badgeEstadoEntregado,
+                  ]}
+                >
+                  {ETIQUETAS_ESTADO[item.estado]}
+                </Text>
+                <Text style={styles.filaPromotorFlecha}>›</Text>
+              </Pressable>
+            )}
+          />
         </ContenedorAncho>
       )}
     </View>
@@ -186,6 +259,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 17,
     fontWeight: '700',
+  },
+  pestanas: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  pestana: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+  },
+  pestanaActiva: {
+    backgroundColor: COLORES.oscuro,
+  },
+  pestanaTexto: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORES.oscuro,
+  },
+  pestanaTextoActiva: {
+    color: '#FFFFFF',
   },
   centrado: {
     flex: 1,
@@ -217,6 +314,32 @@ const styles = StyleSheet.create({
   filaPromotorFlecha: {
     fontSize: 20,
     color: COLORES.oscuro,
+  },
+  filaCargue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    gap: 10,
+  },
+  filaCargueTexto: {
+    flex: 1,
+    gap: 2,
+  },
+  filaCargueDetalle: {
+    fontSize: 12,
+    color: '#888',
+  },
+  badgeEstado: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    color: '#976200',
+  },
+  badgeEstadoEntregado: {
+    color: '#2E7D32',
   },
   pie: {
     padding: 20,

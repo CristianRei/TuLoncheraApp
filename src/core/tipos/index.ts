@@ -195,6 +195,27 @@ export interface ConteoLinea {
   motivo: string | null;
 }
 
+export type EstadoCargue = 'PLANEADO' | 'ENTREGADO' | 'CANCELADO';
+export type EstadoLineaCargue = 'PENDIENTE' | 'ENTREGADA' | 'REVISAR';
+
+export interface Cargue {
+  id: string;
+  promotorId: string;
+  promotorNombre: string;
+  estado: EstadoCargue;
+  tsCliente: string;
+}
+
+export interface CargueLinea {
+  id: string;
+  productoId: string;
+  productoNombre: string;
+  cantidadPlaneada: number;
+  cantidadEntregada: number;
+  estado: EstadoLineaCargue;
+  motivoRevision: string | null;
+}
+
 export type TipoNotificacion = 'STOCK_BAJO' | 'LOTE_POR_VENCER';
 export type NivelNotificacion = 'INFO' | 'ALERTA' | 'CRITICO';
 

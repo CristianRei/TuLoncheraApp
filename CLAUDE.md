@@ -188,14 +188,14 @@ tulonchera/
       index.tsx                  ← menú de módulos
       catalogo/                   ← alta / edición / baja de productos
       inventario/                  ← stock de bodega + registrar entradas
-      cargue/                       ← asignar cargue a un promotor (sale de bodega)
+      cargue/                       ← admin planea cargue (sin tocar inventario); bodega lo entrega
       ventas/                        ← listado + detalle de ventas registradas
       conteos/                       ← listado + detalle de conteos de cierre (solo lectura)
       dashboard/                      ← KPIs, filtros, desgloses por promotor/punto/categoría
       empresas/                        ← empresas cliente y sus puntos (sedes)
       puntos-asignados/                 ← asignar promotor a un punto vigente
       descuentos/                        ← crear / ver descuentos por producto y/o punto
-    bodega/index.tsx             ← es directamente "ingresar pedido" (única función de Bodega hoy, sin menú)
+    bodega/                       ← menú con dos accesos: ingresar pedido, entregar cargues planeados por admin
     _layout.tsx                 ← migra la DB al arrancar, envuelve todo en SesionProvider
   src/
     core/                       ← lógica de dominio, SIN dependencias de React ni Expo
@@ -456,12 +456,20 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   escanear el producto y teclear la cantidad (suelen ser +60 unidades, por
   eso teclear y no un contador +/-) → `COMPRA_PROVEEDOR`, con fecha de
   vencimiento opcional (crea un `lote`). Sin captura de costo todavía.
-- **Bodega** (`app/bodega/index.tsx`): su pantalla de inicio *es*
-  "Ingresar pedido" directamente — hoy es su única función, así que no hay
-  un menú intermedio como en Admin.
-- **Cargue** (`app/admin/cargue/`): admin asigna productos del stock de
-  bodega a un promotor (`RECARGA`, bodega → promotor); no deja asignar más
-  de lo disponible.
+- **Bodega** (`app/bodega/`): menú con dos accesos — "Ingresar pedido"
+  (sin cambios) y "Entregar cargues" (`app/bodega/cargues/`), donde bodega
+  ve los cargues que admin ya planeó y los ejecuta línea por línea
+  (escanear + teclear cantidad entregada, mismo patrón que ingresar
+  pedido). Ver ADR 0007.
+- **Cargue** (`app/admin/cargue/`, `src/db/cargues.ts`, migración 0017):
+  admin *planea* un cargue (tope al stock de bodega, igual que antes) sin
+  tocar `movimientos` todavía — dos pestañas: "Nuevo cargue" y "Cargues
+  planeados" (donde puede reducir o quitar líneas mientras sigan
+  pendientes). El `RECARGA` real (bodega → promotor, `src/db/cargue.ts`,
+  sin cambios) nace recién cuando bodega confirma cada línea. Si bodega no
+  tiene físicamente lo que el sistema decía, la línea queda "a revisar"
+  con motivo obligatorio, sin bloquear el resto del cargue — admin la
+  resuelve después desde el detalle del cargue.
 - **Empresas y puntos** (`app/admin/empresas/`, `src/db/empresas.ts`,
   `src/db/puntos.ts`, migración 0011): admin crea empresas cliente (ej.
   Falabella) y sus puntos/sedes (ej. Norte, Sur). Sin edición ni baja
@@ -570,14 +578,12 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [ ] ¿Hace falta capturar el costo por unidad al registrar una entrada de
       inventario a bodega? Hoy `productos.costo` sigue vacío — sin eso no se
       puede calcular margen (sección 4: "ver costos y márgenes"). Ver ADR 0003.
-- [ ] ¿Bodega va a necesitar más funciones (preparar cargue, alistamiento
-      por escáner) o "ingresar pedido" es su única función por ahora? Si se
-      agrega otra, `app/bodega/index.tsx` va a necesitar un menú como el de
-      Admin en vez de ir directo a una sola pantalla.
-
 **Resuelto:** Bodega ya tiene función propia — "ingresar pedido" (escanear
-+ teclear cantidad). Ver `app/bodega/index.tsx` y
-`src/ui/PantallaIngresarPedido.tsx`.
++ teclear cantidad). Ver `src/ui/PantallaIngresarPedido.tsx`.
+
+**Resuelto:** Bodega sí necesitaba más funciones — ahora también entrega
+los cargues que admin planea (alistamiento por escáner, línea por línea).
+`app/bodega/` pasó a tener menú con dos accesos. Ver ADR 0007.
 
 **Resuelto:** autenticación por PIN de 4 dígitos, sin contraseña en ningún
 rol. Ver `docs/03-decisiones/0001-metodo-autenticacion.md`.
