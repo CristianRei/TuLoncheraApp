@@ -115,6 +115,14 @@ export default function HomePromotor() {
     return true;
   }
 
+  function abrirCobrar() {
+    // Ticket y Cobrar son Modal nativos separados — nunca deben quedar
+    // visibles los dos a la vez (dos Modal de React Native apilados cuelga
+    // los toques en Android, ver comentario en CobrarModal/TicketModal).
+    setTicketVisible(false);
+    setCobrarVisible(true);
+  }
+
   async function cobrar(metodoPago: MetodoPago) {
     setProcesandoVenta(true);
     try {
@@ -250,7 +258,7 @@ export default function HomePromotor() {
       )}
 
       {carrito.cantidadTotal > 0 && (
-        <Pressable style={styles.barraCobrar} onPress={() => setCobrarVisible(true)}>
+        <Pressable style={styles.barraCobrar} onPress={abrirCobrar}>
           <Text style={styles.barraCobrarTexto}>Cobrar</Text>
           <Text style={styles.barraCobrarTotal}>{formatearPesos(carrito.total)}</Text>
         </Pressable>
@@ -264,7 +272,7 @@ export default function HomePromotor() {
         onQuitarUno={carrito.quitarUno}
         onVaciar={carrito.vaciar}
         onCerrar={() => setTicketVisible(false)}
-        onCobrar={() => setCobrarVisible(true)}
+        onCobrar={abrirCobrar}
       />
 
       <CobrarModal
@@ -295,7 +303,7 @@ export default function HomePromotor() {
         }
         piePersonalizado={
           carrito.cantidadTotal > 0 ? (
-            <Pressable style={styles.barraCobrarEscaner} onPress={() => setCobrarVisible(true)}>
+            <Pressable style={styles.barraCobrarEscaner} onPress={abrirCobrar}>
               <Text style={styles.barraCobrarTexto}>Cobrar</Text>
               <Text style={styles.barraCobrarTotal}>{formatearPesos(carrito.total)}</Text>
             </Pressable>
@@ -312,7 +320,7 @@ export default function HomePromotor() {
               onQuitarUno={carrito.quitarUno}
               onVaciar={carrito.vaciar}
               onCerrar={() => setTicketVisible(false)}
-              onCobrar={() => setCobrarVisible(true)}
+              onCobrar={abrirCobrar}
             />
             <CobrarModal
               variante="superpuesto"
