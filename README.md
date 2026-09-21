@@ -9,14 +9,20 @@ Detalle completo del dominio y las reglas de negocio en [`CLAUDE.md`](CLAUDE.md)
 dispositivo sigue siendo la fuente de verdad para todo — solo turnos y
 comprobantes de transferencia sincronizan a Supabase en background (ver
 [ADR 0006](docs/03-decisiones/0006-sincronizacion-turnos-comprobantes.md)).
-El resto del inventario/ventas sigue 100% local.
+El resto del inventario/ventas sigue 100% local. **Esto significa que cada
+celular/computador tiene sus propias ventas e inventario** — no es un error
+si dos dispositivos muestran datos distintos (incluidos los datos de
+demostración de `__DEV__`, que cada uno genera por su cuenta); es el
+comportamiento esperado hasta que se construya el resto de la Fase 5.
 
 ## Qué está hecho y qué falta
 
 ### Fase 1 — Base local ✅ Completa
-- [x] SQLite + sistema de migraciones versionado (0001 a 0018)
+- [x] SQLite + sistema de migraciones versionado (0001 a 0022)
 - [x] Catálogo de productos (alta, edición, baja lógica) — 123 productos reales cargados
+- [x] Categorías de producto administrables (lista cerrada, sin duplicados por mayúsculas/espacios) y marca con autocompletado
 - [x] Usuarios y roles (promotor, bodega, admin) con login por PIN
+- [x] Gestión completa de promotores: alta (PIN autogenerado de la cédula), edición, baja, y eliminación real solo si nunca tuvo actividad
 - [x] Escáner de código de barras funcionando (`expo-camera`)
 
 ### Fase 2 — Motor de inventario 🔄 En curso
@@ -33,6 +39,8 @@ El resto del inventario/ventas sigue 100% local.
   exige foto del comprobante antes de registrar la venta
 - [x] Recibo interno con numeración por dispositivo
 - [x] Anulación de venta (movimiento compensatorio, nunca borrado — [ADR 0004](docs/03-decisiones/0004-anulacion-de-ventas.md))
+- [x] Clientes finales (registro en campo por el promotor) y asignación de la factura a un cliente antes de cobrar
+- [x] El promotor ve sus propias ventas del turno actual, con detalle
 - [ ] Arqueo de caja
 
 ### Fase 4 — Bodega 🔄 En curso
@@ -58,6 +66,11 @@ El resto del inventario/ventas sigue 100% local.
 
 ### Fase 6 — Reportes 🔄 Empezada
 - [x] Dashboard con KPIs, filtros y desgloses (promotor/punto/categoría/hora)
+- [x] Gráfico circular (método de pago, categoría) y ranking de productos (mejor/peor, por ingresos o por margen)
+- [x] Exportar el resumen del período a Excel (una hoja por sección)
+- [x] Metas de venta mensuales por promotor/punto, con proyección de cierre de mes
+- [x] Filtro por día específico en el listado de Ventas del admin (además de hoy/rango)
+- [x] Sección Análisis: repetibilidad por punto, rendimiento por promotor, correlaciones y cruces
 - [ ] Reportes administrativos adicionales
 - [ ] Recomendador de recarga por nivel objetivo
 

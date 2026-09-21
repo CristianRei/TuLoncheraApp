@@ -43,6 +43,9 @@ Términos del negocio. Úsalos tal cual en código, tablas, variables y UI.
 | **Promotor** | Persona que vende en el evento. |
 | **Conductor** | Transporta producto y promotores. Hay 2 camiones. |
 | **Bodega** | Rol operativo que alista recargas y recibe devoluciones. |
+| **Cliente** | Persona natural que un promotor registra en campo (nombre, teléfono, dirección, ciudad, empresa, nota). No es un actor del sistema, no inicia sesión — solo se le puede asignar la factura de una venta. |
+| **Categoría** | Clasificación de producto (ej. Galletas, Lácteos). Lista cerrada y administrable por admin, nunca texto libre — para que el filtro del dashboard no se rompa en variantes ("Galleta" vs "galleta"). |
+| **Meta** | Objetivo de venta mensual que un admin le asigna a un promotor o a un punto, comparado contra las ventas reales de ese mes calendario. |
 
 ---
 
@@ -186,25 +189,30 @@ tulonchera/
   app/
     index.tsx                  ← login: un solo PIN, sin contraseña
     promotor/
-      index.tsx                  ← venta + check-in de turno + menú (calendario, conteo, finalizar turno)
+      _layout.tsx                 ← envuelve la pila de promotor en VentaEnCursoProvider (qué cliente factura la venta en curso)
+      index.tsx                  ← venta + check-in de turno + menú (calendario, ventas del turno, clientes, conteo, finalizar turno)
       calendario.tsx               ← calendario propio: qué empresa/punto le toca cada día
       conteo-cierre.tsx             ← conteo de cierre: teórico vs. contado por producto
+      ventas-turno/                  ← listado + detalle de las ventas del turno abierto (con cliente asignado)
+      clientes/                       ← alta y listado de clientes finales; también funciona en "modo selección" (?paraVentaId=) para asignar cliente a una venta ya cerrada
     admin/
-      index.tsx                  ← menú de módulos (orden sigue el flujo operativo del día)
+      index.tsx                  ← menú de módulos (orden sigue el flujo operativo del día; "Gestionar promotores" siempre al final)
       calendario/                 ← admin planea eventos: empresa + punto + fecha + promotor(es)
       cargue/                      ← admin planea cargue (sin tocar inventario); [id] para reducir/quitar líneas
       turnos/                       ← selfie/hora/ubicación de check-in de cada promotor
-      ventas/                        ← listado + detalle de ventas registradas
+      ventas/                        ← listado (Activas/Anuladas + filtro Todos los días/Hoy/fecha específica) + detalle de ventas
       conteos/                        ← listado + detalle de conteos de cierre (solo lectura)
       inventario/                      ← stock de bodega + registrar entradas
-      catalogo/                         ← alta / edición / baja de productos
+      catalogo/                         ← alta / edición / baja de productos; categorias.tsx gestiona la lista de categorías
       empresas/                          ← empresas cliente y sus puntos (sedes)
-      descuentos/                         ← crear / ver descuentos por producto y/o punto
-      dashboard/                           ← KPIs (tocables → detalle-ventas/detalle-bodega), filtros, desgloses por promotor/punto/categoría
-      analisis/                             ← repetibilidad por punto, rendimiento por promotor, cruces punto×promotor×producto
-      notificaciones/                       ← stock bajo, lote por vencer, cargue a revisar
-      intentos-pin/                          ← dispositivos bloqueados e intentos fallidos de PIN
-      sync/                                   ← diagnóstico de la cola de sincronización (sin entrada en el menú)
+      clientes/                           ← admin ve/busca/elimina clientes finales registrados por los promotores
+      descuentos/                          ← crear / ver descuentos por producto y/o punto
+      dashboard/                            ← KPIs, gráfico circular, ranking de productos, exportar informe, metas del mes + proyección
+      analisis/                              ← repetibilidad por punto, rendimiento por promotor, cruces punto×promotor×producto
+      notificaciones/                        ← stock bajo, lote por vencer, cargue a revisar
+      intentos-pin/                           ← dispositivos bloqueados e intentos fallidos de PIN
+      promotores/                              ← admin contrata (PIN autogenerado de la cédula), edita y da de baja/elimina promotores
+      sync/                                     ← diagnóstico de la cola de sincronización (sin entrada en el menú)
     bodega/
       index.tsx                  ← menú: ingresar pedido, entregar cargues
       pedido.tsx                  ← ingresar pedido (mismo componente que antes vivía en index)
@@ -223,28 +231,35 @@ tulonchera/
       seguridadPin/                     ← backoff/bloqueo de PIN
       tipos/                              ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0018, versionadas, nunca se editan una vez aplicadas
+      migraciones/                ← 0001 a 0022, versionadas, nunca se editan una vez aplicadas
       cargues.ts                   ← planear/reducir/entregar cargue (cabecera + líneas)
       cargue.ts                     ← RECARGA real bodega→promotor, usado por cargues.ts
       analisis.ts                    ← trae líneas de venta con contexto, envuelve core/analisis
-      conteos.ts                     ← conteo de cierre
-      descuentos.ts                   ← reglas de descuento + resolución del vigente
-      empresas.ts / puntos.ts          ← empresas cliente y sus puntos
-      eventos.ts                        ← calendario de eventos + punto vigente del promotor (por fecha)
-      turnos.ts                          ← check-in/check-out, evento del día del promotor
-      exportarCierreTurno.ts              ← PDF de cierre de turno (expo-print)
+      categorias.ts                   ← categorías de producto: crear-o-reusar por nombre normalizado, desactivar
+      clientes.ts                      ← alta/listado/eliminación (DELETE real) de clientes finales
+      conteos.ts                        ← conteo de cierre
+      descuentos.ts                      ← reglas de descuento + resolución del vigente
+      empresas.ts / puntos.ts             ← empresas cliente y sus puntos
+      eventos.ts                           ← calendario de eventos + punto vigente del promotor (por fecha)
+      metas.ts                              ← metas de venta mensuales por promotor/punto + progreso real
+      promotores.ts                          ← alta/edición/baja (activo=0)/eliminación real (protegida por FK) de promotores
+      turnos.ts                               ← check-in/check-out, evento del día del promotor
+      exportarCierreTurno.ts                   ← PDF de cierre de turno (expo-print)
       turnosRemotos.ts / comprobantesRemotos.ts ← lecturas desde Supabase para admin
-      syncCola.ts                          ← encola tareas para el motor de sync
-    sync/                       ← cliente Supabase, motor de sync en background (ver ADR 0006)
+      syncCola.ts                                ← encola tareas para el motor de sync
+    sync/                       ← cliente Supabase, motor de sync en background (ver ADR 0006); credenciales se validan perezosamente (`requerirCredenciales`), nunca al importar el módulo
     ui/                         ← componentes y hooks compartidos (sí usan React/Expo)
       ContenedorAncho.tsx         ← centra contenido con ancho máximo en tablet/pantalla ancha
       useEsPantallaAncha.ts        ← breakpoint 768px, lo usan Admin y Bodega
       tema.ts                       ← paleta + tipografía del rediseño (Stitch) de menú admin/dashboard
       colores.ts                     ← paleta + tipografía propia de promotor (COLORES, TIPOGRAFIA_PROMOTOR)
       TarjetaModulo.tsx               ← tarjeta de módulo del menú admin, usa tema.ts
-      CalendarioRango.tsx              ← calendario de mes para "Rango personalizado" del dashboard
+      CalendarioRango.tsx              ← calendario de mes, reusado para "Rango personalizado" (dashboard), fecha específica (Ventas) y un solo día
       calendarioGrilla.ts               ← grilla de mes compartida por CalendarioRango/calendario de eventos
-      graficas/                          ← GraficoLinea/GraficoBarrasHorizontales/GraficoDispersion/MapaCalor (react-native-svg, sin librería de charts), usados en Análisis
+      FormularioProducto.tsx             ← nombre/precio/código + selector de categoría ("+ Nueva" inline) + marca con autocompletado
+      FormularioPromotor.tsx              ← nombre/cédula (PIN en vivo)/celular/dirección, revela PIN manual si hay choque
+      VentaEnCursoContext.tsx              ← qué cliente factura el carrito que el promotor está armando ahora mismo
+      graficas/                              ← GraficoLinea/GraficoBarrasHorizontales/GraficoDispersion/GraficoCircular/MapaCalor (react-native-svg, sin librería de charts), usados en Análisis y Dashboard
   supabase/                    ← SQL de Supabase (tablas, RLS, Storage) — se aplica a mano, ver supabase/README.md
   assets/
   eas.json                    ← perfiles de EAS Build: "preview" (.apk interno), "production" (.aab)
@@ -260,20 +275,52 @@ panel web el día que exista.
 
 ## 7. Modelo de datos (resumen)
 
-Estado real después de las migraciones 0001-0018. Detalle completo y
+Estado real después de las migraciones 0001-0022. Detalle completo y
 razonamiento de cada tabla, incluida la sincronización y las conexiones
-entre calendario/turno/cargue/conteo, en `docs/02-modelo-datos.md`.
+entre calendario/turno/cargue/conteo, en `docs/02-modelo-datos.md` (nota:
+ese documento todavía narra solo hasta la migración 0018 — 0019 a 0022
+están descritas aquí y en `src/db/migraciones/`, pendiente trasladarlas
+allá con el mismo nivel de detalle).
 
 ```
-usuarios          (id, nombre, rol, activo, pin)
+usuarios          (id, nombre, rol, activo, pin, cedula[opcional],
+                   celular[opcional], direccion[opcional])
+                  ← cedula/celular/direccion desde la 0022, gestión en
+                    app/admin/promotores/. El PIN de un promotor se deriva
+                    de los últimos 4 dígitos de su cedula (nunca se pide a
+                    mano, salvo choque con otro PIN ya en uso — el índice
+                    único de PIN, migración 0003, es global entre todos los
+                    roles). "Dar de baja" = activo=0 + pin=NULL (libera el
+                    PIN). Solo un promotor sin ninguna venta/turno/cargue/
+                    conteo/evento asociado admite además un DELETE real
+                    ("Eliminar definitivamente"), protegido de verdad por
+                    PRAGMA foreign_keys=ON (src/db/client.ts) — nunca asumir
+                    que ese mismo DELETE es seguro para otra tabla sin la
+                    misma protección real.
 ubicaciones       (id, tipo[BODEGA|CAMION|PROMOTOR], nombre, responsable_id)
                   ← BODEGA es una sola fila (singleton); cada promotor tiene
                     la suya. Ambas se crean perezosamente, no por migración.
-productos         (id, sku, codigo_barras, nombre, categoria[opcional],
-                   marca[opcional], es_licor, es_perecedero, precio,
-                   costo[opcional], unidad_empaque, foto_uri[opcional], activo)
-                  ← categoria/costo/marca opcionales: no vinieron en la carga
-                    inicial. "Eliminar" = activo=0, nunca DELETE.
+productos         (id, sku, codigo_barras, nombre, categoria[MUERTA, ver
+                   categoria_id], categoria_id[opcional], marca[opcional],
+                   es_licor, es_perecedero, precio, costo[opcional],
+                   unidad_empaque, foto_uri[opcional], activo)
+                  ← categoria (TEXT libre, desde la 0001) nunca se llegó a
+                    exponer en ninguna pantalla — la migración 0020 la
+                    reemplaza por categoria_id (FK a categorias, abajo) sin
+                    intentar migrar datos que nunca existieron; la columna
+                    vieja queda sin uso, siempre NULL. costo/marca opcionales:
+                    no vinieron en la carga inicial. "Eliminar" = activo=0,
+                    nunca DELETE.
+categorias        (id, nombre, nombre_normalizado[único], activo, ts_cliente,
+                   dispositivo_id)
+                  ← en uso desde la 0020 (ver ADR pendiente / CLAUDE.md
+                    sección 10). Lista cerrada y administrable: el catálogo
+                    solo permite *elegir* entre estas, nunca texto libre.
+                    `nombre_normalizado` (trim + minúsculas) tiene índice
+                    único — crear una categoría es "crear o reusar" por ese
+                    campo, así "Galleta" y "galleta" nunca terminan siendo
+                    dos filas distintas. Nunca se borra (podría estar en uso
+                    en productos ya etiquetados) — se desactiva.
 lotes             (id, producto_id, fecha_vencimiento)         ← en uso, opcional: se crea
                   al "ingresar pedido" solo si se teclea fecha de vencimiento
 empresas          (id, nombre, direccion, sector, contacto)
@@ -315,16 +362,31 @@ ventas            (id UUID PK, numero_recibo, evento_id[opcional], promotor_id,
                    punto_id[opcional], ts_cliente,
                    metodo_pago[EFECTIVO|TRANSFERENCIA|LIBRANZA],
                    total, dispositivo_id, anulada, motivo_anulacion[opcional],
-                   comprobante_uri[opcional])
+                   comprobante_uri[opcional], cliente_id[opcional])
                   ← anulada nunca se borra la fila (ver ADR 0004). punto_id
                     se resuelve una sola vez al vender, desde el punto
                     vigente del promotor en ese momento (ver ADR 0005).
                     comprobante_uri (desde la 0015): foto del comprobante,
                     obligatoria en la UI solo cuando metodo_pago=TRANSFERENCIA.
+                    cliente_id (desde la 0019): a qué cliente final se le
+                    factura esta venta, resuelto por el promotor antes de
+                    cobrar (ver VentaEnCursoContext) o después desde "Ventas
+                    del turno" — nunca obligatorio.
 venta_items       (venta_id, producto_id, cantidad, precio_unitario,
                    ts_cliente, dispositivo_id)
                   ← precio_unitario ya trae aplicado cualquier descuento
                     vigente resuelto al momento de la venta.
+clientes          (id UUID PK, nombre_completo, telefono[opcional],
+                   direccion[opcional], ciudad[opcional], empresa[opcional],
+                   nota[opcional], creado_por, ts_cliente, dispositivo_id)
+                  ← en uso desde la 0019. Cliente final que un promotor
+                    registra en campo — no es un actor del sistema (no
+                    inicia sesión, no tiene rol). No es parte del libro de
+                    inventario: R1/R2 no aplican, así que a diferencia de
+                    productos/categorías sí admite un DELETE real
+                    (`eliminarCliente`) — antes de borrar, desvincula
+                    (`cliente_id = NULL`) cualquier venta que lo tuviera
+                    asignado, para no perder esas ventas del historial.
 conteos           (id UUID PK, evento_id[opcional], promotor_id, ts_cliente,
                    estado, firmado_por)
                   ← evento_id opcional y promotor_id agregado en la
@@ -371,6 +433,17 @@ _sync_pendiente   (id UUID PK, tabla[turnos|comprobantes_venta], entidad_id,
                     Supabase, drenada en background por src/sync/motor.ts —
                     nunca bloquea ninguna pantalla. completado_ts IS NULL es
                     lo pendiente real; una tarea completada nunca se borra.
+metas             (id UUID PK, tipo[PROMOTOR|PUNTO], entidad_id, mes["AAAA-MM"],
+                   monto_objetivo, creado_por, ts_cliente, dispositivo_id)
+                  ← en uso desde la 0021. Meta de venta mensual por promotor o
+                    por punto, ver app/admin/dashboard/ ("Metas del mes").
+                    Una sola fila por (tipo, entidad_id, mes) — índice único;
+                    `establecerMeta` es upsert, "editar una meta" es volver a
+                    guardarla. `entidad_id` es polimórfico (usuarios o
+                    puntos según tipo), por eso NO tiene FK — al eliminar un
+                    promotor de verdad, sus metas se borran a mano primero
+                    (si no, quedarían huérfanas sin que ninguna restricción
+                    lo evite).
 niveles_objetivo  (promotor_id, producto_id, cantidad, actualizado_ts)        ← sin usar todavía
 intentos_pin_fallidos (id UUID PK, dispositivo_id, modo, ts_cliente)          ← en uso
 desbloqueos_pin       (id UUID PK, dispositivo_id, modo, admin_id, ts_cliente) ← en uso
@@ -414,6 +487,15 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   esquema a mano.
 - **Nada de datos ficticios en la UI.** Si un dato no está disponible, estado vacío
   o de carga, no un placeholder inventado.
+- **"Eliminar" casi siempre es `activo=0`, nunca DELETE.** Productos y
+  categorías siguen ese patrón porque pueden estar en uso en filas ya
+  guardadas. Las únicas dos excepciones son clientes (no son parte del libro
+  de inventario, R1/R2 no aplican) y un promotor **sin ningún historial
+  real** (ver sección 10, "Gestionar promotores") — en ese segundo caso la
+  seguridad la da `PRAGMA foreign_keys = ON` (activado en `src/db/client.ts`,
+  real de verdad, no solo documentación): el DELETE falla solo si todavía
+  hay una fila que lo referencia. No asumas esa misma protección para una
+  tabla nueva sin verificar que de verdad tiene la FK declarada.
 
 ---
 
@@ -449,16 +531,17 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 ## 10. Roadmap
 
 **Estado: Fase 2-4 en curso (Fase 1 completa), Fase 5 con primera rebanada
-construida (solo turnos/comprobantes).**
+construida (solo turnos/comprobantes), Fase 6 bastante avanzada (dashboard,
+análisis, categorías, metas de venta).**
 
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | Base local: SQLite, migraciones, catálogo de productos, usuarios y roles, escáner funcionando | ✅ |
 | 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | ✅ Recarga, saldos y conteo de cierre listos. Falta solo la aprobación de descuadres de R7 (bloqueada por el umbral sin definir, ver sección 11) |
-| 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta, recibo interno y comprobante de transferencia listos; falta arqueo |
+| 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta, recibo interno, comprobante de transferencia, clientes finales y asignación de factura a cliente listos; falta arqueo |
 | 4 | Bodega: cargue por escáner en dos pasos, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega, entrada de inventario, y cargue en dos pasos (admin planea/bodega entrega por escáner) listos; falta niveles objetivo y alertas de vencimiento por producto próximo a vencer (sí existe notificación de cargue a revisar) |
-| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 Primera rebanada: turnos y comprobantes de transferencia sincronizan a Supabase (ADR 0006). El resto del motor de inventario/ventas sigue 100% local. Sin panel web todavía |
-| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido con filtros, puntos y descuentos listo; sección Análisis (repetibilidad/rendimiento/cruces, ver abajo) también lista; recomendador de recarga sigue sin construir |
+| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 Primera rebanada: turnos y comprobantes de transferencia sincronizan a Supabase (ADR 0006). El resto del motor de inventario/ventas sigue 100% local — cada dispositivo tiene sus propias ventas, y eso es a propósito, no un bug (ver nota de "Datos de demo" abajo). Sin panel web todavía |
+| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido (filtros, puntos, descuentos, categorías, gráfico circular, ranking de productos, exportar informe, metas de venta con proyección de cierre) y sección Análisis (repetibilidad/rendimiento/cruces) listos; recomendador de recarga sigue sin construir |
 
 ### Qué existe hoy, concretamente
 
@@ -478,16 +561,20 @@ construida (solo turnos/comprobantes).**
   por punto, por categoría, ventas por hora del día en Bogotá (offset fijo
   UTC-5) y top de productos. Filtra por hoy / 7 días / 30 días / rango
   personalizado, y por promotor, punto, categoría, marca, producto y método
-  de pago (combinables). Se refresca solo cada 15s mientras la pantalla
-  está enfocada — "tiempo real" dentro de este dispositivo, sin
-  sincronización con otros dispositivos (eso es Fase 5, sin construir; ver
-  ADR 0005). Enlace directo a Ventas para ver recibos. Solo pantalla ancha,
+  de pago (combinables). **Ya no se refresca solo** (corrección a una
+  versión anterior de esta nota: hubo un auto-refresh cada 15s, se quitó)
+  — el admin decide cuándo actualizar con el botón "Actualizar", y un
+  contador "hace cuántos minutos" dentro del filtro deja claro que los
+  datos pueden estar desactualizados. Nunca hay sincronización con otros
+  dispositivos (eso es Fase 5, sin construir; ver ADR 0005). Enlace directo
+  a Ventas para ver recibos. Solo pantalla ancha,
   como el resto de Admin. El valor estimado de bodega solo cuenta productos
   con `costo` capturado — la UI muestra la cobertura (ej. "12 de 123
   productos") cuando es parcial, para no leerse como un total cuando no lo
-  es. Los filtros de categoría/marca no tendrán opciones hasta que se cargue
-  esa información en el catálogo (hoy vacía para los 123 productos reales).
-  Las 4 tarjetas KPI son tocables: Total vendido/Ventas emitidas/Ticket
+  es. El filtro de categoría ya usa la tabla `categorias` real (ver más
+  abajo); sus opciones dependen de que el catálogo esté etiquetado, todavía
+  en progreso para los 123 productos reales. Marca sigue siendo texto libre
+  con autocompletado. Las 4 tarjetas KPI son tocables: Total vendido/Ventas emitidas/Ticket
   promedio abren `detalle-ventas.tsx` (parametrizada por `metrica`, mismo
   componente para las tres), Saldo en bodega abre `detalle-bodega.tsx` —
   ambas fuera del modal existente (`ModalDetalleSeccion`, que sigue
@@ -577,6 +664,17 @@ construida (solo turnos/comprobantes).**
   `new Date()`) porque necesitan timestamps pasados — única excepción
   documentada a "usar la función real", justificada porque es
   infraestructura de desarrollo, no un caso de uso del dominio.
+  **Importante para no confundirse entre dispositivos:** este seed corre
+  una sola vez, la primera vez que la app arranca en `__DEV__`, en **cada
+  dispositivo por separado** — el celular, el computador (navegador) y
+  cualquier otro emulador generan cada uno su propio lote aleatorio de
+  ventas de demo, independiente entre sí. Que el celular y el computador
+  muestren ventas distintas (o que uno no muestre ninguna) **no es un
+  bug** — es la consecuencia directa de R5/R6 (SQLite local es la fuente
+  de verdad de cada dispositivo) más el hecho de que solo turnos y
+  comprobantes sincronizan (ADR 0006). Si el celular corre un `.apk` real
+  (no Expo Go), `__DEV__` es `false` ahí y este seed nunca corre — cero
+  ventas de demo es el comportamiento correcto en ese caso, no una falla.
 - **Catálogo** (`app/admin/catalogo/`): alta, edición (nombre, precio, foto,
   código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
   Catálogo real del cliente ya cargado (123 productos, migración 0005).
@@ -691,6 +789,108 @@ construida (solo turnos/comprobantes).**
   instalado en las máquinas de desarrollo** — para recompilar, se descarga el
   binario portable `tectonic` (sin instalador, GitHub releases), se usa una
   vez, y se borra — nunca se instala nada permanente para esto.
+- **Categorías de producto** (`src/db/categorias.ts`,
+  `app/admin/catalogo/categorias.tsx`, migración 0020): reemplaza el
+  `productos.categoria` de texto libre (nunca se llegó a exponer en ninguna
+  pantalla) por una tabla `categorias` administrable — el catálogo solo
+  permite *elegir* entre las que ya existen, nunca escribir texto libre, para
+  que "Galleta" y "galleta" nunca sean dos categorías distintas
+  (`crearCategoria` es crear-o-reusar por nombre normalizado). Admin puede
+  crear categorías en cualquier momento (desde el formulario de producto con
+  "+ Nueva", o desde la pantalla de gestión) y desactivarlas — nunca se
+  borran, podrían estar en uso. El formulario de producto
+  (`src/ui/FormularioProducto.tsx`) ahora también captura `marca` (texto
+  libre con autocompletado de marcas ya usadas) — antes existía en el
+  esquema pero ninguna pantalla lo exponía. Etiquetado en bloque
+  (`app/admin/catalogo/index.tsx`, botón "Etiquetar en bloque"): selecciona
+  varios productos y les asigna categoría de una sola vez — necesario
+  porque los 123 productos reales seguían sin categoría. Sembrada con 7
+  categorías iniciales (Galletas, Cereales, Ponqués, Jugos, Dulces, Lácteos,
+  Paquetes de fritos) que el admin puede editar o ampliar libremente.
+- **Clientes finales** (`src/db/clientes.ts`, `app/promotor/clientes/`,
+  `app/admin/clientes/`, migración 0019): el promotor registra clientes en
+  campo (nombre completo, teléfono, dirección, ciudad, empresa, nota) desde
+  el menú de su pantalla de venta, y puede asignarle la factura de la venta
+  que está armando a cualquier cliente ya registrado — un cliente no es un
+  actor del sistema, no inicia sesión. `ventas.cliente_id` es opcional. La
+  asignación ocurre *antes* de cobrar (desde el Ticket, "Asignar a un
+  cliente") vía `VentaEnCursoContext` (`src/ui/VentaEnCursoContext.tsx`,
+  provisto en `app/promotor/_layout.tsx` para toda la pila de rutas de
+  promotor) — el carrito vive como estado local de `app/promotor/index.tsx`,
+  pero la elección del cliente pasa por una pantalla distinta, así que
+  necesitan un punto en común. También se puede asignar o cambiar el
+  cliente de una venta ya cerrada desde "Ventas del turno" (ver abajo).
+  Admin ve/busca todos los clientes y puede eliminarlos de verdad (DELETE
+  real, no `activo=0`: un cliente no es parte del libro de inventario,
+  R1/R2 no aplican) — al eliminar uno, sus ventas pasadas se desvinculan
+  (`cliente_id = NULL`) en vez de perderse.
+- **Ventas del turno** (`app/promotor/ventas-turno/`, `listarVentasTurno`
+  en `src/db/ventas.ts`): el promotor ve, desde el menú de su pantalla de
+  venta, el listado de sus propias ventas del turno abierto (con total y
+  cantidad) y el detalle de cada una (productos, cantidades, método de
+  pago, comprobante si fue transferencia, y el cliente asignado).
+- **Dashboard: gráfico circular, ranking de productos, exportar informe y
+  metas de venta** (`app/admin/dashboard/`, `src/ui/graficas/GraficoCircular.tsx`,
+  `src/db/metas.ts`, migración 0021): "Por método de pago" ahora es una
+  dona SVG (mismo patrón sin librería de charts que el resto de
+  `src/ui/graficas/`) con la lista de siempre debajo; "Por categoría" tiene
+  un selector barras/circular. "Productos más vendidos" y "Margen
+  (cobertura parcial)" se fusionaron en una sola sección "Ranking de
+  productos" con dos selectores independientes — Ingresos/Margen y
+  Mejores/Peores — para ver de una vez qué producto da más plata y cuál
+  menos, en cualquiera de las dos métricas. Botón "Exportar informe" junto
+  al de actualizar: genera un `.xlsx` con una hoja por sección (resumen,
+  por método de pago, por promotor, por punto, por categoría, ranking de
+  productos, ventas detalladas) del período que se está viendo
+  (`exportarVariasHojasAExcel`, `src/db/exportarExcel.ts`). Nueva sección
+  "Metas del mes", independiente del selector de período de arriba
+  (siempre es el mes calendario en curso en Bogotá, nunca "últimos 30
+  días"): admin le asigna una meta mensual de ventas a un promotor o a un
+  punto (`metas`, una sola meta por entidad+mes, `establecerMeta` es
+  upsert), con barra de progreso contra las ventas reales de ese mes; más
+  una "Proyección de cierre" que extrapola linealmente el total del mes
+  según el ritmo de los días ya transcurridos (`calcularProyeccionMes`,
+  `src/core/analitica/index.ts`) — `null` si el mes ya cerró, nunca se
+  proyecta un mes pasado.
+- **Filtro de fecha en Ventas** (`app/admin/ventas/`, `calcularRangoDiaBogota`
+  en `src/core/analitica/index.ts`): además de Activas/Anuladas, el admin
+  puede ver solo las ventas de hoy o de cualquier día específico (mismo
+  `CalendarioRango` del dashboard, en modo un solo día). `calcularRangoDiaBogota`
+  topa `hasta` a la hora actual cuando el día elegido es hoy — mismo
+  criterio que `calcularRangoHoyBogota` — para que elegir "hoy" por el
+  atajo o por el calendario dé siempre el mismo resultado (antes no
+  coincidían: el calendario iba hasta medianoche del día siguiente sin
+  importar la hora real, así que un dato con hora más tardía en el día
+  podía aparecer en uno y no en el otro).
+- **Gestionar promotores** (`app/admin/promotores/`, `src/db/promotores.ts`,
+  migración 0022): último módulo del menú de admin. Contratar = llenar
+  nombre completo, cédula, celular y dirección — el PIN se deriva solo de
+  los últimos 4 dígitos de la cédula (`pinDesdeCedula`), nunca se pide a
+  mano, salvo que ese PIN ya esté en uso por otra persona (el índice único
+  de PIN, migración 0003, es global entre todos los roles) — ahí el
+  formulario revela un campo de PIN manual. Editar cédula recalcula el PIN
+  junto con ella (nunca por separado). "Dar de baja" es el mismo patrón
+  `activo=0` de productos (dispara el mismo filtro que ya usa el login y
+  los selectores de cargue/calendario) y además libera el PIN (`pin =
+  NULL`) para que un futuro empleado con la misma cédula no choque con el
+  índice único. Solo una vez dado de baja aparece "Eliminar
+  definitivamente" (DELETE real) — protegido de verdad por `PRAGMA
+  foreign_keys = ON` (activado en `src/db/client.ts`): si el promotor
+  tiene cualquier venta, turno, cargue, conteo o evento asociado, el
+  DELETE falla solo por la restricción de llave foránea y se traduce a un
+  mensaje claro (`PromotorConHistorialError`) — nunca deja datos huérfanos.
+  Solo sirve para un registro de prueba o un error de captura que nunca
+  tuvo actividad real; para cualquiera que ya trabajó, dar de baja es la
+  única opción, y así debe seguir siendo.
+- **Validación de credenciales de Supabase, perezosa en vez de al
+  arrancar** (`src/sync/config.ts`, `src/sync/supabaseClient.ts`): antes,
+  si faltaba `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY` en
+  `.env.local`, toda la app tumbaba al abrir (no solo la sincronización)
+  porque el módulo validaba al importarse. Ahora `requerirCredenciales()`
+  valida solo cuando de verdad se necesita el cliente de Supabase (dentro
+  del intento de sincronizar), así que la app entera funciona sin
+  `.env.local` — la sincronización de turnos/comprobantes simplemente
+  queda pendiente, visible en `app/admin/sync/` (diagnóstico ya existente).
 
 Lo que falta de cada fase (conteo de cierre, arqueo, alistamiento por
 escáner, niveles objetivo, gestión de empresas/eventos, sincronización,
@@ -759,6 +959,10 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [ ] ¿Hace falta capturar el costo por unidad al registrar una entrada de
       inventario a bodega? Hoy `productos.costo` sigue vacío — sin eso no se
       puede calcular margen (sección 4: "ver costos y márgenes"). Ver ADR 0003.
+- [ ] ¿El promotor debería poder ver/editar sus propios datos de contacto
+      (celular, dirección), o eso queda exclusivamente en manos de admin
+      como está hoy (`app/admin/promotores/`)? Hoy el promotor no tiene
+      ninguna pantalla para verse a sí mismo en el sistema.
 **Resuelto:** Bodega ya tiene función propia — "ingresar pedido" (escanear
 + teclear cantidad). Ver `src/ui/PantallaIngresarPedido.tsx`.
 
@@ -789,6 +993,9 @@ etiqueta no funciona.
 - No instalar `expo-barcode-scanner`. Está deprecado.
 - No añadir dependencias pesadas sin justificarlo. Cada librería es peso en el APK
   y riesgo de incompatibilidad con el SDK de Expo.
+- No hacer `DELETE` real sobre productos o categorías — desactivar
+  (`activo=0`). Ver sección 8 para las únicas dos excepciones (clientes,
+  y promotores sin historial) y por qué esas sí son seguras.
 
 ---
 
