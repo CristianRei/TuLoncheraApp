@@ -16,14 +16,10 @@ En **Storage**, crear dos buckets **privados** (NO marcar "Public bucket"):
 - `selfies-turnos`
 - `comprobantes-venta`
 
-Para cada uno, en **Policies**, agregar:
-
-- `INSERT` para el rol `authenticated`, sin restricción adicional (`true`).
-- `SELECT` para el rol `authenticated`, sin restricción adicional (`true`).
-- Sin políticas de `UPDATE` ni `DELETE` — las subidas usan `upsert: true`
-  desde el cliente; si el SDK exige permiso explícito de `UPDATE` para que
-  el upsert funcione, agregar `UPDATE` para `authenticated` limitado a
-  `owner = auth.uid()`.
+Luego correr `migraciones/0002_storage_policies.sql` completo en **SQL
+Editor** — RLS de `storage.objects` es independiente de las políticas de
+tablas normales y necesita INSERT + UPDATE (no solo INSERT) porque las
+subidas usan `upsert: true` desde el cliente.
 
 ## 3. Auth
 
