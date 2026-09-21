@@ -40,7 +40,7 @@ function horaBogota(tsCliente: string): number {
 }
 
 /** "AAAA-MM-DD" del día en Bogotá al que corresponde ese instante. */
-function fechaBogota(tsCliente: string): string {
+export function fechaBogota(tsCliente: string): string {
   const offsetMs = OFFSET_BOGOTA_HORAS * 60 * 60 * 1000;
   const fechaBogotaMs = new Date(tsCliente).getTime() - offsetMs;
   return new Date(fechaBogotaMs).toISOString().slice(0, 10);

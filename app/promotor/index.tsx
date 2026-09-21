@@ -23,7 +23,7 @@ import { guardarFotoComprobante } from '@/db/fotos';
 import { obtenerSaldoProducto, listarInventarioPromotor, type ItemInventario } from '@/db/inventario';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
 import { finalizarTurno, obtenerTurnoAbiertoHoy } from '@/db/turnos';
-import { registrarVenta } from '@/db/ventas';
+import { registrarVenta, SinTurnoAbiertoError } from '@/db/ventas';
 import { CobrarModal } from '@/ui/CobrarModal';
 import { COLORES } from '@/ui/colores';
 import { EscanerCodigoBarras } from '@/ui/EscanerCodigoBarras';
@@ -79,6 +79,11 @@ export default function HomePromotor() {
   if (!usuario) return null;
   const usuarioActual = usuario;
 
+  function salir() {
+    cerrarSesion();
+    router.replace('/');
+  }
+
   if (turno === undefined) {
     return (
       <View style={[styles.contenedor, styles.centrado]}>
@@ -92,13 +97,9 @@ export default function HomePromotor() {
       <PantallaIniciarTurno
         promotorId={usuarioActual.id}
         onIniciado={() => cargarTurno(usuarioActual.id)}
+        onCerrarSesion={salir}
       />
     );
-  }
-
-  function salir() {
-    cerrarSesion();
-    router.replace('/');
   }
 
   function confirmarFinalizarTurno() {
@@ -109,6 +110,9 @@ export default function HomePromotor() {
         text: 'Finalizar',
         style: 'destructive',
         onPress: async () => {
+          setTicketVisible(false);
+          setCobrarVisible(false);
+          setEscanerVisible(false);
           const db = await getDb();
           await finalizarTurno(db, { turnoId: turno.id });
           await cargarTurno(usuarioActual.id);
@@ -183,23 +187,35 @@ export default function HomePromotor() {
         ? await guardarFotoComprobante(comprobanteUriTemp, ventaId)
         : null;
 
-      await registrarVenta(
-        db,
-        {
-          id: ventaId,
-          promotorId: usuarioActual.id,
-          promotorNombre: usuarioActual.nombre,
-          metodoPago,
-          comprobanteUri,
-          items: carrito.items.map((item) => ({
-            productoId: item.productoId,
-            productoNombre: item.nombre,
-            cantidad: item.cantidad,
-            precioUnitario: item.precio,
-          })),
-        },
-        dispositivoId
-      );
+      try {
+        await registrarVenta(
+          db,
+          {
+            id: ventaId,
+            promotorId: usuarioActual.id,
+            promotorNombre: usuarioActual.nombre,
+            metodoPago,
+            comprobanteUri,
+            items: carrito.items.map((item) => ({
+              productoId: item.productoId,
+              productoNombre: item.nombre,
+              cantidad: item.cantidad,
+              precioUnitario: item.precio,
+            })),
+          },
+          dispositivoId
+        );
+      } catch (error) {
+        if (error instanceof SinTurnoAbiertoError) {
+          setCobrarVisible(false);
+          setTicketVisible(false);
+          setEscanerVisible(false);
+          await cargarTurno(usuarioActual.id);
+          Alert.alert('Turno finalizado', error.message);
+          return;
+        }
+        throw error;
+      }
       carrito.vaciar();
       setCobrarVisible(false);
       setTicketVisible(false);

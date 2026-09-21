@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -14,14 +15,20 @@ import { COLORES } from '@/ui/colores';
 interface Props {
   promotorId: string;
   onIniciado: () => void;
+  onCerrarSesion: () => void;
 }
+
+// getCurrentPositionAsync puede colgarse sin resolver ni rechazar cuando
+// la señal GPS es débil (típico dentro de un edificio, ver CLAUDE.md
+// sección 5) — sin tope, el botón queda "procesando" para siempre.
+const TIMEOUT_UBICACION_MS = 15000;
 
 /**
  * Check-in físico del día: selfie + ubicación, ambos obligatorios (sin
  * ellos no se puede vender). El id del turno se genera aquí (R3) porque la
  * selfie se guarda con ese id antes de insertar el turno.
  */
-export function PantallaIniciarTurno({ promotorId, onIniciado }: Props) {
+export function PantallaIniciarTurno({ promotorId, onIniciado, onCerrarSesion }: Props) {
   const [procesando, setProcesando] = useState(false);
 
   async function iniciar() {
@@ -45,30 +52,45 @@ export function PantallaIniciarTurno({ promotorId, onIniciado }: Props) {
       });
       if (foto.canceled || !foto.assets[0]) return;
 
-      let ubicacion: { coords: { latitude: number; longitude: number } } | null = null;
+      let ubicacion: { coords: { latitude: number; longitude: number } };
       try {
-        ubicacion = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        ubicacion = await Promise.race([
+          Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), TIMEOUT_UBICACION_MS)
+          ),
+        ]);
       } catch {
-        Alert.alert('No se pudo obtener tu ubicación', 'Verifica que el GPS esté activado e intenta de nuevo.');
+        Alert.alert(
+          'No se pudo obtener tu ubicación',
+          'Verifica que el GPS esté activado, sal a un lugar con mejor señal, e intenta de nuevo.'
+        );
         return;
       }
 
-      const turnoId = Crypto.randomUUID();
-      const selfieUri = await guardarFotoSelfie(foto.assets[0].uri, turnoId);
+      try {
+        const turnoId = Crypto.randomUUID();
+        const selfieUri = await guardarFotoSelfie(foto.assets[0].uri, turnoId);
 
-      const db = await getDb();
-      const dispositivoId = await getDispositivoId(db);
-      await iniciarTurno(
-        db,
-        {
-          promotorId,
-          selfieUri,
-          latitud: ubicacion.coords.latitude,
-          longitud: ubicacion.coords.longitude,
-        },
-        dispositivoId
-      );
-      onIniciado();
+        const db = await getDb();
+        const dispositivoId = await getDispositivoId(db);
+        await iniciarTurno(
+          db,
+          {
+            promotorId,
+            selfieUri,
+            latitud: ubicacion.coords.latitude,
+            longitud: ubicacion.coords.longitude,
+          },
+          dispositivoId
+        );
+        onIniciado();
+      } catch (error) {
+        Alert.alert(
+          'No se pudo iniciar el turno',
+          error instanceof Error ? error.message : 'Ocurrió un error inesperado. Intenta de nuevo.'
+        );
+      }
     } finally {
       setProcesando(false);
     }
@@ -76,6 +98,15 @@ export function PantallaIniciarTurno({ promotorId, onIniciado }: Props) {
 
   return (
     <View style={styles.contenedor}>
+      <View style={styles.encabezadoAcciones}>
+        <Pressable onPress={() => router.push('/promotor/calendario')}>
+          <Text style={styles.enlace}>Mi calendario</Text>
+        </Pressable>
+        <Pressable onPress={onCerrarSesion}>
+          <Text style={styles.enlace}>Cerrar sesión</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.tarjeta}>
         <View style={styles.icono}>
           <Ionicons name="camera-outline" size={36} color={COLORES.primario} />
@@ -106,6 +137,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
+  },
+  encabezadoAcciones: {
+    position: 'absolute',
+    top: 56,
+    right: 20,
+    flexDirection: 'row',
+    gap: 16,
+  },
+  enlace: {
+    fontSize: 13,
+    color: COLORES.oscuro,
+    textDecorationLine: 'underline',
   },
   tarjeta: {
     backgroundColor: '#FFFFFF',

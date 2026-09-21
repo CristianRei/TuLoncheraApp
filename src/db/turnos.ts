@@ -1,7 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { fechaHoyBogota } from '@/core/analitica';
+import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
 import type { Turno } from '@/core/tipos';
 
 interface FilaTurno {
@@ -41,17 +41,21 @@ export async function obtenerTurnoAbiertoHoy(
   db: SQLiteDatabase,
   promotorId: string
 ): Promise<Turno | null> {
+  // `hora_inicio` se guarda en UTC — comparar con SQLite date() compararía
+  // contra el día UTC, no el día Bogotá, y da falsos negativos entre las
+  // 7pm y medianoche Bogotá (UTC ya es el día siguiente). Se filtra en JS
+  // con el mismo corte de fecha que usa el calendario de eventos.
   const hoy = fechaHoyBogota();
-  const fila = await db.getFirstAsync<FilaTurno>(
+  const filas = await db.getAllAsync<FilaTurno>(
     `SELECT ${COLUMNAS_TURNO}
      FROM turnos t
      JOIN usuarios u ON u.id = t.promotor_id
-     WHERE t.promotor_id = ? AND t.hora_fin IS NULL AND date(t.hora_inicio) = date(?)
-     ORDER BY t.hora_inicio DESC
-     LIMIT 1`,
-    [promotorId, hoy]
+     WHERE t.promotor_id = ? AND t.hora_fin IS NULL
+     ORDER BY t.hora_inicio DESC`,
+    [promotorId]
   );
-  return fila ? aTurno(fila) : null;
+  const deHoy = filas.find((fila) => fechaBogota(fila.hora_inicio) === hoy);
+  return deHoy ? aTurno(deHoy) : null;
 }
 
 /** Abre un turno nuevo: selfie + ubicación (nullable solo por si falla el GPS tras dar permiso) son el hecho de apertura, nunca se editan. */

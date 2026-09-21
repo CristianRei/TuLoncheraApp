@@ -7,6 +7,7 @@ import type { MetodoPago, Pesos, Venta, VentaItem } from '@/core/tipos';
 import { obtenerDescuentoVigente } from './descuentos';
 import { obtenerPuntoVigentePromotor } from './eventos';
 import { registrarMovimiento } from './movimientos';
+import { obtenerTurnoAbiertoHoy } from './turnos';
 import { obtenerOCrearUbicacionPromotor } from './ubicaciones';
 
 interface ItemVenta {
@@ -69,6 +70,13 @@ export class VentaYaAnuladaError extends Error {
   }
 }
 
+export class SinTurnoAbiertoError extends Error {
+  constructor() {
+    super('No tienes un turno abierto hoy. Inicia turno antes de vender.');
+    this.name = 'SinTurnoAbiertoError';
+  }
+}
+
 async function generarNumeroRecibo(db: SQLiteDatabase, dispositivoId: string): Promise<string> {
   const prefijo = dispositivoId.slice(0, 4).toUpperCase();
   const fila = await db.getFirstAsync<{ total: number }>(
@@ -97,6 +105,9 @@ export async function registrarVenta(
   datos: DatosVenta,
   dispositivoId: string
 ): Promise<Venta> {
+  const turnoAbierto = await obtenerTurnoAbiertoHoy(db, datos.promotorId);
+  if (!turnoAbierto) throw new SinTurnoAbiertoError();
+
   const id = datos.id ?? Crypto.randomUUID();
   const ahora = new Date().toISOString();
   const puntoVigente = await obtenerPuntoVigentePromotor(db, datos.promotorId);
