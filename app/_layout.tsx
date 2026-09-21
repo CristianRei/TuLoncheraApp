@@ -20,7 +20,7 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { aplicarMigracionesPendientes } from '@/db/migraciones';
 import { sembrarUsuariosDePrueba } from '@/db/seed';
 import { sembrarDatosDemo } from '@/db/seedDemo';
-import { sembrarInventarioDePrueba } from '@/db/seedInventario';
+import { reforzarStockBodega, sembrarInventarioDePrueba } from '@/db/seedInventario';
 import { buscarUsuarioPorPin } from '@/db/usuarios';
 import { drenarColaSync } from '@/sync/motor';
 import { SesionProvider } from '@/ui/SesionContext';
@@ -62,6 +62,7 @@ export default function RootLayout() {
             await sembrarInventarioDePrueba(db, admin.id, promotor.id, promotor.nombre, dispositivoId);
           }
           if (admin) {
+            await reforzarStockBodega(db, admin.id, dispositivoId);
             await sembrarDatosDemo(db, admin.id, dispositivoId);
           }
         }

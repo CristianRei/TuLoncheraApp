@@ -5,6 +5,8 @@ import { registrarMovimiento } from './movimientos';
 import { obtenerOCrearUbicacionBodega, obtenerOCrearUbicacionPromotor } from './ubicaciones';
 
 const MOTIVO_SEED = 'seed-dev';
+const MOTIVO_REFUERZO = 'seed-dev-refuerzo-bodega';
+const CANTIDAD_REFUERZO = 100;
 
 const SKUS_BODEGA: { sku: string; cantidad: number }[] = [
   { sku: 'TL001', cantidad: 80 },
@@ -93,6 +95,45 @@ export async function sembrarInventarioDePrueba(
         ubicacionDestinoId: ubicacionPromotor,
         usuarioId: adminId,
         motivo: MOTIVO_SEED,
+      },
+      dispositivoId
+    );
+  }
+}
+
+/**
+ * Solo para desarrollo (bajo __DEV__). Le agrega stock de bodega a TODO el
+ * catálogo activo (no solo los 12 SKU de `sembrarInventarioDePrueba`) —
+ * para probar cargues sin toparse con "sin stock" en productos que el seed
+ * original no cubría. Idempotente con su propia clave de motivo, distinta
+ * de MOTIVO_SEED: corre una sola vez aunque el stock original ya se haya
+ * consumido con cargues reales.
+ */
+export async function reforzarStockBodega(
+  db: SQLiteDatabase,
+  adminId: string,
+  dispositivoId: string
+): Promise<void> {
+  const yaSembrado = await db.getFirstAsync<{ id: string }>(
+    'SELECT id FROM movimientos WHERE motivo = ? LIMIT 1',
+    [MOTIVO_REFUERZO]
+  );
+  if (yaSembrado) return;
+
+  const productos = await listarProductos(db);
+  const ubicacionBodega = await obtenerOCrearUbicacionBodega(db, dispositivoId);
+
+  for (const producto of productos) {
+    await registrarMovimiento(
+      db,
+      {
+        tipo: 'COMPRA_PROVEEDOR',
+        productoId: producto.id,
+        cantidad: CANTIDAD_REFUERZO,
+        ubicacionOrigenId: null,
+        ubicacionDestinoId: ubicacionBodega,
+        usuarioId: adminId,
+        motivo: MOTIVO_REFUERZO,
       },
       dispositivoId
     );
