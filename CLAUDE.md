@@ -255,13 +255,9 @@ panel web el día que exista.
 
 ## 7. Modelo de datos (resumen)
 
-Estado real después de las migraciones 0001-0012 (detalle completo y
-razonamiento en `docs/02-modelo-datos.md`). **Desactualizado respecto a
-0013-0018** (notificaciones, calendario de eventos con `series_recurrencia`,
-comprobantes/turnos, cola de sync `_sync_pendiente`, `cargues`/
-`cargue_lineas`, notificación de cargue a revisar) — ver los ADRs 0006-0008
-y las migraciones mismas en `src/db/migraciones/` para esas tablas hasta
-que esta sección se reescriba completa.
+Estado real después de las migraciones 0001-0018. Detalle completo y
+razonamiento de cada tabla, incluida la sincronización y las conexiones
+entre calendario/turno/cargue/conteo, en `docs/02-modelo-datos.md`.
 
 ```
 usuarios          (id, nombre, rol, activo, pin)
@@ -281,13 +277,30 @@ empresas          (id, nombre, direccion, sector, contacto)
 puntos            (id, empresa_id, nombre, direccion[opcional], activo)
                   ← en uso desde la 0011. Sede de una empresa (ej. Norte,
                     Sur). Gestión en app/admin/empresas/.
-eventos           (id, empresa_id, punto_id, fecha, promotor_id, conductor_id,
-                   camion_id, estado[PLANEADO|EN_CURSO|CERRADO])
-                  ← en uso (parcial) desde la 0011. Hoy representa la
-                    asignación vigente de un promotor a un punto
-                    (estado=EN_CURSO), no todavía una jornada con calendario
-                    real — ver ADR 0005. Admin la crea/reasigna en
-                    app/admin/puntos-asignados/.
+eventos           (id, empresa_id, punto_id, fecha, estado[PLANEADO|EN_CURSO|
+                   CERRADO|CANCELADO], motivo_cancelacion[opcional],
+                   serie_id[opcional], creado_por, ts_cliente, dispositivo_id)
+                  ← desde la 0014, jornada real con fecha planeada (antes era
+                    solo "asignación vigente sin fecha" — ver ADR 0005, luego
+                    corregido por la 0014). El punto vigente del promotor se
+                    resuelve por fecha (evento de hoy), no por estado manual.
+                    Calendario: app/admin/calendario/, app/promotor/calendario.tsx.
+evento_promotores (evento_id, promotor_id)                    ← N-a-N, en uso desde la 0014.
+                  Reemplaza la columna promotor_id directa — un evento puede
+                  tener varios promotores (lo usual es uno solo).
+series_recurrencia (id, frecuencia[DIAS|SEMANAS|MESES|ANIOS], intervalo,
+                   fecha_desde, fecha_hasta, ts_cliente, dispositivo_id)
+                  ← en uso desde la 0014. Solo trazabilidad de una serie
+                    generada de una vez; cada evento generado es
+                    independiente, nunca se edita en cascada.
+turnos            (id UUID PK, promotor_id, selfie_uri, latitud[opcional],
+                   longitud[opcional], hora_inicio, hora_fin[opcional],
+                   ts_cliente, dispositivo_id)
+                  ← en uso desde la 0015. Check-in/check-out físico diario
+                    (independiente de eventos, que es planeación). Sin turno
+                    abierto hoy, el promotor no puede vender ni bodega puede
+                    entregarle cargue (ver ADR 0008). Sincroniza a Supabase
+                    (ADR 0006) — el trigger remoto solo permite tocar hora_fin.
 movimientos       (id UUID PK, tipo, producto_id, lote_id, cantidad,
                    ubicacion_origen_id, ubicacion_destino_id, evento_id[opcional],
                    usuario_id, motivo, ts_cliente, dispositivo_id)
@@ -296,10 +309,13 @@ movimientos       (id UUID PK, tipo, producto_id, lote_id, cantidad,
 ventas            (id UUID PK, numero_recibo, evento_id[opcional], promotor_id,
                    punto_id[opcional], ts_cliente,
                    metodo_pago[EFECTIVO|TRANSFERENCIA|LIBRANZA],
-                   total, dispositivo_id, anulada, motivo_anulacion[opcional])
+                   total, dispositivo_id, anulada, motivo_anulacion[opcional],
+                   comprobante_uri[opcional])
                   ← anulada nunca se borra la fila (ver ADR 0004). punto_id
                     se resuelve una sola vez al vender, desde el punto
                     vigente del promotor en ese momento (ver ADR 0005).
+                    comprobante_uri (desde la 0015): foto del comprobante,
+                    obligatoria en la UI solo cuando metodo_pago=TRANSFERENCIA.
 venta_items       (venta_id, producto_id, cantidad, precio_unitario,
                    ts_cliente, dispositivo_id)
                   ← precio_unitario ya trae aplicado cualquier descuento
@@ -309,7 +325,9 @@ conteos           (id UUID PK, evento_id[opcional], promotor_id, ts_cliente,
                   ← evento_id opcional y promotor_id agregado en la
                     migración 0010, mismo motivo que ADR 0002 (ventas).
                     estado hoy siempre CERRADO al crear: no hay aprobación
-                    todavía (ver R7, sección 11).
+                    todavía (ver R7, sección 11). Si el promotor finaliza
+                    turno sin conteo de hoy, la app solo advierte, nunca
+                    bloquea (ver ADR 0008).
 conteo_lineas     (conteo_id, producto_id, teorico, contado,
                    diferencia, motivo, aprobado_por)
                   ← en uso desde la 0010. Una diferencia ≠ 0 genera un
@@ -323,6 +341,31 @@ descuentos        (id UUID PK, producto_id[opcional], punto_id[opcional],
                     resolver: producto+punto > solo producto > solo punto.
                     activo se puede apagar antes de tiempo; el valor/vigencia
                     nunca se edita — se crea una regla nueva.
+notificaciones    (id UUID PK, tipo[STOCK_BAJO|LOTE_POR_VENCER|CARGUE_REVISAR],
+                   nivel[INFO|ALERTA|CRITICO], titulo, detalle,
+                   producto_id[opcional], lote_id[opcional],
+                   clave_deduplicacion, leida, resuelta, ts_cliente, dispositivo_id)
+                  ← en uso desde la 0013 (CARGUE_REVISAR agregado en la 0018).
+                    Generador con detectores plug-in (src/db/notificaciones.ts);
+                    clave_deduplicacion con índice único parcial evita
+                    duplicar la misma alerta mientras siga activa.
+cargues           (id UUID PK, promotor_id, estado[PLANEADO|ENTREGADO|
+                   CANCELADO], creado_por, ts_cliente, dispositivo_id)
+cargue_lineas     (id UUID PK, cargue_id, producto_id, cantidad_planeada,
+                   cantidad_entregada, estado[PENDIENTE|ENTREGADA|REVISAR],
+                   motivo_revision[opcional], ts_cliente, dispositivo_id)
+                  ← en uso desde la 0017 (ver ADR 0007). Cargue en dos pasos:
+                    admin planea (sin tocar movimientos), bodega confirma
+                    línea por línea — ahí nace el RECARGA real. REVISAR si la
+                    cantidad física no alcanza lo planeado, con motivo
+                    obligatorio, sin bloquear las demás líneas del cargue.
+_sync_pendiente   (id UUID PK, tabla[turnos|comprobantes_venta], entidad_id,
+                   tipo_tarea[FILA|FOTO], intentos, ultimo_error[opcional],
+                   creado_ts, completado_ts[opcional])
+                  ← en uso desde la 0016 (ver ADR 0006). Cola de subida a
+                    Supabase, drenada en background por src/sync/motor.ts —
+                    nunca bloquea ninguna pantalla. completado_ts IS NULL es
+                    lo pendiente real; una tarea completada nunca se borra.
 niveles_objetivo  (promotor_id, producto_id, cantidad, actualizado_ts)        ← sin usar todavía
 intentos_pin_fallidos (id UUID PK, dispositivo_id, modo, ts_cliente)          ← en uso
 desbloqueos_pin       (id UUID PK, dispositivo_id, modo, admin_id, ts_cliente) ← en uso
