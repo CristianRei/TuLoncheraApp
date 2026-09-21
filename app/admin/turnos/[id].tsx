@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Turno } from '@/core/tipos';
@@ -13,6 +13,20 @@ import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(ts: string): string {
   return new Date(ts).toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short' });
+}
+
+function urlGoogleMaps(latitud: number, longitud: number): string {
+  return `https://www.google.com/maps?q=${latitud},${longitud}`;
+}
+
+function EnlaceUbicacion({ latitud, longitud }: { latitud: number; longitud: number }) {
+  return (
+    <Pressable onPress={() => Linking.openURL(urlGoogleMaps(latitud, longitud))}>
+      <Text style={styles.resumenUbicacionLink}>
+        Ver ubicación en Google Maps ({latitud.toFixed(5)}, {longitud.toFixed(5)})
+      </Text>
+    </Pressable>
+  );
 }
 
 export default function DetalleTurno() {
@@ -75,11 +89,11 @@ export default function DetalleTurno() {
               <Text style={styles.resumenDetalle}>
                 {turno.horaFin ? `Fin: ${formatearFecha(turno.horaFin)}` : 'Turno en curso'}
               </Text>
-              <Text style={styles.resumenDetalle}>
-                {turno.latitud !== null && turno.longitud !== null
-                  ? `Ubicación: ${turno.latitud.toFixed(5)}, ${turno.longitud.toFixed(5)}`
-                  : 'Sin ubicación registrada'}
-              </Text>
+              {turno.latitud !== null && turno.longitud !== null ? (
+                <EnlaceUbicacion latitud={turno.latitud} longitud={turno.longitud} />
+              ) : (
+                <Text style={styles.resumenDetalle}>Sin ubicación registrada</Text>
+              )}
             </View>
           </View>
         </ContenedorAncho>
@@ -145,5 +159,11 @@ const styles = StyleSheet.create({
   resumenDetalle: {
     fontSize: 13,
     color: '#777',
+  },
+  resumenUbicacionLink: {
+    fontSize: 13,
+    color: COLORES.oscuro,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
 });

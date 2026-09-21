@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getDb } from '@/db/client';
 import { listarColaSync, type TareaSyncVista } from '@/db/syncCola';
 import { obtenerUltimoCiclo, type EstadoUltimoCiclo } from '@/sync/estado';
-import { drenarColaSync } from '@/sync/motor';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -27,7 +26,6 @@ export default function DiagnosticoSync() {
   const [tareas, setTareas] = useState<TareaSyncVista[]>([]);
   const [ultimoCiclo, setUltimoCiclo] = useState<EstadoUltimoCiclo | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [sincronizando, setSincronizando] = useState(false);
   const insets = useSafeAreaInsets();
 
   const cargar = useCallback(async () => {
@@ -46,16 +44,6 @@ export default function DiagnosticoSync() {
       cargar();
     }, [cargar])
   );
-
-  async function sincronizarAhora() {
-    setSincronizando(true);
-    try {
-      await drenarColaSync();
-      await cargar();
-    } finally {
-      setSincronizando(false);
-    }
-  }
 
   if (!usuario) return null;
 
@@ -80,13 +68,6 @@ export default function DiagnosticoSync() {
           <Text style={styles.resumenTexto}>
             {pendientes === 0 ? 'Todo sincronizado' : `${pendientes} tarea(s) pendiente(s)`}
           </Text>
-          <Pressable style={styles.botonSync} onPress={sincronizarAhora} disabled={sincronizando}>
-            {sincronizando ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.botonSyncTexto}>Sincronizar ahora</Text>
-            )}
-          </Pressable>
         </View>
 
         {ultimoCiclo && (
@@ -174,15 +155,6 @@ const styles = StyleSheet.create({
   ultimoCicloTitulo: { fontSize: 11, fontWeight: '700', color: '#888', textTransform: 'uppercase' },
   ultimoCicloTexto: { fontSize: 13, color: '#333' },
   ultimoCicloTextoError: { color: '#B00020' },
-  botonSync: {
-    backgroundColor: COLORES.oscuro,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    minWidth: 130,
-    alignItems: 'center',
-  },
-  botonSyncTexto: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   vacio: { fontSize: 14, color: '#888', textAlign: 'center' },
   lista: { padding: 20, gap: 10 },
