@@ -1,6 +1,7 @@
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatearPesos } from '@/core/dinero';
+import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 
 import type { ItemCarrito } from './useCarrito';
 
@@ -40,7 +41,7 @@ export function TicketModal({
       <View style={styles.hoja}>
         <View style={styles.encabezado}>
           <Text style={styles.titulo}>Ticket</Text>
-          <Pressable onPress={onCerrar}>
+          <Pressable onPress={onCerrar} accessibilityRole="button" accessibilityLabel="Cerrar ticket">
             <Text style={styles.cerrar}>Cerrar</Text>
           </Pressable>
         </View>
@@ -69,6 +70,8 @@ export function TicketModal({
                   <Pressable
                     style={styles.botonQuitar}
                     onPress={() => onQuitarUno(item.productoId)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Quitar una unidad de ${item.nombre}`}
                   >
                     <Text style={styles.botonQuitarTexto}>−</Text>
                   </Pressable>
@@ -76,7 +79,7 @@ export function TicketModal({
               )}
             />
 
-            <Pressable onPress={onVaciar}>
+            <Pressable onPress={onVaciar} accessibilityRole="button" accessibilityLabel="Vaciar ticket">
               <Text style={styles.vaciar}>Vaciar ticket</Text>
             </Pressable>
 
@@ -88,6 +91,8 @@ export function TicketModal({
               <Pressable
                 style={[styles.botonCobrar, { backgroundColor: colorAcento }]}
                 onPress={onCobrar}
+                accessibilityRole="button"
+                accessibilityLabel={`Cobrar ${formatearPesos(total)}`}
               >
                 <Text style={styles.botonCobrarTexto}>Cobrar</Text>
               </Pressable>
@@ -114,7 +119,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   hoja: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES.superficie,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
@@ -128,11 +133,13 @@ const styles = StyleSheet.create({
   },
   titulo: {
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    color: COLORES.textoSobreOscuro,
   },
   cerrar: {
     fontSize: 14,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
     textDecorationLine: 'underline',
   },
   vacio: {
@@ -140,7 +147,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   vacioTexto: {
-    color: '#888',
+    color: COLORES.textoSecundario,
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
     fontSize: 14,
   },
   lista: {
@@ -151,7 +159,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: COLORES.borde,
     gap: 12,
   },
   filaTexto: {
@@ -160,12 +168,13 @@ const styles = StyleSheet.create({
   },
   filaNombre: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSobreOscuro,
   },
   filaDetalle: {
     fontSize: 13,
-    color: '#777',
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    color: COLORES.textoSecundario,
   },
   botonQuitar: {
     width: 32,
@@ -177,12 +186,13 @@ const styles = StyleSheet.create({
   },
   botonQuitarTexto: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#555',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    color: COLORES.textoSecundario,
   },
   vaciar: {
     fontSize: 13,
-    color: '#B00020',
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.error,
     textAlign: 'center',
     marginTop: 10,
   },
@@ -196,12 +206,13 @@ const styles = StyleSheet.create({
   },
   totalEtiqueta: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#555',
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSobreOscuro,
   },
   totalValor: {
     fontSize: 20,
-    fontWeight: '800',
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    color: COLORES.textoSobreOscuro,
   },
   botonCobrar: {
     borderRadius: 12,
@@ -211,6 +222,6 @@ const styles = StyleSheet.create({
   botonCobrarTexto: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
 });

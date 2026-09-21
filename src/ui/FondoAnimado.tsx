@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -18,16 +18,21 @@ export function FondoFlotante({ color }: { color: string }) {
   const progreso2 = useSharedValue(0);
 
   useEffect(() => {
-    progreso1.value = withRepeat(
-      withTiming(1, { duration: 6500, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true
-    );
-    progreso2.value = withRepeat(
-      withTiming(1, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true
-    );
+    // Puramente decorativo — con "reducir movimiento" activo, las formas
+    // quedan estáticas en vez de flotar en loop.
+    AccessibilityInfo.isReduceMotionEnabled().then((reducido) => {
+      if (reducido) return;
+      progreso1.value = withRepeat(
+        withTiming(1, { duration: 6500, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true
+      );
+      progreso2.value = withRepeat(
+        withTiming(1, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true
+      );
+    });
   }, [progreso1, progreso2]);
 
   const estilo1 = useAnimatedStyle(() => ({
@@ -73,11 +78,14 @@ export function HaloResplandor({ color, tamano = 240 }: { color: string; tamano?
   const progreso = useSharedValue(0);
 
   useEffect(() => {
-    progreso.value = withRepeat(
-      withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true
-    );
+    AccessibilityInfo.isReduceMotionEnabled().then((reducido) => {
+      if (reducido) return;
+      progreso.value = withRepeat(
+        withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true
+      );
+    });
   }, [progreso]);
 
   const estilo = useAnimatedStyle(() => ({

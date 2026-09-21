@@ -6,7 +6,7 @@ import { Pressable, Modal, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, Mask, Rect } from 'react-native-svg';
 
-import { COLORES } from './colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR } from './colores';
 
 interface Props {
   visible: boolean;
@@ -137,10 +137,12 @@ export function EscanerCodigoBarras({
             <Pressable
               style={[styles.boton, { backgroundColor: colorAcento }]}
               onPress={solicitarPermiso}
+              accessibilityRole="button"
+              accessibilityLabel="Dar permiso de cámara"
             >
               <Text style={styles.botonTexto}>Dar permiso</Text>
             </Pressable>
-            <Pressable onPress={onCerrar}>
+            <Pressable onPress={onCerrar} accessibilityRole="button" accessibilityLabel="Cerrar escáner">
               <Text style={styles.cerrarTextoAlterno}>Cerrar</Text>
             </Pressable>
           </View>
@@ -159,16 +161,31 @@ export function EscanerCodigoBarras({
               style={[styles.header, { paddingTop: insets.top + 10 }]}
               pointerEvents={bloqueado ? 'none' : 'box-none'}
             >
-              <Pressable style={styles.botonIcono} onPress={onCerrar}>
+              <Pressable
+                style={styles.botonIcono}
+                onPress={onCerrar}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar escáner"
+              >
                 <Ionicons name="close" size={26} color="#FFF" />
               </Pressable>
               <View style={styles.headerDerecha}>
                 {!camaraFrontal && (
-                  <Pressable style={styles.botonIcono} onPress={() => setLinterna((v) => !v)}>
+                  <Pressable
+                    style={styles.botonIcono}
+                    onPress={() => setLinterna((v) => !v)}
+                    accessibilityRole="button"
+                    accessibilityLabel={linterna ? 'Apagar linterna' : 'Encender linterna'}
+                  >
                     <Ionicons name={linterna ? 'flash' : 'flash-off'} size={22} color="#FFF" />
                   </Pressable>
                 )}
-                <Pressable style={styles.botonIcono} onPress={() => setCamaraFrontal((v) => !v)}>
+                <Pressable
+                  style={styles.botonIcono}
+                  onPress={() => setCamaraFrontal((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cambiar cámara"
+                >
                   <Ionicons name="camera-reverse-outline" size={24} color="#FFF" />
                 </Pressable>
                 {accionesHeaderExtra}
@@ -189,6 +206,8 @@ export function EscanerCodigoBarras({
                 <Pressable
                   style={[styles.botonCandado, bloqueado && styles.botonCandadoActivo]}
                   onPress={() => setBloqueado((v) => !v)}
+                  accessibilityRole="button"
+                  accessibilityLabel={bloqueado ? 'Desbloquear controles' : 'Bloquear controles'}
                 >
                   <Ionicons
                     name={bloqueado ? 'lock-closed' : 'lock-open-outline'}
@@ -304,7 +323,7 @@ const styles = StyleSheet.create({
   tituloTexto: {
     color: '#FFF',
     fontSize: 13,
-    fontWeight: '600',
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
   },
   botonCandado: {
     width: 52,
@@ -338,6 +357,7 @@ const styles = StyleSheet.create({
   mensaje: {
     color: '#FFF',
     fontSize: 14,
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
     textAlign: 'center',
   },
   boton: {
@@ -347,11 +367,12 @@ const styles = StyleSheet.create({
   },
   botonTexto: {
     color: '#FFF',
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
   cerrarTextoAlterno: {
     color: '#CCC',
     fontSize: 14,
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
     textDecorationLine: 'underline',
   },
 });

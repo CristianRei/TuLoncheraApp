@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -40,13 +40,18 @@ export function CampoPin({
 
   useEffect(() => {
     if (!intentoFallido) return;
-    desplazamiento.value = withSequence(
-      withTiming(-10, { duration: 45 }),
-      withTiming(10, { duration: 90 }),
-      withTiming(-8, { duration: 90 }),
-      withTiming(8, { duration: 90 }),
-      withTiming(0, { duration: 60 })
-    );
+    // El mensaje de error ya lo comunica el texto de la pantalla — con
+    // "reducir movimiento" activo, se omite la sacudida en vez de forzarla.
+    AccessibilityInfo.isReduceMotionEnabled().then((reducido) => {
+      if (reducido) return;
+      desplazamiento.value = withSequence(
+        withTiming(-10, { duration: 45 }),
+        withTiming(10, { duration: 90 }),
+        withTiming(-8, { duration: 90 }),
+        withTiming(8, { duration: 90 }),
+        withTiming(0, { duration: 60 })
+      );
+    });
   }, [intentoFallido, desplazamiento]);
 
   const estiloSacudida = useAnimatedStyle(() => ({

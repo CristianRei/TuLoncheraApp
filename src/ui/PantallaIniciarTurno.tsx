@@ -10,7 +10,7 @@ import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { guardarFotoSelfie } from '@/db/fotos';
 import { iniciarTurno } from '@/db/turnos';
-import { COLORES } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 
 interface Props {
   promotorId: string;
@@ -99,10 +99,14 @@ export function PantallaIniciarTurno({ promotorId, onIniciado, onCerrarSesion }:
   return (
     <View style={styles.contenedor}>
       <View style={styles.encabezadoAcciones}>
-        <Pressable onPress={() => router.push('/promotor/calendario')}>
+        <Pressable
+          onPress={() => router.push('/promotor/calendario')}
+          accessibilityRole="button"
+          accessibilityLabel="Ver mi calendario"
+        >
           <Text style={styles.enlace}>Mi calendario</Text>
         </Pressable>
-        <Pressable onPress={onCerrarSesion}>
+        <Pressable onPress={onCerrarSesion} accessibilityRole="button" accessibilityLabel="Cerrar sesión">
           <Text style={styles.enlace}>Cerrar sesión</Text>
         </Pressable>
       </View>
@@ -120,7 +124,12 @@ export function PantallaIniciarTurno({ promotorId, onIniciado, onCerrarSesion }:
         {procesando ? (
           <ActivityIndicator size="large" color={COLORES.primario} style={styles.cargando} />
         ) : (
-          <Pressable style={styles.boton} onPress={iniciar}>
+          <Pressable
+            style={styles.boton}
+            onPress={iniciar}
+            accessibilityRole="button"
+            accessibilityLabel="Tomar selfie e iniciar turno"
+          >
             <Ionicons name="camera" size={20} color="#FFFFFF" />
             <Text style={styles.botonTexto}>Tomar selfie e iniciar turno</Text>
           </Pressable>
@@ -133,7 +142,7 @@ export function PantallaIniciarTurno({ promotorId, onIniciado, onCerrarSesion }:
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FFF8EC',
+    backgroundColor: COLORES.fondo,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -147,11 +156,12 @@ const styles = StyleSheet.create({
   },
   enlace: {
     fontSize: 13,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
     color: COLORES.oscuro,
     textDecorationLine: 'underline',
   },
   tarjeta: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 20,
     padding: 28,
     alignItems: 'center',
@@ -170,12 +180,13 @@ const styles = StyleSheet.create({
   },
   titulo: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#3A2400',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    color: COLORES.textoSobreOscuro,
   },
   texto: {
     fontSize: 13,
-    color: '#777',
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
     textAlign: 'center',
     lineHeight: 19,
   },
@@ -195,6 +206,6 @@ const styles = StyleSheet.create({
   botonTexto: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
 });

@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatearPesos } from '@/core/dinero';
+import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 
 interface Props {
   nombre: string;
@@ -20,7 +21,12 @@ export function TarjetaProductoInventario({
   onPress,
 }: Props) {
   return (
-    <Pressable style={styles.tarjeta} onPress={onPress}>
+    <Pressable
+      style={styles.tarjeta}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Agregar ${nombre}, ${formatearPesos(precio)}, ${saldo} disponibles`}
+    >
       <View style={styles.fotoContenedor}>
         {fotoUri ? (
           <Image source={{ uri: fotoUri }} style={styles.foto} />
@@ -42,7 +48,7 @@ export function TarjetaProductoInventario({
 const styles = StyleSheet.create({
   tarjeta: {
     flex: 1,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 14,
     padding: 8,
     gap: 4,
@@ -67,7 +73,8 @@ const styles = StyleSheet.create({
   },
   fotoPlaceholder: {
     fontSize: 10,
-    color: '#AAA',
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
   },
   saldoBadge: {
     position: 'absolute',
@@ -79,17 +86,17 @@ const styles = StyleSheet.create({
   },
   saldoTexto: {
     fontSize: 10,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
     color: '#FFF',
   },
   nombre: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSobreOscuro,
     minHeight: 32,
   },
   precio: {
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
   },
 });

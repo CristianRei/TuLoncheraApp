@@ -14,7 +14,7 @@ import {
 import { obtenerTeoricoParaConteo, registrarConteo } from '@/db/conteos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { COLORES } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 interface LineaEnEdicion {
@@ -103,7 +103,7 @@ export default function ConteoCierre() {
   return (
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Volver">
           <Text style={styles.volver}>‹ Volver</Text>
         </Pressable>
         <Text style={styles.titulo}>Conteo de cierre</Text>
@@ -149,7 +149,7 @@ export default function ConteoCierre() {
                 <TextInput
                   style={styles.input}
                   placeholder="0"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={COLORES.textoSecundario}
                   value={item.contadoTexto}
                   onChangeText={(texto) => cambiarContado(item.productoId, texto)}
                   keyboardType="number-pad"
@@ -174,6 +174,8 @@ export default function ConteoCierre() {
             ]}
             disabled={guardando || faltanPorContar}
             onPress={confirmar}
+            accessibilityRole="button"
+            accessibilityLabel="Confirmar cierre"
           >
             {guardando ? (
               <ActivityIndicator color="#fff" />
@@ -190,7 +192,7 @@ export default function ConteoCierre() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FFF8EC',
+    backgroundColor: COLORES.fondo,
   },
   encabezado: {
     backgroundColor: COLORES.primario,
@@ -201,18 +203,19 @@ const styles = StyleSheet.create({
   },
   volver: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#3A2400',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    color: COLORES.textoSobreOscuro,
     marginBottom: 6,
   },
   titulo: {
     fontSize: 20,
-    fontWeight: '800',
-    color: '#3A2400',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    color: COLORES.textoSobreOscuro,
   },
   subtitulo: {
     fontSize: 13,
-    color: '#5C3D00',
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSobreOscuro,
   },
   centrado: {
     flex: 1,
@@ -222,7 +225,8 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
     textAlign: 'center',
   },
   lista: {
@@ -233,7 +237,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 14,
     padding: 14,
     gap: 12,
@@ -244,31 +248,33 @@ const styles = StyleSheet.create({
   },
   filaNombre: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSobreOscuro,
   },
   filaTeorico: {
     fontSize: 12,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    color: COLORES.textoSecundario,
   },
   filaDiferencia: {
     fontSize: 12,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
   },
   diferenciaPositiva: {
-    color: '#1B7A3D',
+    color: COLORES.positivo,
   },
   diferenciaNegativa: {
-    color: '#B00020',
+    color: COLORES.error,
   },
   input: {
     width: 64,
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: COLORES.borde,
     borderRadius: 10,
     paddingVertical: 10,
     fontSize: 18,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    color: COLORES.textoSobreOscuro,
     textAlign: 'center',
   },
   pie: {
@@ -277,8 +283,8 @@ const styles = StyleSheet.create({
   },
   avisoDescuadre: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#B00020',
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.error,
     textAlign: 'center',
   },
   botonConfirmar: {
@@ -293,6 +299,6 @@ const styles = StyleSheet.create({
   botonConfirmarTexto: {
     color: '#FFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
 });

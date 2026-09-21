@@ -7,15 +7,15 @@ import type { Evento } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarEventosPromotor } from '@/db/eventos';
 import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from '@/ui/calendarioGrilla';
-import { COLORES } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const TAMANO_CELDA = 40;
 
 function colorEstado(estado: Evento['estado']): string {
-  if (estado === 'CANCELADO') return '#B00020';
-  if (estado === 'CERRADO') return '#888';
-  if (estado === 'EN_CURSO') return '#2E7D32';
+  if (estado === 'CANCELADO') return COLORES.error;
+  if (estado === 'CERRADO') return COLORES.textoSecundario;
+  if (estado === 'EN_CURSO') return COLORES.positivo;
   return COLORES.oscuro;
 }
 
@@ -86,7 +86,7 @@ export default function CalendarioPromotor() {
   return (
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Volver">
           <Text style={styles.volver}>‹ Volver</Text>
         </Pressable>
         <Text style={styles.titulo}>Mi calendario</Text>
@@ -95,13 +95,23 @@ export default function CalendarioPromotor() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.calendario}>
           <View style={styles.mesEncabezado}>
-            <Pressable style={styles.navBoton} onPress={irMesAnterior}>
+            <Pressable
+              style={styles.navBoton}
+              onPress={irMesAnterior}
+              accessibilityRole="button"
+              accessibilityLabel="Mes anterior"
+            >
               <Ionicons name="chevron-back" size={18} color={COLORES.oscuro} />
             </Pressable>
             <Text style={styles.mesTexto}>
               {NOMBRES_MES[mesVisible.mes]} {mesVisible.anio}
             </Text>
-            <Pressable style={styles.navBoton} onPress={irMesSiguiente}>
+            <Pressable
+              style={styles.navBoton}
+              onPress={irMesSiguiente}
+              accessibilityRole="button"
+              accessibilityLabel="Mes siguiente"
+            >
               <Ionicons name="chevron-forward" size={18} color={COLORES.oscuro} />
             </Pressable>
           </View>
@@ -211,7 +221,7 @@ export default function CalendarioPromotor() {
 }
 
 const styles = StyleSheet.create({
-  contenedor: { flex: 1, backgroundColor: '#FFF8EC' },
+  contenedor: { flex: 1, backgroundColor: COLORES.fondo },
   encabezado: {
     backgroundColor: COLORES.primario,
     paddingTop: 64,
@@ -219,14 +229,19 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 4,
   },
-  volver: { fontSize: 13, color: '#3A2400', textDecorationLine: 'underline' },
-  titulo: { fontSize: 18, fontWeight: '700', color: '#3A2400' },
+  volver: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
+    color: COLORES.textoSobreOscuro,
+    textDecorationLine: 'underline',
+  },
+  titulo: { fontSize: 18, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
   scroll: { padding: 16, gap: 14 },
   calendario: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#F0DDB8',
+    borderColor: COLORES.borde,
     padding: 14,
     gap: 8,
   },
@@ -235,46 +250,58 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#FFF8EC',
+    backgroundColor: COLORES.fondo,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mesTexto: { fontSize: 15, fontWeight: '700', color: COLORES.oscuro },
+  mesTexto: { fontSize: 15, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.oscuro },
   filaDias: { flexDirection: 'row' },
-  diaEtiqueta: { width: TAMANO_CELDA, textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#888' },
+  diaEtiqueta: {
+    width: TAMANO_CELDA,
+    textAlign: 'center',
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSecundario,
+  },
   celda: { width: TAMANO_CELDA, height: TAMANO_CELDA, alignItems: 'center', justifyContent: 'center', gap: 2 },
   diaCirculo: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   diaCirculoSeleccionado: { backgroundColor: COLORES.oscuro },
   diaCirculoHoy: { borderWidth: 1.5, borderColor: COLORES.primario },
-  diaTexto: { fontSize: 13, color: '#333' },
-  diaTextoSeleccionado: { color: '#FFFFFF', fontWeight: '700' },
-  diaTextoHoy: { color: COLORES.oscuro, fontWeight: '700' },
+  diaTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.medio, color: COLORES.textoSobreOscuro },
+  diaTextoSeleccionado: { color: '#FFFFFF', fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
+  diaTextoHoy: { color: COLORES.oscuro, fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
   punto: { width: 5, height: 5, borderRadius: 3 },
   puntoActivo: { backgroundColor: COLORES.primario },
-  puntoCancelado: { backgroundColor: '#B00020' },
-  vacio: { fontSize: 13, color: '#888', marginTop: 8, textAlign: 'center' },
+  puntoCancelado: { backgroundColor: COLORES.error },
+  vacio: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
+    marginTop: 8,
+    textAlign: 'center',
+  },
   detalleDia: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#F0DDB8',
+    borderColor: COLORES.borde,
     padding: 16,
     gap: 10,
   },
-  detalleDiaTitulo: { fontSize: 15, fontWeight: '700', color: COLORES.oscuro },
+  detalleDiaTitulo: { fontSize: 15, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.oscuro },
   filaEvento: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFF8EC',
+    backgroundColor: COLORES.fondo,
     borderRadius: 10,
     padding: 12,
   },
   filaEventoCancelada: { opacity: 0.6 },
   filaEventoTexto: { gap: 2, flex: 1 },
-  filaEventoEmpresa: { fontSize: 14, fontWeight: '700', color: '#333' },
-  filaEventoPunto: { fontSize: 13, color: '#777' },
-  filaEventoMotivo: { fontSize: 12, color: '#B00020', marginTop: 2 },
+  filaEventoEmpresa: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
+  filaEventoPunto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
+  filaEventoMotivo: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.error, marginTop: 2 },
   textoTachado: { textDecorationLine: 'line-through' },
-  badgeEstado: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
+  badgeEstado: { fontSize: 11, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, textTransform: 'uppercase' },
 });

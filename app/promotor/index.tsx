@@ -25,7 +25,7 @@ import { buscarProductoPorCodigoBarras } from '@/db/productos';
 import { finalizarTurno, obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { registrarVenta, SinTurnoAbiertoError } from '@/db/ventas';
 import { CobrarModal } from '@/ui/CobrarModal';
-import { COLORES } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 import { EscanerCodigoBarras } from '@/ui/EscanerCodigoBarras';
 import { PantallaIniciarTurno } from '@/ui/PantallaIniciarTurno';
 import { useSesion } from '@/ui/SesionContext';
@@ -233,8 +233,13 @@ export default function HomePromotor() {
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
         <Text style={styles.saludo}>Hola, {usuario.nombre}</Text>
-        <Pressable style={styles.botonMenu} onPress={() => setMenuVisible(true)}>
-          <Ionicons name="menu-outline" size={24} color="#3A2400" />
+        <Pressable
+          style={styles.botonMenu}
+          onPress={() => setMenuVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Abrir menú"
+        >
+          <Ionicons name="menu-outline" size={24} color={COLORES.textoSobreOscuro} />
         </Pressable>
       </View>
 
@@ -279,7 +284,7 @@ export default function HomePromotor() {
                 salir();
               }}
             >
-              <Ionicons name="log-out-outline" size={20} color="#B00020" />
+              <Ionicons name="log-out-outline" size={20} color={COLORES.error} />
               <Text style={[styles.opcionMenuTexto, styles.opcionMenuTextoSalir]}>Cerrar sesión</Text>
             </Pressable>
           </View>
@@ -290,14 +295,24 @@ export default function HomePromotor() {
         <TextInput
           style={styles.busqueda}
           placeholder="Buscar producto..."
-          placeholderTextColor="#999"
+          placeholderTextColor={COLORES.textoSecundario}
           value={busqueda}
           onChangeText={setBusqueda}
         />
-        <Pressable style={styles.botonEscanear} onPress={() => setEscanerVisible(true)}>
+        <Pressable
+          style={styles.botonEscanear}
+          onPress={() => setEscanerVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Escanear código de barras"
+        >
           <Ionicons name="camera-outline" size={20} color={COLORES.oscuro} />
         </Pressable>
-        <Pressable style={styles.botonTicket} onPress={() => setTicketVisible(true)}>
+        <Pressable
+          style={styles.botonTicket}
+          onPress={() => setTicketVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Ver ticket"
+        >
           <Text style={styles.botonTicketTexto}>Ticket</Text>
           {carrito.cantidadTotal > 0 && (
             <View style={styles.botonTicketBadge}>
@@ -340,7 +355,12 @@ export default function HomePromotor() {
       )}
 
       {carrito.cantidadTotal > 0 && (
-        <Pressable style={styles.barraCobrar} onPress={abrirCobrar}>
+        <Pressable
+          style={styles.barraCobrar}
+          onPress={abrirCobrar}
+          accessibilityRole="button"
+          accessibilityLabel={`Cobrar ${formatearPesos(carrito.total)}`}
+        >
           <Text style={styles.barraCobrarTexto}>Cobrar</Text>
           <Text style={styles.barraCobrarTotal}>{formatearPesos(carrito.total)}</Text>
         </Pressable>
@@ -385,7 +405,12 @@ export default function HomePromotor() {
         }
         piePersonalizado={
           carrito.cantidadTotal > 0 ? (
-            <Pressable style={styles.barraCobrarEscaner} onPress={abrirCobrar}>
+            <Pressable
+              style={styles.barraCobrarEscaner}
+              onPress={abrirCobrar}
+              accessibilityRole="button"
+              accessibilityLabel={`Cobrar ${formatearPesos(carrito.total)}`}
+            >
               <Text style={styles.barraCobrarTexto}>Cobrar</Text>
               <Text style={styles.barraCobrarTotal}>{formatearPesos(carrito.total)}</Text>
             </Pressable>
@@ -423,7 +448,7 @@ export default function HomePromotor() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FFF8EC',
+    backgroundColor: COLORES.fondo,
   },
   encabezado: {
     backgroundColor: COLORES.primario,
@@ -436,8 +461,8 @@ const styles = StyleSheet.create({
   },
   saludo: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#3A2400',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    color: COLORES.textoSobreOscuro,
   },
   botonMenu: {
     width: 38,
@@ -456,7 +481,7 @@ const styles = StyleSheet.create({
     marginTop: 108,
     marginRight: 16,
     minWidth: 220,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 14,
     paddingVertical: 8,
     shadowColor: '#000',
@@ -474,15 +499,15 @@ const styles = StyleSheet.create({
   },
   opcionMenuTexto: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSobreOscuro,
   },
   opcionMenuTextoSalir: {
-    color: '#B00020',
+    color: COLORES.error,
   },
   separadorMenu: {
     height: 1,
-    backgroundColor: '#F0DDB8',
+    backgroundColor: COLORES.borde,
     marginVertical: 4,
   },
   barraAcciones: {
@@ -494,21 +519,22 @@ const styles = StyleSheet.create({
   },
   busqueda: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 9,
     fontSize: 14,
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
     borderWidth: 1,
-    borderColor: '#F0DDB8',
+    borderColor: COLORES.borde,
   },
   botonEscanear: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES.superficie,
     borderWidth: 1,
-    borderColor: '#F0DDB8',
+    borderColor: COLORES.borde,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -524,7 +550,7 @@ const styles = StyleSheet.create({
   botonTicketTexto: {
     color: '#FFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
   botonTicketBadge: {
     backgroundColor: '#FFF',
@@ -538,7 +564,7 @@ const styles = StyleSheet.create({
   botonTicketBadgeTexto: {
     color: COLORES.oscuro,
     fontSize: 11,
-    fontWeight: '800',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
   botonTicketEscaner: {
     flexDirection: 'row',
@@ -552,7 +578,7 @@ const styles = StyleSheet.create({
   botonTicketEscanerTexto: {
     color: '#FFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
   barraCobrarEscaner: {
     backgroundColor: COLORES.oscuro,
@@ -571,7 +597,8 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
     textAlign: 'center',
   },
   grilla: {
@@ -603,11 +630,11 @@ const styles = StyleSheet.create({
   barraCobrarTexto: {
     color: '#FFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
   barraCobrarTotal: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 18,
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
   },
 });

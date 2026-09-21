@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } fr
 
 import { formatearPesos } from '@/core/dinero';
 import type { MetodoPago } from '@/core/tipos';
+import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 
 interface Props {
   visible: boolean;
@@ -80,6 +81,8 @@ export function CobrarModal({
                 key={opcion.metodo}
                 style={[styles.opcion, { borderColor: colorAcento }]}
                 onPress={() => elegirMetodo(opcion.metodo)}
+                accessibilityRole="button"
+                accessibilityLabel={`Pagar con ${opcion.etiqueta}`}
               >
                 <Text style={[styles.opcionTexto, { color: colorAcento }]}>
                   {opcion.etiqueta}
@@ -90,7 +93,7 @@ export function CobrarModal({
         )}
 
         {!procesando && !tomandoFoto && (
-          <Pressable onPress={onCerrar}>
+          <Pressable onPress={onCerrar} accessibilityRole="button" accessibilityLabel="Cancelar cobro">
             <Text style={styles.cancelar}>Cancelar</Text>
           </Pressable>
         )}
@@ -118,7 +121,7 @@ const styles = StyleSheet.create({
   tarjeta: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES.superficie,
     borderRadius: 18,
     padding: 24,
     alignItems: 'center',
@@ -126,16 +129,18 @@ const styles = StyleSheet.create({
   },
   etiquetaTotal: {
     fontSize: 13,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
   },
   total: {
     fontSize: 30,
-    fontWeight: '800',
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
     marginBottom: 8,
   },
   pregunta: {
     fontSize: 14,
-    color: '#555',
+    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
+    color: COLORES.textoSobreOscuro,
     marginBottom: 8,
   },
   opciones: {
@@ -150,7 +155,7 @@ const styles = StyleSheet.create({
   },
   opcionTexto: {
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
   },
   cargando: {
     marginVertical: 12,
@@ -158,7 +163,8 @@ const styles = StyleSheet.create({
   cancelar: {
     marginTop: 14,
     fontSize: 13,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
     textDecorationLine: 'underline',
   },
 });
