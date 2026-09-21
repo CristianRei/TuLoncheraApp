@@ -1,92 +1,313 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { Evento } from '@/core/tipos';
+import { fechaHoyBogota } from '@/core/analitica';
+import { calcularOcurrencias } from '@/core/eventos';
+import type { Evento, EstadoEvento, Frecuencia } from '@/core/tipos';
 
 interface FilaEvento {
   id: string;
   empresa_id: string;
+  empresa_nombre: string;
   punto_id: string;
   punto_nombre: string;
   fecha: string;
-  promotor_id: string | null;
-  estado: Evento['estado'];
+  estado: EstadoEvento;
+  motivo_cancelacion: string | null;
+  serie_id: string | null;
 }
 
-const COLUMNAS_EVENTO = `ev.id, ev.empresa_id, ev.punto_id, p.nombre as punto_nombre, ev.fecha, ev.promotor_id, ev.estado`;
+const COLUMNAS_EVENTO = `ev.id, ev.empresa_id, e.nombre as empresa_nombre, ev.punto_id, p.nombre as punto_nombre,
+   ev.fecha, ev.estado, ev.motivo_cancelacion, ev.serie_id`;
 
-function aEvento(fila: FilaEvento): Evento {
+async function resolverPromotores(
+  db: SQLiteDatabase,
+  eventoIds: string[]
+): Promise<Map<string, { ids: string[]; nombres: string[] }>> {
+  const mapa = new Map<string, { ids: string[]; nombres: string[] }>();
+  if (eventoIds.length === 0) return mapa;
+
+  const marcadores = eventoIds.map(() => '?').join(', ');
+  const filas = await db.getAllAsync<{ evento_id: string; promotor_id: string; promotor_nombre: string }>(
+    `SELECT ep.evento_id, ep.promotor_id, u.nombre as promotor_nombre
+     FROM evento_promotores ep
+     JOIN usuarios u ON u.id = ep.promotor_id
+     WHERE ep.evento_id IN (${marcadores})
+     ORDER BY u.nombre ASC`,
+    eventoIds
+  );
+  for (const fila of filas) {
+    const actual = mapa.get(fila.evento_id) ?? { ids: [], nombres: [] };
+    actual.ids.push(fila.promotor_id);
+    actual.nombres.push(fila.promotor_nombre);
+    mapa.set(fila.evento_id, actual);
+  }
+  return mapa;
+}
+
+async function aEvento(db: SQLiteDatabase, fila: FilaEvento): Promise<Evento> {
+  const promotores = await resolverPromotores(db, [fila.id]);
+  const propios = promotores.get(fila.id) ?? { ids: [], nombres: [] };
   return {
     id: fila.id,
     empresaId: fila.empresa_id,
+    empresaNombre: fila.empresa_nombre,
     puntoId: fila.punto_id,
     puntoNombre: fila.punto_nombre,
     fecha: fila.fecha,
-    promotorId: fila.promotor_id,
+    promotorIds: propios.ids,
+    promotorNombres: propios.nombres,
     estado: fila.estado,
+    motivoCancelacion: fila.motivo_cancelacion,
+    serieId: fila.serie_id,
   };
 }
 
+async function aEventos(db: SQLiteDatabase, filas: FilaEvento[]): Promise<Evento[]> {
+  const promotores = await resolverPromotores(
+    db,
+    filas.map((f) => f.id)
+  );
+  return filas.map((fila) => {
+    const propios = promotores.get(fila.id) ?? { ids: [], nombres: [] };
+    return {
+      id: fila.id,
+      empresaId: fila.empresa_id,
+      empresaNombre: fila.empresa_nombre,
+      puntoId: fila.punto_id,
+      puntoNombre: fila.punto_nombre,
+      fecha: fila.fecha,
+      promotorIds: propios.ids,
+      promotorNombres: propios.nombres,
+      estado: fila.estado,
+      motivoCancelacion: fila.motivo_cancelacion,
+      serieId: fila.serie_id,
+    };
+  });
+}
+
+async function insertarEvento(
+  db: SQLiteDatabase,
+  datos: {
+    empresaId: string;
+    puntoId: string;
+    fecha: string;
+    promotorIds: string[];
+    creadoPor: string;
+    serieId?: string | null;
+  },
+  dispositivoId: string
+): Promise<string> {
+  const id = Crypto.randomUUID();
+  const ahora = new Date().toISOString();
+
+  await db.runAsync(
+    `INSERT INTO eventos (id, empresa_id, punto_id, fecha, estado, motivo_cancelacion, serie_id, creado_por, ts_cliente, dispositivo_id)
+     VALUES (?, ?, ?, ?, 'PLANEADO', NULL, ?, ?, ?, ?)`,
+    [id, datos.empresaId, datos.puntoId, datos.fecha, datos.serieId ?? null, datos.creadoPor, ahora, dispositivoId]
+  );
+  for (const promotorId of datos.promotorIds) {
+    await db.runAsync('INSERT INTO evento_promotores (evento_id, promotor_id) VALUES (?, ?)', [
+      id,
+      promotorId,
+    ]);
+  }
+  return id;
+}
+
+/** Crea un evento puntual (empresa + punto + fecha) con uno o varios promotores asignados. */
+export async function crearEvento(
+  db: SQLiteDatabase,
+  datos: { empresaId: string; puntoId: string; fecha: string; promotorIds: string[]; creadoPor: string },
+  dispositivoId: string
+): Promise<Evento> {
+  let id = '';
+  await db.withTransactionAsync(async () => {
+    id = await insertarEvento(db, datos, dispositivoId);
+  });
+  const creado = await obtenerEvento(db, id);
+  if (!creado) throw new Error('No se pudo crear el evento');
+  return creado;
+}
+
 /**
- * El punto vigente de un promotor: el evento EN_CURSO más reciente para su
- * `promotor_id`. `eventos` no representa todavía una jornada con calendario
- * (eso es una fase futura, ver ADR 0005) — aquí es simplemente "asignación
- * activa": el admin la crea, y sigue vigente hasta que el admin reasigne.
+ * Genera una serie recurrente: calcula las fechas de ocurrencia
+ * (`calcularOcurrencias`, `src/core/eventos`) y crea un evento independiente
+ * por cada una, todas con el mismo `serie_id` — solo trazabilidad, nunca se
+ * editan en cascada.
+ */
+export async function crearSerieRecurrente(
+  db: SQLiteDatabase,
+  datos: {
+    empresaId: string;
+    puntoId: string;
+    promotorIds: string[];
+    frecuencia: Frecuencia;
+    intervalo: number;
+    fechaDesde: string;
+    fechaHasta: string;
+    creadoPor: string;
+  },
+  dispositivoId: string
+): Promise<Evento[]> {
+  const ocurrencias = calcularOcurrencias(datos.frecuencia, datos.intervalo, datos.fechaDesde, datos.fechaHasta);
+  const serieId = Crypto.randomUUID();
+  const ahora = new Date().toISOString();
+  const idsCreados: string[] = [];
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO series_recurrencia (id, frecuencia, intervalo, fecha_desde, fecha_hasta, ts_cliente, dispositivo_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [serieId, datos.frecuencia, datos.intervalo, datos.fechaDesde, datos.fechaHasta, ahora, dispositivoId]
+    );
+    for (const fecha of ocurrencias) {
+      const id = await insertarEvento(
+        db,
+        {
+          empresaId: datos.empresaId,
+          puntoId: datos.puntoId,
+          fecha,
+          promotorIds: datos.promotorIds,
+          creadoPor: datos.creadoPor,
+          serieId,
+        },
+        dispositivoId
+      );
+      idsCreados.push(id);
+    }
+  });
+
+  const filas = await db.getAllAsync<FilaEvento>(
+    `SELECT ${COLUMNAS_EVENTO}
+     FROM eventos ev
+     JOIN empresas e ON e.id = ev.empresa_id
+     JOIN puntos p ON p.id = ev.punto_id
+     WHERE ev.serie_id = ?
+     ORDER BY ev.fecha ASC`,
+    [serieId]
+  );
+  return aEventos(db, filas);
+}
+
+export async function obtenerEvento(db: SQLiteDatabase, id: string): Promise<Evento | null> {
+  const fila = await db.getFirstAsync<FilaEvento>(
+    `SELECT ${COLUMNAS_EVENTO}
+     FROM eventos ev
+     JOIN empresas e ON e.id = ev.empresa_id
+     JOIN puntos p ON p.id = ev.punto_id
+     WHERE ev.id = ?`,
+    [id]
+  );
+  return fila ? aEvento(db, fila) : null;
+}
+
+/** Todos los eventos entre dos fechas (inclusive), para el calendario admin. */
+export async function listarEventosPorRango(
+  db: SQLiteDatabase,
+  rango: { desde: string; hasta: string },
+  filtros: { promotorId?: string } = {}
+): Promise<Evento[]> {
+  const condicionPromotor = filtros.promotorId
+    ? 'AND ev.id IN (SELECT evento_id FROM evento_promotores WHERE promotor_id = ?)'
+    : '';
+  const parametros = filtros.promotorId
+    ? [rango.desde, rango.hasta, filtros.promotorId]
+    : [rango.desde, rango.hasta];
+
+  const filas = await db.getAllAsync<FilaEvento>(
+    `SELECT ${COLUMNAS_EVENTO}
+     FROM eventos ev
+     JOIN empresas e ON e.id = ev.empresa_id
+     JOIN puntos p ON p.id = ev.punto_id
+     WHERE ev.fecha >= ? AND ev.fecha <= ? ${condicionPromotor}
+     ORDER BY ev.fecha ASC`,
+    parametros
+  );
+  return aEventos(db, filas);
+}
+
+/** Los eventos de un promotor entre dos fechas, para su propio calendario. */
+export async function listarEventosPromotor(
+  db: SQLiteDatabase,
+  promotorId: string,
+  rango: { desde: string; hasta: string }
+): Promise<Evento[]> {
+  return listarEventosPorRango(db, rango, { promotorId });
+}
+
+/** Reemplaza los promotores asignados a un evento existente (no es historial, es la asignación vigente de ese evento). */
+export async function reasignarEvento(
+  db: SQLiteDatabase,
+  datos: { eventoId: string; promotorIds: string[] }
+): Promise<Evento> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM evento_promotores WHERE evento_id = ?', [datos.eventoId]);
+    for (const promotorId of datos.promotorIds) {
+      await db.runAsync('INSERT INTO evento_promotores (evento_id, promotor_id) VALUES (?, ?)', [
+        datos.eventoId,
+        promotorId,
+      ]);
+    }
+  });
+  const actualizado = await obtenerEvento(db, datos.eventoId);
+  if (!actualizado) throw new Error('Este evento ya no existe.');
+  return actualizado;
+}
+
+/** Cancela un evento con motivo obligatorio — nunca se borra (mismo patrón que `ventas.anulada`, ADR 0004). */
+export async function cancelarEvento(
+  db: SQLiteDatabase,
+  datos: { eventoId: string; motivo: string }
+): Promise<void> {
+  await db.runAsync("UPDATE eventos SET estado = 'CANCELADO', motivo_cancelacion = ? WHERE id = ?", [
+    datos.motivo,
+    datos.eventoId,
+  ]);
+}
+
+/** Cambia el estado informativo de un evento (PLANEADO/EN_CURSO/CERRADO) — ya no determina el punto vigente para ventas. */
+export async function cambiarEstadoEvento(
+  db: SQLiteDatabase,
+  datos: { eventoId: string; estado: Exclude<EstadoEvento, 'CANCELADO'> }
+): Promise<void> {
+  await db.runAsync('UPDATE eventos SET estado = ? WHERE id = ?', [datos.estado, datos.eventoId]);
+}
+
+/**
+ * El punto vigente de un promotor: el evento de HOY (Bogotá) en el que está
+ * asignado, sin cancelar. Ya no depende de un estado manual (`EN_CURSO`)
+ * como antes de la migración 0014 — se resuelve por fecha real, el mismo
+ * criterio que el calendario que ve el promotor.
  */
 export async function obtenerPuntoVigentePromotor(
   db: SQLiteDatabase,
   promotorId: string
 ): Promise<Evento | null> {
+  const hoy = fechaHoyBogota();
   const fila = await db.getFirstAsync<FilaEvento>(
     `SELECT ${COLUMNAS_EVENTO}
      FROM eventos ev
+     JOIN empresas e ON e.id = ev.empresa_id
      JOIN puntos p ON p.id = ev.punto_id
-     WHERE ev.promotor_id = ? AND ev.estado = 'EN_CURSO'
+     WHERE ev.fecha = ? AND ev.estado != 'CANCELADO'
+       AND ev.id IN (SELECT evento_id FROM evento_promotores WHERE promotor_id = ?)
      ORDER BY ev.ts_cliente DESC
      LIMIT 1`,
-    [promotorId]
+    [hoy, promotorId]
   );
-  return fila ? aEvento(fila) : null;
+  return fila ? aEvento(db, fila) : null;
 }
 
-/** Cuántos promotores distintos tienen un punto vigente asignado ahora mismo. */
+/** Cuántos promotores distintos tienen un evento de hoy asignado. */
 export async function contarPromotoresConPuntoVigente(db: SQLiteDatabase): Promise<number> {
+  const hoy = fechaHoyBogota();
   const fila = await db.getFirstAsync<{ total: number }>(
-    "SELECT COUNT(DISTINCT promotor_id) as total FROM eventos WHERE estado = 'EN_CURSO'"
+    `SELECT COUNT(DISTINCT ep.promotor_id) as total
+     FROM evento_promotores ep
+     JOIN eventos ev ON ev.id = ep.evento_id
+     WHERE ev.fecha = ? AND ev.estado != 'CANCELADO'`,
+    [hoy]
   );
   return fila?.total ?? 0;
-}
-
-/**
- * El admin asigna un promotor a un punto: cierra la asignación vigente
- * anterior (si existe) y crea una nueva EN_CURSO. `estado` es la única
- * columna que se muta aquí (como `ventas.anulada`, ADR 0004) — `eventos` no
- * es un libro de movimientos, R1/R2 no aplican.
- */
-export async function asignarPromotorAPunto(
-  db: SQLiteDatabase,
-  datos: { promotorId: string; puntoId: string; empresaId: string },
-  dispositivoId: string
-): Promise<Evento> {
-  const id = Crypto.randomUUID();
-  const ahora = new Date().toISOString();
-
-  await db.withTransactionAsync(async () => {
-    await db.runAsync(
-      "UPDATE eventos SET estado = 'CERRADO' WHERE promotor_id = ? AND estado = 'EN_CURSO'",
-      [datos.promotorId]
-    );
-    await db.runAsync(
-      `INSERT INTO eventos (id, empresa_id, punto_id, fecha, promotor_id, estado, ts_cliente, dispositivo_id)
-       VALUES (?, ?, ?, ?, ?, 'EN_CURSO', ?, ?)`,
-      [id, datos.empresaId, datos.puntoId, ahora, datos.promotorId, ahora, dispositivoId]
-    );
-  });
-
-  const fila = await db.getFirstAsync<FilaEvento>(
-    `SELECT ${COLUMNAS_EVENTO} FROM eventos ev JOIN puntos p ON p.id = ev.punto_id WHERE ev.id = ?`,
-    [id]
-  );
-  if (!fila) throw new Error('No se pudo asignar el punto');
-  return aEvento(fila);
 }

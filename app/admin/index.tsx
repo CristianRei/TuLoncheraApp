@@ -67,10 +67,10 @@ const MODULOS: {
     icono: 'business-outline',
   },
   {
-    ruta: '/admin/puntos-asignados',
-    titulo: 'Asignar punto a promotor',
-    descripcion: 'Asignar a cada promotor el punto donde está vendiendo.',
-    icono: 'location-outline',
+    ruta: '/admin/calendario',
+    titulo: 'Calendario de eventos',
+    descripcion: 'Planear qué promotor va a cada empresa y punto, día a día.',
+    icono: 'calendar-outline',
   },
   {
     ruta: '/admin/descuentos',

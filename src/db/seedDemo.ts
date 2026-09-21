@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { MetodoPago } from '@/core/tipos';
 
-import { asignarPromotorAPunto } from './eventos';
+import { crearEvento } from './eventos';
 import { crearEmpresa } from './empresas';
 import { crearDescuento } from './descuentos';
 import { crearLote } from './lotes';
@@ -164,12 +164,19 @@ export async function sembrarDatosDemo(
   }
   if (puntosCreados.length === 0) return;
 
-  // Cada promotor queda asignado a un punto distinto (rotando si hay más promotores que puntos)
+  // Cada promotor queda con un evento de hoy en un punto distinto (rotando si hay más promotores que puntos)
+  const hoy = new Date().toISOString().slice(0, 10);
   for (let i = 0; i < promotores.length; i++) {
     const punto = puntosCreados[i % puntosCreados.length];
-    await asignarPromotorAPunto(
+    await crearEvento(
       db,
-      { promotorId: promotores[i].id, puntoId: punto.id, empresaId: punto.empresaId },
+      {
+        empresaId: punto.empresaId,
+        puntoId: punto.id,
+        fecha: hoy,
+        promotorIds: [promotores[i].id],
+        creadoPor: adminId,
+      },
       dispositivoId
     );
   }

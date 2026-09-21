@@ -17,7 +17,9 @@ export type TipoMovimiento =
   | 'DEVOLUCION_VENCIMIENTO'
   | 'ANULACION_VENTA';
 
-export type EstadoEvento = 'PLANEADO' | 'EN_CURSO' | 'CERRADO';
+export type EstadoEvento = 'PLANEADO' | 'EN_CURSO' | 'CERRADO' | 'CANCELADO';
+
+export type Frecuencia = 'DIAS' | 'SEMANAS' | 'MESES' | 'ANIOS';
 
 export type EstadoConteo = 'ABIERTO' | 'PENDIENTE_APROBACION' | 'CERRADO';
 
@@ -94,11 +96,23 @@ export interface Punto {
 export interface Evento {
   id: string;
   empresaId: string;
+  empresaNombre: string;
   puntoId: string;
   puntoNombre: string;
   fecha: string;
-  promotorId: string | null;
+  promotorIds: string[];
+  promotorNombres: string[];
   estado: EstadoEvento;
+  motivoCancelacion: string | null;
+  serieId: string | null;
+}
+
+export interface SerieRecurrencia {
+  id: string;
+  frecuencia: Frecuencia;
+  intervalo: number;
+  fechaDesde: string;
+  fechaHasta: string;
 }
 
 export type TipoDescuento = 'PORCENTAJE' | 'MONTO_FIJO';

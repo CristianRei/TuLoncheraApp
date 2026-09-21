@@ -152,6 +152,9 @@ export default function HomePromotor() {
       <View style={styles.encabezado}>
         <Text style={styles.saludo}>Hola, {usuario.nombre}</Text>
         <View style={styles.encabezadoAcciones}>
+          <Pressable onPress={() => router.push('/promotor/calendario')}>
+            <Text style={styles.cerrarSesion}>Mi calendario</Text>
+          </Pressable>
           <Pressable onPress={() => router.push('/promotor/conteo-cierre')}>
             <Text style={styles.cerrarSesion}>Conteo de cierre</Text>
           </Pressable>

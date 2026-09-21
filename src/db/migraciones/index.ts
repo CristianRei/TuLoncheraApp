@@ -13,6 +13,7 @@ import { migracion0010ConteoCierre } from './0010_conteo_cierre';
 import { migracion0011PuntosYMarca } from './0011_puntos_y_marca';
 import { migracion0012Descuentos } from './0012_descuentos';
 import { migracion0013Notificaciones } from './0013_notificaciones';
+import { migracion0014CalendarioEventos } from './0014_calendario_eventos';
 
 export interface Migracion {
   version: number;
@@ -37,6 +38,7 @@ const migraciones: Migracion[] = [
   migracion0011PuntosYMarca,
   migracion0012Descuentos,
   migracion0013Notificaciones,
+  migracion0014CalendarioEventos,
 ];
 
 /**

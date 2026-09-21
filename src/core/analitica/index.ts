@@ -46,6 +46,11 @@ function fechaBogota(tsCliente: string): string {
   return new Date(fechaBogotaMs).toISOString().slice(0, 10);
 }
 
+/** "AAAA-MM-DD" de hoy en Bogotá — para resolver el evento vigente de un promotor. */
+export function fechaHoyBogota(ahora: Date = new Date()): string {
+  return fechaBogota(ahora.toISOString());
+}
+
 export interface RangoIso {
   /** ISO 8601 en UTC, límite inferior inclusive. */
   desde: string;
