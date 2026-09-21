@@ -17,8 +17,11 @@ del inventario segmentada por promotor.
 
 Reemplaza a: Loyverse (POS + inventario) y hojas de Excel administrativas.
 
-**Estado actual: app local, sin servidor.** Todo vive en SQLite en el dispositivo.
-La sincronización en la nube es una fase posterior, pero el diseño la anticipa (ver R6).
+**Estado actual: app local-first, con un servidor parcial.** SQLite en el
+dispositivo sigue siendo la fuente de verdad para todo — solo turnos y
+comprobantes de transferencia sincronizan a Supabase en background (ver
+ADR 0006). El resto del inventario/ventas sigue 100% local; el diseño ya
+anticipaba esto (ver R6) antes de construirse.
 
 ---
 
@@ -138,9 +141,10 @@ pasa por una única función**, nunca `if (rol === 'admin')` disperso por la UI.
 |---|---|
 | Móvil | React Native + Expo, TypeScript, `expo-router` |
 | Escáner | `expo-camera` (`CameraView` + `onBarcodeScanned`) |
-| Datos | `expo-sqlite` |
-| Backend | **Ninguno por ahora** (fase posterior) |
+| Datos | `expo-sqlite` (fuente de verdad local, siempre) |
+| Backend | **Supabase, parcial** (solo turnos + comprobantes de transferencia sincronizan — ver ADR 0006). El resto del inventario/ventas sigue 100% local; no asumir que hay backend para nada más. |
 | Panel admin | **No existe todavía.** Por ahora, pantallas de admin dentro de la misma app móvil. |
+| Build/distribución | EAS Build (`eas.json`) — perfil `preview` genera un `.apk` Android de distribución interna (compartir directo, sin Play Store); `production` genera el `.aab` para Play Store. Requiere cuenta de Expo (`npx eas-cli login`), proyecto vinculado en `@ooojulians-team/tulonchera`. Publicar en Play Store exige además cuenta de Google Play Developer (~$25 USD pago único); iOS no está configurado en `eas.json` todavía — para probar en iPhone sin pagar, usar Expo Go con el dev server (`npx expo start`), igual que en Android. |
 
 `expo-barcode-scanner` está deprecado desde SDK 51; el escaneo está integrado en
 `expo-camera`. No lo instales.
@@ -182,43 +186,63 @@ tulonchera/
   app/
     index.tsx                  ← login: un solo PIN, sin contraseña
     promotor/
-      index.tsx                  ← venta: grilla de inventario + ticket + escáner + cobrar
-      conteo-cierre.tsx           ← conteo de cierre: teórico vs. contado por producto
+      index.tsx                  ← venta + check-in de turno + menú (calendario, conteo, finalizar turno)
+      calendario.tsx               ← calendario propio: qué empresa/punto le toca cada día
+      conteo-cierre.tsx             ← conteo de cierre: teórico vs. contado por producto
     admin/
-      index.tsx                  ← menú de módulos
-      catalogo/                   ← alta / edición / baja de productos
-      inventario/                  ← stock de bodega + registrar entradas
-      cargue/                       ← admin planea cargue (sin tocar inventario); bodega lo entrega
+      index.tsx                  ← menú de módulos (orden sigue el flujo operativo del día)
+      calendario/                 ← admin planea eventos: empresa + punto + fecha + promotor(es)
+      cargue/                      ← admin planea cargue (sin tocar inventario); [id] para reducir/quitar líneas
+      turnos/                       ← selfie/hora/ubicación de check-in de cada promotor
       ventas/                        ← listado + detalle de ventas registradas
-      conteos/                       ← listado + detalle de conteos de cierre (solo lectura)
-      dashboard/                      ← KPIs, filtros, desgloses por promotor/punto/categoría
-      empresas/                        ← empresas cliente y sus puntos (sedes)
-      puntos-asignados/                 ← asignar promotor a un punto vigente
-      descuentos/                        ← crear / ver descuentos por producto y/o punto
-    bodega/                       ← menú con dos accesos: ingresar pedido, entregar cargues planeados por admin
-    _layout.tsx                 ← migra la DB al arrancar, envuelve todo en SesionProvider
+      conteos/                        ← listado + detalle de conteos de cierre (solo lectura)
+      inventario/                      ← stock de bodega + registrar entradas
+      catalogo/                         ← alta / edición / baja de productos
+      empresas/                          ← empresas cliente y sus puntos (sedes)
+      descuentos/                         ← crear / ver descuentos por producto y/o punto
+      dashboard/                           ← KPIs, filtros, desgloses por promotor/punto/categoría
+      notificaciones/                       ← stock bajo, lote por vencer, cargue a revisar
+      intentos-pin/                          ← dispositivos bloqueados e intentos fallidos de PIN
+      sync/                                   ← diagnóstico de la cola de sincronización (sin entrada en el menú)
+    bodega/
+      index.tsx                  ← menú: ingresar pedido, entregar cargues
+      pedido.tsx                  ← ingresar pedido (mismo componente que antes vivía en index)
+      cargues/                     ← lista de cargues planeados + [id] para ejecutar línea por línea
+    _layout.tsx                 ← migra la DB al arrancar, arranca el motor de sync, envuelve en SesionProvider
   src/
     core/                       ← lógica de dominio, SIN dependencias de React ni Expo
       auth/                       ← modo de login (promotor/admin/bodega) → roles permitidos
-      analitica/                   ← agruparVentasPorHora (zona horaria Bogotá)
+      analitica/                   ← agruparVentasPorHora (zona horaria Bogotá), fechaHoyBogota
       descuentos/                   ← aplicarDescuento + su test
       dinero/                        ← formatearPesos / parsearPesos
-      inventario/                     ← calcularSaldosPorProducto + su property test
-      seguridadPin/                    ← backoff/bloqueo de PIN
-      tipos/                             ← tipos de dominio compartidos
+      eventos/                        ← calcularOcurrencias (series recurrentes del calendario) + property test
+      inventario/                      ← calcularSaldosPorProducto + su property test
+      seguridadPin/                     ← backoff/bloqueo de PIN
+      tipos/                              ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0012, versionadas, nunca se editan una vez aplicadas
-      conteos.ts                   ← conteo de cierre
-      descuentos.ts                 ← reglas de descuento + resolución del vigente
-      empresas.ts / puntos.ts        ← empresas cliente y sus puntos
-      eventos.ts                      ← asignación vigente de promotor a punto
+      migraciones/                ← 0001 a 0018, versionadas, nunca se editan una vez aplicadas
+      cargues.ts                   ← planear/reducir/entregar cargue (cabecera + líneas)
+      cargue.ts                     ← RECARGA real bodega→promotor, usado por cargues.ts
+      conteos.ts                     ← conteo de cierre
+      descuentos.ts                   ← reglas de descuento + resolución del vigente
+      empresas.ts / puntos.ts          ← empresas cliente y sus puntos
+      eventos.ts                        ← calendario de eventos + punto vigente del promotor (por fecha)
+      turnos.ts                          ← check-in/check-out, evento del día del promotor
+      exportarCierreTurno.ts              ← PDF de cierre de turno (expo-print)
+      turnosRemotos.ts / comprobantesRemotos.ts ← lecturas desde Supabase para admin
+      syncCola.ts                          ← encola tareas para el motor de sync
+    sync/                       ← cliente Supabase, motor de sync en background (ver ADR 0006)
     ui/                         ← componentes y hooks compartidos (sí usan React/Expo)
       ContenedorAncho.tsx         ← centra contenido con ancho máximo en tablet/pantalla ancha
       useEsPantallaAncha.ts        ← breakpoint 768px, lo usan Admin y Bodega
       tema.ts                       ← paleta + tipografía del rediseño (Stitch) de menú admin/dashboard
+      colores.ts                     ← paleta + tipografía propia de promotor (COLORES, TIPOGRAFIA_PROMOTOR)
       TarjetaModulo.tsx               ← tarjeta de módulo del menú admin, usa tema.ts
       CalendarioRango.tsx              ← calendario de mes para "Rango personalizado" del dashboard
+      calendarioGrilla.ts               ← grilla de mes compartida por CalendarioRango/calendario de eventos
+  supabase/                    ← SQL de Supabase (tablas, RLS, Storage) — se aplica a mano, ver supabase/README.md
   assets/
+  eas.json                    ← perfiles de EAS Build: "preview" (.apk interno), "production" (.aab)
   eslint.config.js            ← eslint-config-expo, `npm run lint`
   metro.config.js             ← headers COOP/COEP para expo-sqlite en web — funciona en dev server, no en `expo export --platform web` (ver sección 5)
 ```
@@ -231,8 +255,13 @@ panel web el día que exista.
 
 ## 7. Modelo de datos (resumen)
 
-Estado real después de las migraciones 0001-0012. Detalle completo y
-razonamiento en `docs/02-modelo-datos.md`.
+Estado real después de las migraciones 0001-0012 (detalle completo y
+razonamiento en `docs/02-modelo-datos.md`). **Desactualizado respecto a
+0013-0018** (notificaciones, calendario de eventos con `series_recurrencia`,
+comprobantes/turnos, cola de sync `_sync_pendiente`, `cargues`/
+`cargue_lineas`, notificación de cargue a revisar) — ver los ADRs 0006-0008
+y las migraciones mismas en `src/db/migraciones/` para esas tablas hasta
+que esta sección se reescriba completa.
 
 ```
 usuarios          (id, nombre, rol, activo, pin)
@@ -371,15 +400,16 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 
 ## 10. Roadmap
 
-**Estado: Fase 2-3 en curso (Fase 1 completa, Fase 4 empezada).**
+**Estado: Fase 2-4 en curso (Fase 1 completa), Fase 5 con primera rebanada
+construida (solo turnos/comprobantes).**
 
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | Base local: SQLite, migraciones, catálogo de productos, usuarios y roles, escáner funcionando | ✅ |
 | 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | ✅ Recarga, saldos y conteo de cierre listos. Falta solo la aprobación de descuadres de R7 (bloqueada por el umbral sin definir, ver sección 11) |
-| 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta y recibo interno listos; falta arqueo |
-| 4 | Bodega: alistamiento por escáner, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega y entrada de inventario listos; falta alistamiento por escáner, niveles objetivo, alertas de vencimiento, y pantalla propia del rol Bodega |
-| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | ⬜ |
+| 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta, recibo interno y comprobante de transferencia listos; falta arqueo |
+| 4 | Bodega: cargue por escáner en dos pasos, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega, entrada de inventario, y cargue en dos pasos (admin planea/bodega entrega por escáner) listos; falta niveles objetivo y alertas de vencimiento por producto próximo a vencer (sí existe notificación de cargue a revisar) |
+| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 Primera rebanada: turnos y comprobantes de transferencia sincronizan a Supabase (ADR 0006). El resto del motor de inventario/ventas sigue 100% local. Sin panel web todavía |
 | 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido con filtros, puntos y descuentos listo (ver abajo); recomendador de recarga sigue sin construir |
 
 ### Qué existe hoy, concretamente
@@ -474,11 +504,41 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
   `src/db/puntos.ts`, migración 0011): admin crea empresas cliente (ej.
   Falabella) y sus puntos/sedes (ej. Norte, Sur). Sin edición ni baja
   todavía — solo alta y listado.
-- **Asignar punto a promotor** (`app/admin/puntos-asignados/`,
-  `src/db/eventos.ts`): admin elige un promotor y le asigna un punto
-  vigente (reutiliza `eventos`, ver ADR 0005) — el promotor no elige nada,
-  ya entra con su punto asignado. Reasignar cierra la asignación anterior y
-  crea una nueva. Sin calendario ni reasignación en caliente todavía.
+- **Calendario de eventos** (`app/admin/calendario/`,
+  `app/promotor/calendario.tsx`, `src/db/eventos.ts`, migración 0014):
+  reemplazó por completo la pantalla vieja "Asignar punto a promotor"
+  (eliminada). Admin planea eventos (empresa + punto + fecha, uno o varios
+  promotores por evento, series recurrentes) en una vista de calendario
+  mensual; el promotor ve en su propio calendario dónde le toca cada día.
+  Cancelación en caliente con motivo obligatorio, nunca se borra un evento.
+  El "punto vigente" del promotor (usado al vender y al resolver
+  descuentos) se resuelve por fecha real —
+  `obtenerPuntoVigentePromotor` busca el evento de hoy — ya no depende de
+  un estado manual `EN_CURSO`.
+- **Turnos** (`app/promotor/index.tsx` → `PantallaIniciarTurno`,
+  `app/admin/turnos/`, `src/db/turnos.ts`, migración 0015): antes de poder
+  vender, el promotor hace check-in diario (selfie + ubicación GPS,
+  ambas obligatorias, con timeout de 15s si el GPS no resuelve) — sin
+  turno abierto hoy, la grilla de venta no se muestra. Botón "Finalizar
+  turno" en el menú del promotor, con aviso (no bloqueo) si no hizo
+  conteo de cierre ese día. El turno se cruza informativamente con el
+  evento del calendario del día (chip visible, nunca bloquea). Ver ADR
+  0006 (sincronización) y 0008 (conexión con calendario/cargue/conteo).
+- **Comprobante de transferencia** (`src/ui/CobrarModal.tsx`,
+  `src/db/ventas.ts`, migración 0015): al cobrar por transferencia, la
+  app pide foto del comprobante antes de registrar la venta —
+  obligatoria solo para ese medio de pago. Admin la ve en el detalle de
+  cada venta.
+- **Sincronización con Supabase** (`src/sync/`, `src/db/turnosRemotos.ts`,
+  `src/db/comprobantesRemotos.ts`, migración 0016, ADR 0006): primera
+  rebanada de Fase 5 — solo turnos y comprobantes de transferencia (no el
+  motor de inventario/ventas todavía). Cola local (`_sync_pendiente`) que
+  sube en background cada ~2 min o al recuperar red, nunca bloquea la UI.
+  Auth anónima por dispositivo, RLS en Supabase (solo INSERT + el único
+  UPDATE permitido es `hora_fin` de turno). Credenciales en `.env.local`
+  (nunca commiteado, ver `.env.example`); esquema y políticas de Supabase
+  documentados en `supabase/README.md` y `supabase/migraciones/` (se
+  aplican a mano en el dashboard, no hay CLI de Supabase en el repo).
 - **Descuentos** (`app/admin/descuentos/`, `src/db/descuentos.ts`,
   `src/core/descuentos/`, migración 0012): admin crea reglas de descuento
   (porcentaje o monto fijo) por producto y/o punto, con vigencia. Se
@@ -551,6 +611,23 @@ reportes) sigue sin construirse — no asumir que existe.
   representar la asignación vigente de un promotor a un punto, no todavía
   una jornada con calendario. Descuentos por producto y/o punto con
   vigencia, resueltos y aplicados una sola vez al momento de la venta.
+  Parcialmente superado por el calendario de eventos (migración 0014, sin
+  ADR propio — documentado solo en CLAUDE.md aquí y en el mensaje de
+  commit): `eventos` ya representa una jornada con fecha real, no solo
+  una asignación vigente sin fecha.
+- **0006 — Sincronización de turnos y comprobantes.** Primera rebanada de
+  Fase 5. Supabase (Postgres + Storage + Auth anónima), cola local que
+  sube en background, nunca bloquea la UI. Solo turnos y comprobantes de
+  transferencia — el resto del inventario/ventas sigue 100% local.
+- **0007 — Cargue en dos pasos.** Admin planea (sin tocar `movimientos`),
+  bodega ejecuta línea por línea (ahí nace el `RECARGA` real). Líneas con
+  descuadre físico quedan "a revisar" con motivo obligatorio, sin
+  bloquear el resto del cargue.
+- **0008 — Conexiones del flujo diario.** Cierra los huecos entre
+  calendario, cargue, turno y conteo que antes eran sistemas
+  independientes: cargue exige turno abierto (bloqueante), notificación
+  de cargue a revisar, turno↔calendario informativo, aviso (no bloqueo)
+  de conteo pendiente al finalizar turno.
 
 **Regla de despliegue:** ningún promotor deja de usar su método actual sin dos
 semanas de operación en paralelo. Si la app falla en un evento, ese día no se vende.
@@ -565,13 +642,12 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
       de cierre (sección 10) ya calcula y registra el descuadre por
       producto en cada conteo — falta esto para poder bloquear la siguiente
       recarga según R7.
-- [ ] ¿Cuándo se construye el calendario real de eventos (fecha, hora,
-      reasignación en caliente si un evento se cancela a media mañana,
-      vista de calendario en el perfil del promotor)? Hoy `eventos` solo
-      representa la asignación vigente de un promotor a un punto, sin
-      fecha real ni historial de reasignaciones del mismo día (ver ADR 0005).
-      El nivel objetivo también depende de esto: ¿se calcula por promotor o
-      por punto?
+- [ ] El nivel objetivo de recarga (Fase 6, sin construir) sigue sin
+      definir si se calcula por promotor o por punto — el calendario de
+      eventos ya existe (migración 0014, `app/admin/calendario/`,
+      `app/promotor/calendario.tsx`) con fecha real, varios promotores por
+      evento, series recurrentes y cancelación en caliente, así que esa
+      parte de la pregunta original ya quedó resuelta.
 - [ ] ¿El recibo se imprime, se muestra en pantalla, o se envía por WhatsApp?
       Si se imprime, hace falta impresora Bluetooth y development build. Hoy
       el recibo interno solo existe como registro en la base de datos,
@@ -605,7 +681,9 @@ etiqueta no funciona.
 
 - No escribir columnas de stock. Ver R1.
 - No usar `AUTOINCREMENT` como clave primaria de tablas de dominio. Ver R3.
-- No construir capa de sincronización todavía. Ver R6.
+- No asumir que el inventario/ventas ya sincronizan — solo turnos y
+  comprobantes de transferencia lo hacen (ver ADR 0006). No extender la
+  sincronización a otras tablas sin decidirlo explícitamente primero.
 - No usar `AsyncStorage` para datos de inventario. Va en SQLite.
 - No dispersar checks de permisos por la UI. Ver sección 4.
 - No instalar `expo-barcode-scanner`. Está deprecado.
