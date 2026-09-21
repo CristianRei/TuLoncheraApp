@@ -46,7 +46,7 @@ export default function NuevoProducto() {
       </View>
       <ContenedorAncho anchoMaximo={640} llenarAlto>
         <FormularioProducto
-          valorInicial={{ nombre: '', precio: 0, fotoUri: null, codigoBarras: null }}
+          valorInicial={{ nombre: '', precio: 0, fotoUri: null, codigoBarras: null, marca: null, categoriaId: null }}
           colorAcento={COLORES.oscuro}
           guardando={guardando}
           onGuardar={guardar}

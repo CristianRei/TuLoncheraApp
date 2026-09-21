@@ -40,7 +40,7 @@ export interface FiltrosVentas {
   promotorId?: string;
   puntoId?: string;
   empresaId?: string;
-  categoria?: string;
+  categoriaId?: string;
   marca?: string;
   productoId?: string;
   metodoPago?: MetodoPago;
@@ -60,7 +60,7 @@ export async function resolverVentaIdsFiltradas(
 ): Promise<string[]> {
   const condiciones = ['v.anulada = 0', 'v.ts_cliente BETWEEN ? AND ?'];
   const parametros: (string | number)[] = [rango.desde, rango.hasta];
-  const requiereProducto = Boolean(filtros.categoria || filtros.marca || filtros.productoId);
+  const requiereProducto = Boolean(filtros.categoriaId || filtros.marca || filtros.productoId);
 
   if (filtros.promotorId) {
     condiciones.push('v.promotor_id = ?');
@@ -78,9 +78,9 @@ export async function resolverVentaIdsFiltradas(
     condiciones.push('v.metodo_pago = ?');
     parametros.push(filtros.metodoPago);
   }
-  if (filtros.categoria) {
-    condiciones.push('pr.categoria = ?');
-    parametros.push(filtros.categoria);
+  if (filtros.categoriaId) {
+    condiciones.push('pr.categoria_id = ?');
+    parametros.push(filtros.categoriaId);
   }
   if (filtros.marca) {
     condiciones.push('pr.marca = ?');
@@ -250,7 +250,8 @@ export interface TotalPorPunto {
 }
 
 export interface TotalPorCategoria {
-  categoria: string;
+  categoriaId: string;
+  categoriaNombre: string;
   totalVendido: Pesos;
   unidadesVendidas: number;
 }
@@ -330,19 +331,27 @@ export async function obtenerVentasPorCategoria(
   const ids = await resolverVentaIdsFiltradas(db, rango, filtros);
   if (ids.length === 0) return [];
 
-  const filas = await db.getAllAsync<{ categoria: string | null; total: number; unidades: number }>(
-    `SELECT p.categoria, SUM(vi.cantidad * vi.precio_unitario) as total, SUM(vi.cantidad) as unidades
+  const filas = await db.getAllAsync<{
+    categoria_id: string | null;
+    categoria_nombre: string | null;
+    total: number;
+    unidades: number;
+  }>(
+    `SELECT p.categoria_id, c.nombre as categoria_nombre,
+            SUM(vi.cantidad * vi.precio_unitario) as total, SUM(vi.cantidad) as unidades
      FROM venta_items vi
      JOIN productos p ON p.id = vi.producto_id
+     LEFT JOIN categorias c ON c.id = p.categoria_id
      WHERE vi.venta_id IN (${clausulaIn(ids)})
-     GROUP BY p.categoria
+     GROUP BY p.categoria_id
      ORDER BY total DESC`,
     ids
   );
   return filas
-    .filter((fila) => fila.categoria !== null)
+    .filter((fila) => fila.categoria_id !== null)
     .map((fila) => ({
-      categoria: fila.categoria as string,
+      categoriaId: fila.categoria_id as string,
+      categoriaNombre: fila.categoria_nombre as string,
       totalVendido: fila.total,
       unidadesVendidas: fila.unidades,
     }));

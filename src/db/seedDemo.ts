@@ -3,6 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { MetodoPago } from '@/core/tipos';
 
+import { crearCategoria } from './categorias';
 import { crearEvento } from './eventos';
 import { crearEmpresa } from './empresas';
 import { crearDescuento } from './descuentos';
@@ -122,15 +123,23 @@ export async function sembrarDatosDemo(
   );
   if (yaSembrado) return;
 
-  // Categoría/marca en el catálogo real — actualizarProducto no cubre
-  // categoria todavía (solo marca), así que aquí se escribe directo.
+  // Categoría/marca en el catálogo real. `crearCategoria` es crear-o-reusar
+  // por nombre normalizado, así que llamarla varias veces con el mismo
+  // nombre (ej. "Ponqués" aparece en 7 filas de CATEGORIAS_DEMO) nunca
+  // duplica la categoría.
   const productos = await listarProductos(db);
   const productoPorSku = new Map(productos.map((p) => [p.sku, p]));
+  const categoriaIdPorNombre = new Map<string, string>();
   for (const { sku, categoria, marca } of CATEGORIAS_DEMO) {
     const producto = productoPorSku.get(sku);
     if (!producto) continue;
-    await db.runAsync('UPDATE productos SET categoria = ?, marca = ? WHERE id = ?', [
-      categoria,
+    let categoriaId = categoriaIdPorNombre.get(categoria);
+    if (!categoriaId) {
+      categoriaId = (await crearCategoria(db, categoria, dispositivoId)).id;
+      categoriaIdPorNombre.set(categoria, categoriaId);
+    }
+    await db.runAsync('UPDATE productos SET categoria_id = ?, marca = ? WHERE id = ?', [
+      categoriaId,
       marca,
       producto.id,
     ]);

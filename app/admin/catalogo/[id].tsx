@@ -89,6 +89,8 @@ export default function EditarProducto() {
               precio: producto.precio,
               fotoUri: producto.fotoUri,
               codigoBarras: producto.codigoBarras,
+              marca: producto.marca,
+              categoriaId: producto.categoriaId,
             }}
             colorAcento={COLORES.oscuro}
             guardando={guardando}

@@ -26,7 +26,7 @@ export type SeccionDetalle =
   | { campo: 'metodoPago'; valor: MetodoPago; titulo: string }
   | { campo: 'promotorId'; valor: string; titulo: string }
   | { campo: 'puntoId'; valor: string; titulo: string }
-  | { campo: 'categoria'; valor: string; titulo: string };
+  | { campo: 'categoriaId'; valor: string; titulo: string };
 
 interface Props {
   seccion: SeccionDetalle | null;

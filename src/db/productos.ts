@@ -8,7 +8,8 @@ interface FilaProducto {
   sku: string;
   codigo_barras: string | null;
   nombre: string;
-  categoria: string | null;
+  categoria_id: string | null;
+  categoria_nombre: string | null;
   marca: string | null;
   es_licor: number;
   es_perecedero: number;
@@ -25,7 +26,8 @@ function aProducto(fila: FilaProducto): Producto {
     sku: fila.sku,
     codigoBarras: fila.codigo_barras,
     nombre: fila.nombre,
-    categoria: fila.categoria,
+    categoriaId: fila.categoria_id,
+    categoriaNombre: fila.categoria_nombre,
     marca: fila.marca,
     esLicor: fila.es_licor === 1,
     esPerecedero: fila.es_perecedero === 1,
@@ -37,23 +39,24 @@ function aProducto(fila: FilaProducto): Producto {
   };
 }
 
-const COLUMNAS =
-  'id, sku, codigo_barras, nombre, categoria, marca, es_licor, es_perecedero, precio, costo, unidad_empaque, foto_uri, activo';
+const COLUMNAS = `p.id, p.sku, p.codigo_barras, p.nombre, p.categoria_id, c.nombre as categoria_nombre, p.marca,
+   p.es_licor, p.es_perecedero, p.precio, p.costo, p.unidad_empaque, p.foto_uri, p.activo`;
+const JOIN_PRODUCTO = 'FROM productos p LEFT JOIN categorias c ON c.id = p.categoria_id';
 
 export async function listarProductos(
   db: SQLiteDatabase,
   opciones: { incluirInactivos?: boolean } = {}
 ): Promise<Producto[]> {
-  const condicion = opciones.incluirInactivos ? 'activo = 0' : 'activo = 1';
+  const condicion = opciones.incluirInactivos ? 'p.activo = 0' : 'p.activo = 1';
   const filas = await db.getAllAsync<FilaProducto>(
-    `SELECT ${COLUMNAS} FROM productos WHERE ${condicion} ORDER BY nombre ASC`
+    `SELECT ${COLUMNAS} ${JOIN_PRODUCTO} WHERE ${condicion} ORDER BY p.nombre ASC`
   );
   return filas.map(aProducto);
 }
 
 export async function obtenerProducto(db: SQLiteDatabase, id: string): Promise<Producto | null> {
   const fila = await db.getFirstAsync<FilaProducto>(
-    `SELECT ${COLUMNAS} FROM productos WHERE id = ?`,
+    `SELECT ${COLUMNAS} ${JOIN_PRODUCTO} WHERE p.id = ?`,
     [id]
   );
   return fila ? aProducto(fila) : null;
@@ -66,18 +69,10 @@ export async function obtenerProductosPorIds(
   if (ids.length === 0) return new Map();
   const marcadores = ids.map(() => '?').join(', ');
   const filas = await db.getAllAsync<FilaProducto>(
-    `SELECT ${COLUMNAS} FROM productos WHERE id IN (${marcadores})`,
+    `SELECT ${COLUMNAS} ${JOIN_PRODUCTO} WHERE p.id IN (${marcadores})`,
     ids
   );
   return new Map(filas.map((fila) => [fila.id, aProducto(fila)]));
-}
-
-/** Categorías distintas en uso — para poblar el filtro del dashboard. */
-export async function listarCategoriasDistintas(db: SQLiteDatabase): Promise<string[]> {
-  const filas = await db.getAllAsync<{ categoria: string }>(
-    "SELECT DISTINCT categoria FROM productos WHERE categoria IS NOT NULL AND categoria != '' ORDER BY categoria ASC"
-  );
-  return filas.map((fila) => fila.categoria);
 }
 
 /** Marcas distintas en uso — para poblar el filtro del dashboard. */
@@ -100,6 +95,7 @@ export async function crearProducto(
     fotoUri?: string | null;
     codigoBarras?: string | null;
     marca?: string | null;
+    categoriaId?: string | null;
   },
   dispositivoId: string,
   idPredefinido?: string
@@ -110,8 +106,8 @@ export async function crearProducto(
   const id = idPredefinido ?? Crypto.randomUUID();
   const ahora = new Date().toISOString();
   await db.runAsync(
-    `INSERT INTO productos (id, sku, nombre, precio, foto_uri, codigo_barras, marca, activo, ts_cliente, dispositivo_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+    `INSERT INTO productos (id, sku, nombre, precio, foto_uri, codigo_barras, marca, categoria_id, activo, ts_cliente, dispositivo_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     [
       id,
       generarSku(),
@@ -120,6 +116,7 @@ export async function crearProducto(
       datos.fotoUri ?? null,
       datos.codigoBarras ?? null,
       datos.marca ?? null,
+      datos.categoriaId ?? null,
       ahora,
       dispositivoId,
     ]
@@ -138,6 +135,7 @@ export async function actualizarProducto(
     fotoUri?: string | null;
     codigoBarras?: string | null;
     marca?: string | null;
+    categoriaId?: string | null;
   }
 ): Promise<void> {
   const columnas: string[] = [];
@@ -163,9 +161,27 @@ export async function actualizarProducto(
     columnas.push('marca = ?');
     valores.push(cambios.marca);
   }
+  if (cambios.categoriaId !== undefined) {
+    columnas.push('categoria_id = ?');
+    valores.push(cambios.categoriaId);
+  }
   if (columnas.length === 0) return;
 
   await db.runAsync(`UPDATE productos SET ${columnas.join(', ')} WHERE id = ?`, [...valores, id]);
+}
+
+/** Asigna una categoría a varios productos de una vez — para etiquetar en bloque el catálogo ya existente. */
+export async function asignarCategoriaAProductos(
+  db: SQLiteDatabase,
+  productoIds: string[],
+  categoriaId: string
+): Promise<void> {
+  if (productoIds.length === 0) return;
+  await db.withTransactionAsync(async () => {
+    for (const id of productoIds) {
+      await db.runAsync('UPDATE productos SET categoria_id = ? WHERE id = ?', [categoriaId, id]);
+    }
+  });
 }
 
 /**
@@ -177,7 +193,7 @@ export async function buscarProductoPorCodigoBarras(
   codigoBarras: string
 ): Promise<Producto | null> {
   const fila = await db.getFirstAsync<FilaProducto>(
-    `SELECT ${COLUMNAS} FROM productos WHERE codigo_barras = ? AND activo = 1`,
+    `SELECT ${COLUMNAS} ${JOIN_PRODUCTO} WHERE p.codigo_barras = ? AND p.activo = 1`,
     [codigoBarras]
   );
   return fila ? aProducto(fila) : null;

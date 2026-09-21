@@ -1,8 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,7 +13,11 @@ import {
 } from 'react-native';
 
 import { formatearPesos, parsearPesos } from '@/core/dinero';
-import type { Pesos } from '@/core/tipos';
+import type { Categoria, Pesos } from '@/core/tipos';
+import { getDb } from '@/db/client';
+import { crearCategoria, listarCategorias } from '@/db/categorias';
+import { getDispositivoId } from '@/db/dispositivo';
+import { listarMarcasDistintas } from '@/db/productos';
 
 import { EscanerCodigoBarras } from './EscanerCodigoBarras';
 
@@ -21,6 +26,8 @@ export interface ValoresProducto {
   precio: Pesos;
   fotoUri: string | null;
   codigoBarras: string | null;
+  marca: string | null;
+  categoriaId: string | null;
 }
 
 interface Props {
@@ -50,6 +57,43 @@ export function FormularioProducto({
   const [procesandoFoto, setProcesandoFoto] = useState(false);
   const [codigoBarras, setCodigoBarras] = useState(valorInicial.codigoBarras ?? '');
   const [escaneando, setEscaneando] = useState(false);
+  const [marca, setMarca] = useState(valorInicial.marca ?? '');
+  const [marcasSugeridas, setMarcasSugeridas] = useState<string[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [categoriaId, setCategoriaId] = useState(valorInicial.categoriaId);
+  const [modalCategoriaVisible, setModalCategoriaVisible] = useState(false);
+  const [nombreCategoriaNueva, setNombreCategoriaNueva] = useState('');
+  const [creandoCategoria, setCreandoCategoria] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const db = await getDb();
+      const [listaCategorias, listaMarcas] = await Promise.all([
+        listarCategorias(db),
+        listarMarcasDistintas(db),
+      ]);
+      setCategorias(listaCategorias);
+      setMarcasSugeridas(listaMarcas);
+    })();
+  }, []);
+
+  async function confirmarCategoriaNueva() {
+    if (nombreCategoriaNueva.trim().length === 0) return;
+    setCreandoCategoria(true);
+    try {
+      const db = await getDb();
+      const dispositivoId = await getDispositivoId(db);
+      const categoria = await crearCategoria(db, nombreCategoriaNueva.trim(), dispositivoId);
+      setCategorias((actual) =>
+        actual.some((c) => c.id === categoria.id) ? actual : [...actual, categoria].sort((a, b) => a.nombre.localeCompare(b.nombre))
+      );
+      setCategoriaId(categoria.id);
+      setNombreCategoriaNueva('');
+      setModalCategoriaVisible(false);
+    } finally {
+      setCreandoCategoria(false);
+    }
+  }
 
   const precio = parsearPesos(precioTexto);
   const puedeGuardar = nombre.trim().length > 0 && !guardando && !procesandoFoto;
@@ -149,6 +193,57 @@ export function FormularioProducto({
         </View>
       </View>
 
+      <View style={styles.campo}>
+        <Text style={styles.etiqueta}>Categoría</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <Pressable
+            style={[styles.chip, categoriaId === null && { backgroundColor: colorAcento, borderColor: colorAcento }]}
+            onPress={() => setCategoriaId(null)}
+          >
+            <Text style={[styles.chipTexto, categoriaId === null && styles.chipTextoActivo]}>
+              Sin categoría
+            </Text>
+          </Pressable>
+          {categorias.map((c) => (
+            <Pressable
+              key={c.id}
+              style={[styles.chip, categoriaId === c.id && { backgroundColor: colorAcento, borderColor: colorAcento }]}
+              onPress={() => setCategoriaId(c.id)}
+            >
+              <Text style={[styles.chipTexto, categoriaId === c.id && styles.chipTextoActivo]}>
+                {c.nombre}
+              </Text>
+            </Pressable>
+          ))}
+          <Pressable
+            style={[styles.chip, { borderColor: colorAcento, borderStyle: 'dashed' }]}
+            onPress={() => setModalCategoriaVisible(true)}
+          >
+            <Text style={[styles.chipTexto, { color: colorAcento }]}>+ Nueva</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+
+      <View style={styles.campo}>
+        <Text style={styles.etiqueta}>Marca</Text>
+        <TextInput
+          style={styles.input}
+          value={marca}
+          onChangeText={setMarca}
+          placeholder="Ej. Ramo"
+          placeholderTextColor="#999"
+        />
+        {marcasSugeridas.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sugerenciasFila}>
+            {marcasSugeridas.map((m) => (
+              <Pressable key={m} style={styles.chip} onPress={() => setMarca(m)}>
+                <Text style={styles.chipTexto}>{m}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+
       <Pressable
         style={[
           styles.botonGuardar,
@@ -162,6 +257,8 @@ export function FormularioProducto({
             precio,
             fotoUri,
             codigoBarras: codigoBarras.trim() || null,
+            marca: marca.trim() || null,
+            categoriaId,
           })
         }
       >
@@ -184,6 +281,49 @@ export function FormularioProducto({
           setEscaneando(false);
         }}
       />
+
+      <Modal visible={modalCategoriaVisible} animationType="fade" transparent>
+        <View style={styles.fondoModal}>
+          <View style={styles.tarjetaModal}>
+            <Text style={styles.modalTitulo}>Nueva categoría</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ej. Galletas"
+              placeholderTextColor="#999"
+              value={nombreCategoriaNueva}
+              onChangeText={setNombreCategoriaNueva}
+              editable={!creandoCategoria}
+              autoFocus
+            />
+            <View style={styles.modalAcciones}>
+              <Pressable
+                onPress={() => {
+                  setModalCategoriaVisible(false);
+                  setNombreCategoriaNueva('');
+                }}
+                disabled={creandoCategoria}
+              >
+                <Text style={styles.modalCancelar}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.botonModalConfirmar,
+                  { backgroundColor: colorAcento },
+                  (nombreCategoriaNueva.trim().length === 0 || creandoCategoria) && styles.botonDeshabilitado,
+                ]}
+                disabled={nombreCategoriaNueva.trim().length === 0 || creandoCategoria}
+                onPress={confirmarCategoriaNueva}
+              >
+                {creandoCategoria ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.botonGuardarTexto}>Crear</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -286,5 +426,62 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#DDD',
+    marginRight: 8,
+  },
+  chipTexto: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#666',
+  },
+  chipTextoActivo: {
+    color: '#FFF',
+  },
+  sugerenciasFila: {
+    marginTop: 8,
+  },
+  fondoModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  tarjetaModal: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFF',
+    borderRadius: 18,
+    padding: 22,
+    gap: 14,
+  },
+  modalTitulo: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333',
+  },
+  modalAcciones: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 20,
+  },
+  modalCancelar: {
+    fontSize: 14,
+    color: '#888',
+  },
+  botonModalConfirmar: {
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    minWidth: 90,
+    alignItems: 'center',
   },
 });
