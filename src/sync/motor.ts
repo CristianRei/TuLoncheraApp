@@ -6,6 +6,7 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { obtenerTurno } from '@/db/turnos';
 import { obtenerVenta } from '@/db/ventas';
 
+import { registrarUltimoCiclo } from './estado';
 import { getSupabaseClient } from './supabaseClient';
 
 interface TareaPendiente {
@@ -40,16 +41,23 @@ export async function drenarColaSync(): Promise<void> {
        ORDER BY creado_ts ASC`
     );
     console.log(`[sync] ${pendientes.length} tarea(s) pendiente(s)`);
-    if (pendientes.length === 0) return;
+    if (pendientes.length === 0) {
+      registrarUltimoCiclo(true, 'Sin tareas pendientes.');
+      return;
+    }
 
     let supabase;
     try {
       supabase = await getSupabaseClient();
     } catch (error) {
-      console.log('[sync] no se pudo obtener sesión de Supabase, se reintenta después:', error);
+      const mensaje = error instanceof Error ? error.message : String(error);
+      console.log('[sync] no se pudo obtener sesión de Supabase, se reintenta después:', mensaje);
+      registrarUltimoCiclo(false, `No se pudo conectar con Supabase: ${mensaje}`);
       return;
     }
 
+    let completadas = 0;
+    let fallidas = 0;
     for (const tarea of pendientes) {
       try {
         console.log(`[sync] subiendo ${tarea.tabla}/${tarea.tipo_tarea} (${tarea.entidad_id}), intento ${tarea.intentos + 1}`);
@@ -63,6 +71,7 @@ export async function drenarColaSync(): Promise<void> {
           tarea.id,
         ]);
         console.log(`[sync] ✓ ${tarea.tabla}/${tarea.tipo_tarea} (${tarea.entidad_id})`);
+        completadas++;
       } catch (error) {
         const mensaje = error instanceof Error ? error.message : String(error);
         console.log(`[sync] ✗ ${tarea.tabla}/${tarea.tipo_tarea} (${tarea.entidad_id}):`, mensaje);
@@ -70,8 +79,13 @@ export async function drenarColaSync(): Promise<void> {
           'UPDATE _sync_pendiente SET intentos = intentos + 1, ultimo_error = ? WHERE id = ?',
           [mensaje, tarea.id]
         );
+        fallidas++;
       }
     }
+    registrarUltimoCiclo(
+      fallidas === 0,
+      `${completadas} subida(s), ${fallidas} fallida(s) de ${pendientes.length} tarea(s).`
+    );
   } finally {
     corriendo = false;
   }

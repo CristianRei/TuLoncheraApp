@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getDb } from '@/db/client';
 import { listarColaSync, type TareaSyncVista } from '@/db/syncCola';
+import { obtenerUltimoCiclo, type EstadoUltimoCiclo } from '@/sync/estado';
 import { drenarColaSync } from '@/sync/motor';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
@@ -24,6 +25,7 @@ function formatearHora(ts: string): string {
 export default function DiagnosticoSync() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [tareas, setTareas] = useState<TareaSyncVista[]>([]);
+  const [ultimoCiclo, setUltimoCiclo] = useState<EstadoUltimoCiclo | null>(null);
   const [cargando, setCargando] = useState(true);
   const [sincronizando, setSincronizando] = useState(false);
   const insets = useSafeAreaInsets();
@@ -33,6 +35,7 @@ export default function DiagnosticoSync() {
     try {
       const db = await getDb();
       setTareas(await listarColaSync(db));
+      setUltimoCiclo(obtenerUltimoCiclo());
     } finally {
       setCargando(false);
     }
@@ -85,6 +88,17 @@ export default function DiagnosticoSync() {
             )}
           </Pressable>
         </View>
+
+        {ultimoCiclo && (
+          <View style={[styles.ultimoCiclo, !ultimoCiclo.ok && styles.ultimoCicloError]}>
+            <Text style={styles.ultimoCicloTitulo}>
+              Último intento: {formatearHora(ultimoCiclo.ts)}
+            </Text>
+            <Text style={[styles.ultimoCicloTexto, !ultimoCiclo.ok && styles.ultimoCicloTextoError]}>
+              {ultimoCiclo.mensaje}
+            </Text>
+          </View>
+        )}
 
         {cargando ? (
           <View style={styles.centrado}>
@@ -144,6 +158,22 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   resumenTexto: { fontSize: 14, fontWeight: '600', color: '#333' },
+  ultimoCiclo: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: 12,
+    padding: 14,
+    gap: 2,
+  },
+  ultimoCicloError: {
+    borderWidth: 1,
+    borderColor: '#F8C8C8',
+    backgroundColor: '#FDF2F2',
+  },
+  ultimoCicloTitulo: { fontSize: 11, fontWeight: '700', color: '#888', textTransform: 'uppercase' },
+  ultimoCicloTexto: { fontSize: 13, color: '#333' },
+  ultimoCicloTextoError: { color: '#B00020' },
   botonSync: {
     backgroundColor: COLORES.oscuro,
     borderRadius: 10,
