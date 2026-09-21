@@ -83,6 +83,19 @@ function calcularRango(periodo: Exclude<Periodo, 'PERSONALIZADO'>): RangoFechas 
   };
 }
 
+/** Navega al detalle de un KPI de venta, pasando el rango vigente y los filtros activos del dashboard por query param. */
+function irADetalleVentas(
+  metrica: 'total' | 'cantidad' | 'ticket',
+  rango: RangoFechas | null,
+  filtros: FiltrosVentas
+) {
+  if (!rango) return;
+  router.push({
+    pathname: '/admin/dashboard/detalle-ventas',
+    params: { metrica, desde: rango.desde, hasta: rango.hasta, filtros: JSON.stringify(filtros) },
+  });
+}
+
 const ALTURA_MAXIMA_BARRA = 96;
 
 function GraficoHoras({ porHora }: { porHora: ResumenVentasPeriodo['porHora'] }) {
@@ -520,6 +533,7 @@ export default function Dashboard() {
                     valor={formatearPesos(resumen.totalVendido)}
                     pie={`COP · período ${periodo === 'PERSONALIZADO' ? 'personalizado' : ETIQUETAS_PERIODO[periodo]}`}
                     variacionPct={comparacion?.variacionTotalPct}
+                    onPress={() => irADetalleVentas('total', rango, filtros)}
                   />
                   <TarjetaKpi
                     icono="receipt-outline"
@@ -527,12 +541,14 @@ export default function Dashboard() {
                     valor={String(resumen.cantidadVentas)}
                     pie="Recibos emitidos"
                     variacionPct={comparacion?.variacionCantidadPct}
+                    onPress={() => irADetalleVentas('cantidad', rango, filtros)}
                   />
                   <TarjetaKpi
                     icono="stats-chart-outline"
                     etiqueta="Ticket promedio"
                     valor={formatearPesos(resumen.ticketPromedio)}
                     pie="Por venta registrada"
+                    onPress={() => irADetalleVentas('ticket', rango, filtros)}
                   />
                   <TarjetaKpi
                     icono="cube-outline"
@@ -547,6 +563,7 @@ export default function Dashboard() {
                           }`
                         : 'Sin costos capturados todavía'
                     }
+                    onPress={() => rango && router.push({ pathname: '/admin/dashboard/detalle-bodega', params: { desde: rango.desde, hasta: rango.hasta } })}
                   />
                 </View>
 
@@ -1014,15 +1031,17 @@ function TarjetaKpi({
   valor,
   pie,
   variacionPct,
+  onPress,
 }: {
   icono: keyof typeof Ionicons.glyphMap;
   etiqueta: string;
   valor: string;
   pie: string;
   variacionPct?: number | null;
+  onPress?: () => void;
 }) {
   return (
-    <View style={styles.kpi}>
+    <Pressable style={styles.kpi} onPress={onPress} disabled={!onPress}>
       <View style={styles.kpiEncabezado}>
         <Text style={styles.kpiEtiqueta}>{etiqueta}</Text>
         <Ionicons name={icono} size={17} color={COLORES_ADMIN.textoSecundario} />
@@ -1048,8 +1067,11 @@ function TarjetaKpi({
         )}
       </View>
       <View style={styles.kpiPieDivisor} />
-      <Text style={styles.kpiPie}>{pie}</Text>
-    </View>
+      <View style={styles.kpiPieFila}>
+        <Text style={styles.kpiPie}>{pie}</Text>
+        {onPress && <Ionicons name="chevron-forward" size={13} color={COLORES_ADMIN.textoSecundario} />}
+      </View>
+    </Pressable>
   );
 }
 
@@ -1423,6 +1445,11 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.textoSecundario,
+  },
+  kpiPieFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   tarjeta: {
     flex: 1,

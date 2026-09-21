@@ -5,6 +5,8 @@
  * para detectar qué se repite y hacia dónde va la tendencia.
  */
 
+import type { MetodoPago } from '../tipos';
+
 export interface LineaVentaConContexto {
   /** "AAAA-MM-DD" en Bogotá — una fecha distinta en un punto es una "aparición" (evento). */
   eventoFecha: string;
@@ -16,6 +18,9 @@ export interface LineaVentaConContexto {
   productoNombre: string;
   cantidad: number;
   totalLinea: number;
+  metodoPago: MetodoPago;
+  /** Id de la venta que originó esta línea — para no contar dos veces el mismo método al agrupar por venta (una venta puede tener varias líneas de producto). */
+  ventaId: string;
 }
 
 /** Mínimo de apariciones (fechas distintas) antes de calificar algo como "repetible". Con menos, la muestra es ruido. */
@@ -36,6 +41,8 @@ export interface ProductoRepetible {
   vecesEnTopN: number;
   tasaRepeticion: number;
   tendencia: Tendencia | null;
+  /** Tasa de repetición acumulada tras cada aparición del producto, en orden cronológico — para graficar la tendencia real, no solo el resultado final. */
+  tasaAcumuladaPorAparicion: number[];
 }
 
 export interface RepetibilidadPunto {
@@ -132,6 +139,7 @@ export function calcularRepetibilidadPorPunto(lineas: LineaVentaConContexto[]): 
           vecesEnTopN,
           tasaRepeticion,
           tendencia: calcularTendencia(tasasAcumuladas),
+          tasaAcumuladaPorAparicion: tasasAcumuladas,
         };
       }
     );
@@ -308,4 +316,306 @@ export function calcularCrucePuntoPromotorProducto(lineas: LineaVentaConContexto
   }
 
   return hallazgos.sort((a, b) => Math.abs(b.desviacionPct) - Math.abs(a.desviacionPct));
+}
+
+/**
+ * Coeficiente de correlación de Pearson entre dos variables. `null` si hay
+ * menos de 3 pares o si alguna de las dos variables no varía (desviación
+ * cero) — la correlación queda indefinida en ese caso, nunca se inventa un
+ * número (CLAUDE.md §8).
+ */
+export function calcularCorrelacionPearson(pares: [number, number][]): number | null {
+  if (pares.length < 3) return null;
+
+  const n = pares.length;
+  const xs = pares.map((p) => p[0]);
+  const ys = pares.map((p) => p[1]);
+  const mediaX = xs.reduce((a, b) => a + b, 0) / n;
+  const mediaY = ys.reduce((a, b) => a + b, 0) / n;
+
+  let covarianza = 0;
+  let varianzaX = 0;
+  let varianzaY = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i] - mediaX;
+    const dy = ys[i] - mediaY;
+    covarianza += dx * dy;
+    varianzaX += dx * dx;
+    varianzaY += dy * dy;
+  }
+
+  if (varianzaX === 0 || varianzaY === 0) return null;
+
+  return covarianza / Math.sqrt(varianzaX * varianzaY);
+}
+
+/** Umbral de |r| para calificar la fuerza de una correlación — mismo texto se reutiliza en toda la UI. */
+export function interpretarFuerzaPearson(r: number): 'débil o nula' | 'moderada' | 'fuerte' {
+  const absR = Math.abs(r);
+  if (absR > 0.6) return 'fuerte';
+  if (absR >= 0.3) return 'moderada';
+  return 'débil o nula';
+}
+
+export interface PuntoDispersionPromotor {
+  promotorId: string;
+  promotorNombre: string;
+  eventosTrabajados: number;
+  ticketPromedioPorEvento: number;
+}
+
+export interface DispersionPromotores {
+  puntos: PuntoDispersionPromotor[];
+  /** Pearson entre eventosTrabajados y ticketPromedioPorEvento — null si no hay muestra suficiente. */
+  correlacion: number | null;
+}
+
+/** Un punto por promotor (eventos trabajados vs. ticket promedio por evento) + su correlación de Pearson. */
+export function calcularDispersionPromotor(lineas: LineaVentaConContexto[]): DispersionPromotores {
+  const porPromotor = agruparPorClave(lineas, (l) => l.promotorId);
+
+  const puntos: PuntoDispersionPromotor[] = [...porPromotor.entries()].map(([promotorId, lineasPromotor]) => {
+    const promotorNombre = lineasPromotor[0].promotorNombre;
+    const eventosTrabajados = new Set(lineasPromotor.map((l) => l.eventoFecha)).size;
+    const totalVendido = lineasPromotor.reduce((suma, l) => suma + l.totalLinea, 0);
+    return {
+      promotorId,
+      promotorNombre,
+      eventosTrabajados,
+      ticketPromedioPorEvento: eventosTrabajados === 0 ? 0 : Math.round(totalVendido / eventosTrabajados),
+    };
+  });
+
+  puntos.sort((a, b) => a.promotorId.localeCompare(b.promotorId));
+
+  const correlacion = calcularCorrelacionPearson(
+    puntos.map((p) => [p.eventosTrabajados, p.ticketPromedioPorEvento])
+  );
+
+  return { puntos, correlacion };
+}
+
+/** 1=lunes .. 7=domingo, ISO — evita el 0=domingo de `Date.getDay()` que confunde en contexto de negocio. */
+function diaIsoDeFecha(fecha: string): number {
+  const diaJs = new Date(`${fecha}T12:00:00-05:00`).getDay();
+  return diaJs === 0 ? 7 : diaJs;
+}
+
+export const NOMBRES_DIA_ISO: Record<number, string> = {
+  1: 'Lunes',
+  2: 'Martes',
+  3: 'Miércoles',
+  4: 'Jueves',
+  5: 'Viernes',
+  6: 'Sábado',
+  7: 'Domingo',
+};
+
+export interface VentaPorDiaSemana {
+  diaIso: number;
+  totalVendido: number;
+  apariciones: number;
+}
+
+/** Total vendido y cantidad de apariciones (fechas distintas) agrupado por día ISO de la semana. */
+export function calcularVentasPorDiaSemana(lineas: LineaVentaConContexto[]): VentaPorDiaSemana[] {
+  const acumulado = new Map<number, { totalVendido: number; fechas: Set<string> }>();
+
+  for (const linea of lineas) {
+    const diaIso = diaIsoDeFecha(linea.eventoFecha);
+    const actual = acumulado.get(diaIso) ?? { totalVendido: 0, fechas: new Set<string>() };
+    actual.totalVendido += linea.totalLinea;
+    actual.fechas.add(linea.eventoFecha);
+    acumulado.set(diaIso, actual);
+  }
+
+  return [1, 2, 3, 4, 5, 6, 7].map((diaIso) => {
+    const datos = acumulado.get(diaIso);
+    return {
+      diaIso,
+      totalVendido: datos?.totalVendido ?? 0,
+      apariciones: datos?.fechas.size ?? 0,
+    };
+  });
+}
+
+export interface VentaPorTemporada {
+  nombre: string;
+  totalVendido: number;
+  apariciones: number;
+  /** totalVendido / apariciones — 0 si no hubo apariciones. */
+  promedioPorEvento: number;
+}
+
+/**
+ * Agrupa el total vendido por temporada (según `temporadaDe`) y por
+ * "Temporada normal" (todo lo que no cae en ninguna temporada dada) — para
+ * comparar el promedio por evento de cada temporada contra el resto del año.
+ */
+export function calcularVentasPorTemporada(
+  lineas: LineaVentaConContexto[],
+  temporadas: { nombre: string; desde: string; hasta: string }[]
+): VentaPorTemporada[] {
+  const NORMAL = 'Temporada normal';
+  const acumulado = new Map<string, { totalVendido: number; fechas: Set<string> }>();
+
+  for (const linea of lineas) {
+    const nombre = temporadas.find((t) => linea.eventoFecha >= t.desde && linea.eventoFecha <= t.hasta)?.nombre ?? NORMAL;
+    const actual = acumulado.get(nombre) ?? { totalVendido: 0, fechas: new Set<string>() };
+    actual.totalVendido += linea.totalLinea;
+    actual.fechas.add(linea.eventoFecha);
+    acumulado.set(nombre, actual);
+  }
+
+  return [...acumulado.entries()]
+    .map(([nombre, datos]) => ({
+      nombre,
+      totalVendido: datos.totalVendido,
+      apariciones: datos.fechas.size,
+      promedioPorEvento: datos.fechas.size === 0 ? 0 : Math.round(datos.totalVendido / datos.fechas.size),
+    }))
+    .sort((a, b) => (a.nombre === NORMAL ? 1 : b.nombre === NORMAL ? -1 : b.promedioPorEvento - a.promedioPorEvento));
+}
+
+const TOP_PUNTOS_MAPA_CALOR = 8;
+const TOP_PRODUCTOS_MAPA_CALOR = 10;
+
+export interface CeldaMapaCalor {
+  puntoId: string;
+  productoId: string;
+  unidades: number;
+}
+
+export interface MapaCalorPuntoProducto {
+  puntos: { id: string; etiqueta: string }[];
+  productos: { id: string; etiqueta: string }[];
+  celdas: CeldaMapaCalor[];
+  /** Cuántos puntos/productos quedaron fuera del top mostrado — para que la UI avise, nunca oculte en silencio (CLAUDE.md §8). */
+  puntosOmitidos: number;
+  productosOmitidos: number;
+}
+
+/**
+ * Unidades vendidas por combinación punto×producto, acotado a los puntos y
+ * productos más activos (top por unidades totales) para que la grilla no
+ * crezca sin control con catálogos grandes.
+ */
+export function calcularMapaCalorPuntoProducto(lineas: LineaVentaConContexto[]): MapaCalorPuntoProducto {
+  const unidadesPorPunto = new Map<string, { etiqueta: string; unidades: number }>();
+  const unidadesPorProducto = new Map<string, { etiqueta: string; unidades: number }>();
+  const unidadesPorCelda = new Map<string, number>();
+
+  for (const linea of lineas) {
+    const punto = unidadesPorPunto.get(linea.puntoId) ?? { etiqueta: linea.puntoNombre, unidades: 0 };
+    punto.unidades += linea.cantidad;
+    unidadesPorPunto.set(linea.puntoId, punto);
+
+    const producto = unidadesPorProducto.get(linea.productoId) ?? { etiqueta: linea.productoNombre, unidades: 0 };
+    producto.unidades += linea.cantidad;
+    unidadesPorProducto.set(linea.productoId, producto);
+
+    const claveCelda = `${linea.puntoId}|${linea.productoId}`;
+    unidadesPorCelda.set(claveCelda, (unidadesPorCelda.get(claveCelda) ?? 0) + linea.cantidad);
+  }
+
+  const puntosOrdenados = [...unidadesPorPunto.entries()].sort((a, b) => b[1].unidades - a[1].unidades);
+  const productosOrdenados = [...unidadesPorProducto.entries()].sort((a, b) => b[1].unidades - a[1].unidades);
+
+  const puntosTop = puntosOrdenados.slice(0, TOP_PUNTOS_MAPA_CALOR);
+  const productosTop = productosOrdenados.slice(0, TOP_PRODUCTOS_MAPA_CALOR);
+  const puntosTopIds = new Set(puntosTop.map(([id]) => id));
+  const productosTopIds = new Set(productosTop.map(([id]) => id));
+
+  const celdas: CeldaMapaCalor[] = [];
+  for (const [clave, unidades] of unidadesPorCelda) {
+    const [puntoId, productoId] = clave.split('|');
+    if (puntosTopIds.has(puntoId) && productosTopIds.has(productoId)) {
+      celdas.push({ puntoId, productoId, unidades });
+    }
+  }
+
+  return {
+    puntos: puntosTop.map(([id, datos]) => ({ id, etiqueta: datos.etiqueta })),
+    productos: productosTop.map(([id, datos]) => ({ id, etiqueta: datos.etiqueta })),
+    celdas,
+    puntosOmitidos: Math.max(0, puntosOrdenados.length - TOP_PUNTOS_MAPA_CALOR),
+    productosOmitidos: Math.max(0, productosOrdenados.length - TOP_PRODUCTOS_MAPA_CALOR),
+  };
+}
+
+export interface MetodoPagoConteo {
+  metodoPago: MetodoPago;
+  cantidad: number;
+  pct: number;
+}
+
+export interface EntidadMetodoPago {
+  id: string;
+  nombre: string;
+  totalVentas: number;
+  porMetodo: MetodoPagoConteo[];
+}
+
+/** Ventas distintas (por `ventaId`, para no contar dos veces una venta con varias líneas de producto) agrupadas por una clave arbitraria, con su método de pago. */
+function ventasUnicasPorClave(
+  lineas: LineaVentaConContexto[],
+  clave: (l: LineaVentaConContexto) => string,
+  nombre: (l: LineaVentaConContexto) => string
+): Map<string, { nombre: string; ventas: Map<string, MetodoPago> }> {
+  const mapa = new Map<string, { nombre: string; ventas: Map<string, MetodoPago> }>();
+  for (const linea of lineas) {
+    const k = clave(linea);
+    const actual = mapa.get(k) ?? { nombre: nombre(linea), ventas: new Map<string, MetodoPago>() };
+    actual.ventas.set(linea.ventaId, linea.metodoPago);
+    mapa.set(k, actual);
+  }
+  return mapa;
+}
+
+function calcularPorMetodo(ventas: Map<string, MetodoPago>): MetodoPagoConteo[] {
+  const conteo = new Map<MetodoPago, number>();
+  for (const metodo of ventas.values()) {
+    conteo.set(metodo, (conteo.get(metodo) ?? 0) + 1);
+  }
+  const total = ventas.size;
+  return (['EFECTIVO', 'TRANSFERENCIA', 'LIBRANZA'] as MetodoPago[])
+    .map((metodoPago) => {
+      const cantidad = conteo.get(metodoPago) ?? 0;
+      return { metodoPago, cantidad, pct: total === 0 ? 0 : Math.round((cantidad / total) * 100) };
+    })
+    .filter((m) => m.cantidad > 0);
+}
+
+/** Por punto: qué % de sus ventas (no líneas) usa cada método de pago. */
+export function calcularMetodoPagoPorPunto(lineas: LineaVentaConContexto[]): EntidadMetodoPago[] {
+  const agrupado = ventasUnicasPorClave(
+    lineas,
+    (l) => l.puntoId,
+    (l) => l.puntoNombre
+  );
+  return [...agrupado.entries()]
+    .map(([id, datos]) => ({
+      id,
+      nombre: datos.nombre,
+      totalVentas: datos.ventas.size,
+      porMetodo: calcularPorMetodo(datos.ventas),
+    }))
+    .sort((a, b) => b.totalVentas - a.totalVentas);
+}
+
+/** Por promotor: qué % de sus ventas usa cada método de pago. */
+export function calcularMetodoPagoPorPromotor(lineas: LineaVentaConContexto[]): EntidadMetodoPago[] {
+  const agrupado = ventasUnicasPorClave(
+    lineas,
+    (l) => l.promotorId,
+    (l) => l.promotorNombre
+  );
+  return [...agrupado.entries()]
+    .map(([id, datos]) => ({
+      id,
+      nombre: datos.nombre,
+      totalVentas: datos.ventas.size,
+      porMetodo: calcularPorMetodo(datos.ventas),
+    }))
+    .sort((a, b) => b.totalVentas - a.totalVentas);
 }

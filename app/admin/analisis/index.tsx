@@ -4,16 +4,39 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { HallazgoCruzado, RendimientoPromotor, RepetibilidadPunto, Tendencia } from '@/core/analisis';
+import {
+  interpretarFuerzaPearson,
+  NOMBRES_DIA_ISO,
+  type DispersionPromotores,
+  type EntidadMetodoPago,
+  type HallazgoCruzado,
+  type MapaCalorPuntoProducto,
+  type RendimientoPromotor,
+  type RepetibilidadPunto,
+  type Tendencia,
+  type VentaPorDiaSemana,
+  type VentaPorTemporada,
+} from '@/core/analisis';
 import { formatearPesos } from '@/core/dinero';
+import type { MetodoPago } from '@/core/tipos';
 import type { RangoFechas } from '@/db/analitica';
 import {
   obtenerCrucePuntoPromotorProducto,
+  obtenerDispersionPromotor,
+  obtenerMapaCalorPuntoProducto,
+  obtenerMetodoPagoPorPromotor,
+  obtenerMetodoPagoPorPunto,
   obtenerRendimientoPorPromotor,
   obtenerRepetibilidadPorPunto,
+  obtenerVentasPorDiaSemana,
+  obtenerVentasPorTemporada,
 } from '@/db/analisis';
 import { getDb } from '@/db/client';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontales';
+import { GraficoDispersion } from '@/ui/graficas/GraficoDispersion';
+import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
+import { MapaCalor } from '@/ui/graficas/MapaCalor';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -65,9 +88,43 @@ const COLOR_TENDENCIA: Record<Tendencia, string> = {
   BAJANDO: COLORES_ADMIN.error,
 };
 
+const ETIQUETAS_METODO: Record<MetodoPago, string> = {
+  EFECTIVO: 'Efectivo',
+  TRANSFERENCIA: 'Transferencia',
+  LIBRANZA: 'Libranza',
+};
+
+const COLOR_METODO: Record<MetodoPago, string> = {
+  EFECTIVO: COLORES_ADMIN.positivo,
+  TRANSFERENCIA: COLORES_ADMIN.dorado,
+  LIBRANZA: COLORES_ADMIN.vino,
+};
+
+function BarraMetodoPago({ entidad }: { entidad: EntidadMetodoPago }) {
+  return (
+    <View style={styles.filaMetodoPago}>
+      <Text style={styles.filaMetodoPagoNombre} numberOfLines={1}>
+        {entidad.nombre}
+      </Text>
+      <View style={styles.barraMetodoPagoTrack}>
+        {entidad.porMetodo.map((m) => (
+          <View
+            key={m.metodoPago}
+            style={{ width: `${m.pct}%`, backgroundColor: COLOR_METODO[m.metodoPago], height: '100%' }}
+          />
+        ))}
+      </View>
+      <Text style={styles.filaMetodoPagoDetalle}>
+        {entidad.porMetodo.map((m) => `${ETIQUETAS_METODO[m.metodoPago]} ${m.pct}%`).join(' · ')}
+      </Text>
+    </View>
+  );
+}
+
 function TarjetaPunto({ punto }: { punto: RepetibilidadPunto }) {
   const [expandido, setExpandido] = useState(false);
   const productosDestacados = punto.productos.filter((p) => p.apariciones >= 1).slice(0, expandido ? undefined : 3);
+  const productoMasRepetible = punto.productos[0];
 
   return (
     <View style={styles.tarjeta}>
@@ -96,30 +153,46 @@ function TarjetaPunto({ punto }: { punto: RepetibilidadPunto }) {
           Todavía no hay suficientes eventos en este punto para saber qué se repite. Se necesitan al menos 3.
         </Text>
       ) : (
-        <View style={styles.listaProductos}>
-          {productosDestacados.map((producto) => (
-            <View key={producto.productoId} style={styles.filaProducto}>
-              <Text style={styles.filaProductoNombre} numberOfLines={1}>
-                {producto.productoNombre}
+        <>
+          {productoMasRepetible && productoMasRepetible.tasaAcumuladaPorAparicion.length >= 3 && (
+            <View>
+              <Text style={styles.leyendaGrafico}>
+                Tendencia de repetición de {productoMasRepetible.productoNombre}
               </Text>
-              <Text style={styles.filaProductoDato}>
-                {producto.vecesEnTopN}/{producto.apariciones} veces en el top
-              </Text>
-              {producto.tendencia && (
-                <Ionicons
-                  name={ICONO_TENDENCIA[producto.tendencia]}
-                  size={15}
-                  color={COLOR_TENDENCIA[producto.tendencia]}
-                />
-              )}
+              <GraficoLinea
+                puntos={productoMasRepetible.tasaAcumuladaPorAparicion.map((tasa, i) => ({
+                  etiqueta: `#${i + 1}`,
+                  valor: Math.round(tasa * 100),
+                }))}
+                formatearValor={(v) => `${v}%`}
+              />
             </View>
-          ))}
-          {!expandido && punto.productos.length > 3 && (
-            <Pressable onPress={() => setExpandido(true)}>
-              <Text style={styles.verMasTexto}>Ver los {punto.productos.length} productos</Text>
-            </Pressable>
           )}
-        </View>
+          <View style={styles.listaProductos}>
+            {productosDestacados.map((producto) => (
+              <View key={producto.productoId} style={styles.filaProducto}>
+                <Text style={styles.filaProductoNombre} numberOfLines={1}>
+                  {producto.productoNombre}
+                </Text>
+                <Text style={styles.filaProductoDato}>
+                  {producto.vecesEnTopN}/{producto.apariciones} veces en el top
+                </Text>
+                {producto.tendencia && (
+                  <Ionicons
+                    name={ICONO_TENDENCIA[producto.tendencia]}
+                    size={15}
+                    color={COLOR_TENDENCIA[producto.tendencia]}
+                  />
+                )}
+              </View>
+            ))}
+            {!expandido && punto.productos.length > 3 && (
+              <Pressable onPress={() => setExpandido(true)}>
+                <Text style={styles.verMasTexto}>Ver los {punto.productos.length} productos</Text>
+              </Pressable>
+            )}
+          </View>
+        </>
       )}
     </View>
   );
@@ -164,6 +237,88 @@ function TarjetaPromotor({ promotor }: { promotor: RendimientoPromotor }) {
   );
 }
 
+function BloqueDispersion({ dispersion }: { dispersion: DispersionPromotores }) {
+  if (dispersion.puntos.length === 0) return null;
+
+  const textoCorrelacion =
+    dispersion.correlacion === null
+      ? 'Sin suficiente historial para calcular una correlación confiable (se necesitan al menos 3 promotores).'
+      : `r = ${dispersion.correlacion.toFixed(2)} — correlación ${interpretarFuerzaPearson(dispersion.correlacion)} entre eventos trabajados y ticket promedio. Esto describe qué tan juntas se mueven las dos variables en los datos actuales, no que una cause la otra.`;
+
+  return (
+    <View style={styles.tarjeta}>
+      <GraficoDispersion
+        puntos={dispersion.puntos.map((p) => ({ etiqueta: p.promotorNombre, x: p.eventosTrabajados, y: p.ticketPromedioPorEvento }))}
+        etiquetaEjeX="Eventos trabajados"
+        etiquetaEjeY="Ticket prom."
+        correlacion={dispersion.correlacion}
+      />
+      <Text style={styles.textoAviso}>{textoCorrelacion}</Text>
+    </View>
+  );
+}
+
+function BloqueMapaCalor({ mapa }: { mapa: MapaCalorPuntoProducto }) {
+  if (mapa.puntos.length === 0) return null;
+
+  return (
+    <View style={styles.tarjeta}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <MapaCalor
+          filas={mapa.puntos.map((p) => ({ id: p.id, etiqueta: p.etiqueta }))}
+          columnas={mapa.productos.map((p) => ({ id: p.id, etiqueta: p.etiqueta }))}
+          celdas={mapa.celdas.map((c) => ({ filaId: c.puntoId, columnaId: c.productoId, valor: c.unidades }))}
+        />
+      </ScrollView>
+      {(mapa.puntosOmitidos > 0 || mapa.productosOmitidos > 0) && (
+        <Text style={styles.textoAviso}>
+          Mostrando los puntos y productos más activos
+          {mapa.puntosOmitidos > 0 ? ` (${mapa.puntosOmitidos} punto${mapa.puntosOmitidos === 1 ? '' : 's'} fuera)` : ''}
+          {mapa.productosOmitidos > 0
+            ? ` (${mapa.productosOmitidos} producto${mapa.productosOmitidos === 1 ? '' : 's'} fuera)`
+            : ''}
+          .
+        </Text>
+      )}
+    </View>
+  );
+}
+
+const ALTURA_BARRA_DIA = 70;
+
+function BloqueDiaSemana({ dias }: { dias: VentaPorDiaSemana[] }) {
+  const maximo = Math.max(...dias.map((d) => d.totalVendido), 1);
+  return (
+    <View style={styles.diasFila}>
+      {dias.map((dia) => (
+        <View key={dia.diaIso} style={styles.diaColumna}>
+          <View style={styles.diaBarraTrack}>
+            <View
+              style={[
+                styles.diaBarraRelleno,
+                { height: Math.max(2, (dia.totalVendido / maximo) * ALTURA_BARRA_DIA) },
+              ]}
+            />
+          </View>
+          <Text style={styles.diaEtiqueta}>{NOMBRES_DIA_ISO[dia.diaIso].slice(0, 3)}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function BloqueTemporadas({ temporadas }: { temporadas: VentaPorTemporada[] }) {
+  const conDatos = temporadas.filter((t) => t.apariciones > 0);
+  if (conDatos.length === 0) return null;
+
+  return (
+    <GraficoBarrasHorizontales
+      barras={conDatos.map((t) => ({ etiqueta: t.nombre, valor: t.promedioPorEvento }))}
+      formatearValor={(v) => formatearPesos(v)}
+    />
+  );
+}
+
 function TarjetaHallazgo({ hallazgo }: { hallazgo: HallazgoCruzado }) {
   const positivo = hallazgo.desviacionPct > 0;
   return (
@@ -196,6 +351,18 @@ export default function Analisis() {
   const [porPunto, setPorPunto] = useState<RepetibilidadPunto[]>([]);
   const [porPromotor, setPorPromotor] = useState<RendimientoPromotor[]>([]);
   const [hallazgos, setHallazgos] = useState<HallazgoCruzado[]>([]);
+  const [dispersion, setDispersion] = useState<DispersionPromotores>({ puntos: [], correlacion: null });
+  const [mapaCalor, setMapaCalor] = useState<MapaCalorPuntoProducto>({
+    puntos: [],
+    productos: [],
+    celdas: [],
+    puntosOmitidos: 0,
+    productosOmitidos: 0,
+  });
+  const [porDiaSemana, setPorDiaSemana] = useState<VentaPorDiaSemana[]>([]);
+  const [porTemporada, setPorTemporada] = useState<VentaPorTemporada[]>([]);
+  const [metodoPorPunto, setMetodoPorPunto] = useState<EntidadMetodoPago[]>([]);
+  const [metodoPorPromotor, setMetodoPorPromotor] = useState<EntidadMetodoPago[]>([]);
 
   const rango = useMemo(() => calcularRango(periodo), [periodo]);
 
@@ -203,14 +370,27 @@ export default function Analisis() {
     setCargando(true);
     try {
       const db = await getDb();
-      const [repetibilidad, rendimiento, cruce] = await Promise.all([
-        obtenerRepetibilidadPorPunto(db, rango),
-        obtenerRendimientoPorPromotor(db, rango),
-        obtenerCrucePuntoPromotorProducto(db, rango),
-      ]);
+      const [repetibilidad, rendimiento, cruce, dispersionPromotor, mapa, diaSemana, temporada, metodoPunto, metodoPromotor] =
+        await Promise.all([
+          obtenerRepetibilidadPorPunto(db, rango),
+          obtenerRendimientoPorPromotor(db, rango),
+          obtenerCrucePuntoPromotorProducto(db, rango),
+          obtenerDispersionPromotor(db, rango),
+          obtenerMapaCalorPuntoProducto(db, rango),
+          obtenerVentasPorDiaSemana(db, rango),
+          obtenerVentasPorTemporada(db, rango),
+          obtenerMetodoPagoPorPunto(db, rango),
+          obtenerMetodoPagoPorPromotor(db, rango),
+        ]);
       setPorPunto(repetibilidad);
       setPorPromotor(rendimiento);
       setHallazgos(cruce);
+      setDispersion(dispersionPromotor);
+      setMapaCalor(mapa);
+      setPorDiaSemana(diaSemana);
+      setPorTemporada(temporada);
+      setMetodoPorPunto(metodoPunto);
+      setMetodoPorPromotor(metodoPromotor);
     } finally {
       setCargando(false);
     }
@@ -285,7 +465,76 @@ export default function Analisis() {
                 {porPromotor.length === 0 ? (
                   <Text style={styles.textoAviso}>Sin ventas con punto asignado en este período.</Text>
                 ) : (
-                  porPromotor.map((promotor) => <TarjetaPromotor key={promotor.promotorId} promotor={promotor} />)
+                  <>
+                    <View style={styles.tarjeta}>
+                      <GraficoBarrasHorizontales
+                        barras={porPromotor.map((p) => ({ etiqueta: p.promotorNombre, valor: p.ticketPromedioPorEvento }))}
+                        formatearValor={(v) => formatearPesos(v)}
+                      />
+                    </View>
+                    {porPromotor.map((promotor) => <TarjetaPromotor key={promotor.promotorId} promotor={promotor} />)}
+                  </>
+                )}
+
+                <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>Relación entre variables</Text>
+                <Text style={styles.seccionSubtitulo}>
+                  ¿Trabajar más eventos se relaciona con un ticket promedio más alto? Correlación de Pearson real,
+                  no solo lectura visual.
+                </Text>
+                <BloqueDispersion dispersion={dispersion} />
+
+                <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>Por punto y producto</Text>
+                <Text style={styles.seccionSubtitulo}>
+                  Unidades vendidas por combinación de punto y producto — más oscuro es más unidades.
+                </Text>
+                <BloqueMapaCalor mapa={mapaCalor} />
+
+                <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>Día de la semana y temporada</Text>
+                <Text style={styles.seccionSubtitulo}>
+                  Total vendido por día de la semana, y comparación entre temporadas de negocio (Navidad,
+                  vacaciones, fechas especiales) y el resto del año.
+                </Text>
+                <View style={styles.tarjeta}>
+                  <BloqueDiaSemana dias={porDiaSemana} />
+                </View>
+                {porTemporada.some((t) => t.apariciones > 0 && t.nombre !== 'Temporada normal') && (
+                  <View style={styles.tarjeta}>
+                    <Text style={styles.leyendaGrafico}>Ticket promedio por evento, por temporada</Text>
+                    <BloqueTemporadas temporadas={porTemporada} />
+                  </View>
+                )}
+
+                <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>
+                  Método de pago por lugar y por promotor
+                </Text>
+                <Text style={styles.seccionSubtitulo}>
+                  Qué % de las ventas de cada punto o promotor usa efectivo, transferencia o libranza.
+                </Text>
+                {metodoPorPunto.length === 0 && metodoPorPromotor.length === 0 ? (
+                  <Text style={styles.textoAviso}>Sin ventas con punto asignado en este período.</Text>
+                ) : (
+                  <>
+                    {metodoPorPunto.length > 0 && (
+                      <View style={styles.tarjeta}>
+                        <Text style={styles.leyendaGrafico}>Por punto</Text>
+                        <View style={styles.listaProductos}>
+                          {metodoPorPunto.map((entidad) => (
+                            <BarraMetodoPago key={entidad.id} entidad={entidad} />
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                    {metodoPorPromotor.length > 0 && (
+                      <View style={styles.tarjeta}>
+                        <Text style={styles.leyendaGrafico}>Por promotor</Text>
+                        <View style={styles.listaProductos}>
+                          {metodoPorPromotor.map((entidad) => (
+                            <BarraMetodoPago key={entidad.id} entidad={entidad} />
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </>
                 )}
 
                 <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>Hallazgos cruzados</Text>
@@ -492,5 +741,56 @@ const styles = StyleSheet.create({
   },
   textoHallazgoFuerte: {
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  leyendaGrafico: {
+    fontSize: 11.5,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+    marginBottom: 6,
+  },
+  diasFila: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+  },
+  diaColumna: {
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  diaBarraTrack: {
+    height: 70,
+    width: 18,
+    justifyContent: 'flex-end',
+  },
+  diaBarraRelleno: {
+    width: '100%',
+    borderRadius: 4,
+    backgroundColor: COLORES_ADMIN.dorado,
+  },
+  diaEtiqueta: {
+    fontSize: 10.5,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  filaMetodoPago: {
+    gap: 4,
+  },
+  filaMetodoPagoNombre: {
+    fontSize: 12.5,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.texto,
+  },
+  barraMetodoPagoTrack: {
+    flexDirection: 'row',
+    height: 10,
+    borderRadius: 5,
+    overflow: 'hidden',
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+  },
+  filaMetodoPagoDetalle: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
+    color: COLORES_ADMIN.textoSecundario,
   },
 });

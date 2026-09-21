@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { calcularSaldosPorLote, calcularSaldosPorProducto } from '@/core/inventario';
-import type { Producto } from '@/core/tipos';
+import type { Producto, TipoMovimiento } from '@/core/tipos';
 
 import { listarMovimientosPorUbicacion } from './movimientos';
 import { obtenerProductosPorIds } from './productos';
@@ -123,4 +123,59 @@ export async function obtenerSaldosPorLote(db: SQLiteDatabase): Promise<Map<stri
       ubicacionDestinoId: fila.ubicacion_destino_id,
     }))
   );
+}
+
+export interface MovimientoBodegaDetallado {
+  id: string;
+  tipo: TipoMovimiento;
+  productoId: string;
+  productoNombre: string;
+  cantidad: number;
+  /** true si bodega es el destino (entrada, ej. COMPRA_PROVEEDOR); false si es el origen (salida, ej. RECARGA). */
+  entrada: boolean;
+  tsCliente: string;
+}
+
+/**
+ * Movimientos de bodega dentro de un rango, con tipo/fecha/producto — a
+ * diferencia de `listarMovimientosPorUbicacion` (solo trae lo mínimo para
+ * calcular saldo, sin fecha ni tipo, R1). Usada por la pantalla de detalle
+ * de "Saldo en bodega" del Dashboard para el listado crudo y la serie
+ * temporal de entradas/salidas.
+ */
+export async function obtenerMovimientosBodegaDetallados(
+  db: SQLiteDatabase,
+  rango: { desde: string; hasta: string }
+): Promise<MovimientoBodegaDetallado[]> {
+  const ubicacion = await buscarUbicacionBodega(db);
+  if (!ubicacion) return [];
+
+  const filas = await db.getAllAsync<{
+    id: string;
+    tipo: TipoMovimiento;
+    producto_id: string;
+    producto_nombre: string;
+    cantidad: number;
+    ubicacion_destino_id: string | null;
+    ts_cliente: string;
+  }>(
+    `SELECT m.id, m.tipo, m.producto_id, p.nombre as producto_nombre, m.cantidad,
+            m.ubicacion_destino_id, m.ts_cliente
+     FROM movimientos m
+     JOIN productos p ON p.id = m.producto_id
+     WHERE (m.ubicacion_origen_id = ? OR m.ubicacion_destino_id = ?)
+       AND m.ts_cliente BETWEEN ? AND ?
+     ORDER BY m.ts_cliente DESC`,
+    [ubicacion, ubicacion, rango.desde, rango.hasta]
+  );
+
+  return filas.map((fila) => ({
+    id: fila.id,
+    tipo: fila.tipo,
+    productoId: fila.producto_id,
+    productoNombre: fila.producto_nombre,
+    cantidad: fila.cantidad,
+    entrada: fila.ubicacion_destino_id === ubicacion,
+    tsCliente: fila.ts_cliente,
+  }));
 }

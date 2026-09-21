@@ -200,7 +200,7 @@ tulonchera/
       catalogo/                         ← alta / edición / baja de productos
       empresas/                          ← empresas cliente y sus puntos (sedes)
       descuentos/                         ← crear / ver descuentos por producto y/o punto
-      dashboard/                           ← KPIs, filtros, desgloses por promotor/punto/categoría
+      dashboard/                           ← KPIs (tocables → detalle-ventas/detalle-bodega), filtros, desgloses por promotor/punto/categoría
       analisis/                             ← repetibilidad por punto, rendimiento por promotor, cruces punto×promotor×producto
       notificaciones/                       ← stock bajo, lote por vencer, cargue a revisar
       intentos-pin/                          ← dispositivos bloqueados e intentos fallidos de PIN
@@ -214,7 +214,8 @@ tulonchera/
     core/                       ← lógica de dominio, SIN dependencias de React ni Expo
       auth/                       ← modo de login (promotor/admin/bodega) → roles permitidos
       analitica/                   ← agruparVentasPorHora (zona horaria Bogotá), fechaHoyBogota
-      analisis/                     ← repetibilidad/rendimiento/cruce punto×promotor×producto + property tests
+      analisis/                     ← repetibilidad/rendimiento/cruce/Pearson/día-semana/temporada + property tests
+      calendario/                    ← TEMPORADAS_2026 (Navidad, Semana Santa, vacaciones, fechas especiales)
       descuentos/                   ← aplicarDescuento + su test
       dinero/                        ← formatearPesos / parsearPesos
       eventos/                        ← calcularOcurrencias (series recurrentes del calendario) + property test
@@ -243,6 +244,7 @@ tulonchera/
       TarjetaModulo.tsx               ← tarjeta de módulo del menú admin, usa tema.ts
       CalendarioRango.tsx              ← calendario de mes para "Rango personalizado" del dashboard
       calendarioGrilla.ts               ← grilla de mes compartida por CalendarioRango/calendario de eventos
+      graficas/                          ← GraficoLinea/GraficoBarrasHorizontales/GraficoDispersion/MapaCalor (react-native-svg, sin librería de charts), usados en Análisis
   supabase/                    ← SQL de Supabase (tablas, RLS, Storage) — se aplica a mano, ver supabase/README.md
   assets/
   eas.json                    ← perfiles de EAS Build: "preview" (.apk interno), "production" (.aab)
@@ -485,6 +487,15 @@ construida (solo turnos/comprobantes).**
   productos") cuando es parcial, para no leerse como un total cuando no lo
   es. Los filtros de categoría/marca no tendrán opciones hasta que se cargue
   esa información en el catálogo (hoy vacía para los 123 productos reales).
+  Las 4 tarjetas KPI son tocables: Total vendido/Ventas emitidas/Ticket
+  promedio abren `detalle-ventas.tsx` (parametrizada por `metrica`, mismo
+  componente para las tres), Saldo en bodega abre `detalle-bodega.tsx` —
+  ambas fuera del modal existente (`ModalDetalleSeccion`, que sigue
+  sirviendo solo a las secciones Por método/promotor/punto/categoría).
+  Cada detalle trae desglose por promotor/punto, serie temporal por día
+  (`agruparVentasPorDia` para ventas; movimientos de bodega agregados por
+  día para el saldo, `obtenerMovimientosBodegaDetallados` en
+  `src/db/inventario.ts`) y el listado de filas crudas.
 - **Análisis** (`app/admin/analisis/`, `src/db/analisis.ts`,
   `src/core/analisis/`): distinto del Dashboard — no agrega dentro de un
   rango, compara entre **eventos** (fechas de feria distintas en un mismo
@@ -504,6 +515,30 @@ construida (solo turnos/comprobantes).**
   historial — no comparte los filtros combinables del dashboard porque el
   cálculo necesita ver *todas* las apariciones de un punto/promotor para
   que la tasa de repetición sea correcta. Solo pantalla ancha.
+  Gráficas con `react-native-svg` dibujadas a mano (`src/ui/graficas/`:
+  `GraficoLinea`, `GraficoBarrasHorizontales`, `GraficoDispersion`,
+  `MapaCalor` — sin librería de charts, mismo espíritu que el gráfico de
+  horas del dashboard) para: tendencia real de repetición de cada punto,
+  ranking de promotores, mapa de calor punto×producto (top-8 puntos ×
+  top-10 productos por unidades, con aviso de cuántos quedaron fuera).
+  Bloque nuevo "Relación entre variables": dispersión de eventos
+  trabajados vs. ticket promedio por promotor, con coeficiente de
+  correlación de Pearson real (`calcularCorrelacionPearson`,
+  `src/core/analisis/index.ts`) — `null` si hay menos de 3 promotores o
+  si una variable no varía, nunca un número inventado; el texto aclara
+  que describe qué tan juntas se mueven las variables, no causalidad.
+  Bloque "Día de la semana y temporada": total por día ISO (lunes-domingo,
+  se calcula 100% de `eventoFecha`, sin tabla nueva) y comparación contra
+  temporadas de negocio fijas de Colombia (`src/core/calendario/
+  temporadas.ts`, `TEMPORADAS_2026`: Navidad, Semana Santa, vacaciones de
+  mitad de año/octubre/fin de año, Día de la madre, Amor y Amistad) —
+  festivos móviles recalculados a mano cada año (comentario en el archivo
+  explica cómo), no una librería de cálculo de festivos. Bloque "Método de
+  pago por lugar y por promotor": % de ventas en Efectivo/Transferencia/
+  Libranza por punto y por promotor (`calcularMetodoPagoPorPunto`/
+  `calcularMetodoPagoPorPromotor`) — cuenta ventas distintas por
+  `ventaId`, nunca líneas de producto, para no inflar el % cuando una
+  venta tiene varias líneas.
 - **Rediseño visual de menú admin y dashboard** (`app/admin/index.tsx`,
   `app/admin/dashboard/`, `src/ui/tema.ts`, `src/ui/TarjetaModulo.tsx`):
   generado a partir de mockups de Google Stitch y adaptado a datos y
