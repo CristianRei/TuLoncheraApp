@@ -79,6 +79,12 @@ const MODULOS: {
     icono: 'business-outline',
   },
   {
+    ruta: '/admin/clientes',
+    titulo: 'Clientes',
+    descripcion: 'Clientes finales registrados por los promotores en campo.',
+    icono: 'people-outline',
+  },
+  {
     ruta: '/admin/descuentos',
     titulo: 'Descuentos',
     descripcion: 'Crear y ver descuentos por producto y/o punto, con vigencia.',
@@ -111,6 +117,12 @@ const MODULOS: {
     titulo: 'Seguridad de acceso',
     descripcion: 'Dispositivos bloqueados e intentos fallidos de PIN.',
     icono: 'lock-closed-outline',
+  },
+  {
+    ruta: '/admin/promotores',
+    titulo: 'Gestionar promotores',
+    descripcion: 'Contratar, editar y dar de baja promotores del sistema.',
+    icono: 'person-add-outline',
   },
 ];
 

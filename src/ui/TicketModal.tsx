@@ -1,5 +1,6 @@
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { Cliente } from '@/core/tipos';
 import { formatearPesos } from '@/core/dinero';
 import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 
@@ -21,6 +22,16 @@ interface Props {
    * la pantalla en Android.
    */
   variante?: 'modal' | 'superpuesto';
+  /** Cliente al que se facturará esta venta, si el promotor ya eligió uno (ver VentaEnCursoContext). */
+  clienteVentaActual?: Cliente | null;
+  onQuitarCliente?: () => void;
+  /**
+   * Navega a la pantalla de clientes para elegir uno — solo se pasa en el
+   * Ticket "principal" (fuera del escáner): abrir una pantalla nueva con la
+   * cámara activa detrás no es el mismo riesgo que apilar dos Modal, pero se
+   * evita igual para no tocar ese flujo ya delicado (ver EscanerCodigoBarras).
+   */
+  onAsignarCliente?: () => void;
 }
 
 export function TicketModal({
@@ -33,6 +44,9 @@ export function TicketModal({
   onCerrar,
   onCobrar,
   variante = 'modal',
+  clienteVentaActual,
+  onQuitarCliente,
+  onAsignarCliente,
 }: Props) {
   if (variante === 'superpuesto' && !visible) return null;
 
@@ -45,6 +59,30 @@ export function TicketModal({
             <Text style={styles.cerrar}>Cerrar</Text>
           </Pressable>
         </View>
+
+        {clienteVentaActual ? (
+          <View style={styles.filaCliente}>
+            <Text style={styles.filaClienteTexto} numberOfLines={1}>
+              Facturando a: <Text style={styles.filaClienteNombre}>{clienteVentaActual.nombreCompleto}</Text>
+            </Text>
+            {onQuitarCliente && (
+              <Pressable onPress={onQuitarCliente} accessibilityRole="button" accessibilityLabel="Quitar cliente">
+                <Text style={styles.filaClienteQuitar}>Quitar</Text>
+              </Pressable>
+            )}
+          </View>
+        ) : (
+          onAsignarCliente && (
+            <Pressable
+              style={styles.filaCliente}
+              onPress={onAsignarCliente}
+              accessibilityRole="button"
+              accessibilityLabel="Asignar cliente a esta venta"
+            >
+              <Text style={styles.filaClienteAsignar}>+ Asignar a un cliente (opcional)</Text>
+            </Pressable>
+          )
+        )}
 
         {items.length === 0 ? (
           <View style={styles.vacio}>
@@ -135,6 +173,37 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
     color: COLORES.textoSobreOscuro,
+  },
+  filaCliente: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORES.fondo,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 12,
+  },
+  filaClienteTexto: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
+    marginRight: 8,
+  },
+  filaClienteNombre: {
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSobreOscuro,
+  },
+  filaClienteQuitar: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.error,
+  },
+  filaClienteAsignar: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.primario,
   },
   cerrar: {
     fontSize: 14,

@@ -21,6 +21,8 @@ interface Props {
    * la pantalla en Android.
    */
   variante?: 'modal' | 'superpuesto';
+  /** Solo informativo — la asignación se hace desde el Ticket, ver VentaEnCursoContext. */
+  clienteNombre?: string | null;
 }
 
 const OPCIONES: { metodo: MetodoPago; etiqueta: string }[] = [
@@ -37,6 +39,7 @@ export function CobrarModal({
   onSeleccionar,
   onCerrar,
   variante = 'modal',
+  clienteNombre,
 }: Props) {
   const [tomandoFoto, setTomandoFoto] = useState(false);
 
@@ -69,6 +72,7 @@ export function CobrarModal({
       <View style={styles.tarjeta}>
         <Text style={styles.etiquetaTotal}>Total a cobrar</Text>
         <Text style={[styles.total, { color: colorAcento }]}>{formatearPesos(total)}</Text>
+        {clienteNombre && <Text style={styles.cliente}>Facturando a: {clienteNombre}</Text>}
 
         <Text style={styles.pregunta}>¿Cómo va a pagar?</Text>
 
@@ -136,6 +140,12 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
     marginBottom: 8,
+  },
+  cliente: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    color: COLORES.textoSecundario,
+    marginBottom: 4,
   },
   pregunta: {
     fontSize: 14,

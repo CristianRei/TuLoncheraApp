@@ -18,6 +18,10 @@ import { migracion0015ComprobantesYTurnos } from './0015_comprobantes_y_turnos';
 import { migracion0016ColaSync } from './0016_cola_sync';
 import { migracion0017CarguesPendientes } from './0017_cargues_pendientes';
 import { migracion0018NotificacionCargueRevisar } from './0018_notificacion_cargue_revisar';
+import { migracion0019Clientes } from './0019_clientes';
+import { migracion0020Categorias } from './0020_categorias';
+import { migracion0021Metas } from './0021_metas';
+import { migracion0022DatosPromotor } from './0022_datos_promotor';
 
 export interface Migracion {
   version: number;
@@ -47,6 +51,10 @@ const migraciones: Migracion[] = [
   migracion0016ColaSync,
   migracion0017CarguesPendientes,
   migracion0018NotificacionCargueRevisar,
+  migracion0019Clientes,
+  migracion0020Categorias,
+  migracion0021Metas,
+  migracion0022DatosPromotor,
 ];
 
 /**

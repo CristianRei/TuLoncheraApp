@@ -26,6 +26,8 @@ interface DatosVenta {
   items: ItemVenta[];
   metodoPago: MetodoPago;
   comprobanteUri?: string | null;
+  /** Cliente final al que se le asigna esta factura (opcional, ver migración 0019). */
+  clienteId?: string | null;
 }
 
 interface FilaVenta {
@@ -41,11 +43,19 @@ interface FilaVenta {
   anulada: number;
   motivo_anulacion: string | null;
   comprobante_uri: string | null;
+  cliente_id: string | null;
+  cliente_nombre: string | null;
 }
 
 const COLUMNAS_VENTA = `v.id, v.numero_recibo, v.promotor_id, u.nombre as promotor_nombre,
    v.punto_id, pt.nombre as punto_nombre,
-   v.ts_cliente, v.metodo_pago, v.total, v.anulada, v.motivo_anulacion, v.comprobante_uri`;
+   v.ts_cliente, v.metodo_pago, v.total, v.anulada, v.motivo_anulacion, v.comprobante_uri,
+   v.cliente_id, c.nombre_completo as cliente_nombre`;
+
+const JOIN_VENTA = `FROM ventas v
+     JOIN usuarios u ON u.id = v.promotor_id
+     LEFT JOIN puntos pt ON pt.id = v.punto_id
+     LEFT JOIN clientes c ON c.id = v.cliente_id`;
 
 function aVenta(fila: FilaVenta): Venta {
   return {
@@ -61,6 +71,8 @@ function aVenta(fila: FilaVenta): Venta {
     anulada: fila.anulada === 1,
     motivoAnulacion: fila.motivo_anulacion,
     comprobanteUri: fila.comprobante_uri,
+    clienteId: fila.cliente_id,
+    clienteNombre: fila.cliente_nombre,
   };
 }
 
@@ -130,8 +142,8 @@ export async function registrarVenta(
     const numeroRecibo = await generarNumeroRecibo(db, dispositivoId);
 
     await db.runAsync(
-      `INSERT INTO ventas (id, numero_recibo, promotor_id, punto_id, ts_cliente, metodo_pago, total, dispositivo_id, comprobante_uri)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO ventas (id, numero_recibo, promotor_id, punto_id, ts_cliente, metodo_pago, total, dispositivo_id, comprobante_uri, cliente_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         numeroRecibo,
@@ -142,6 +154,7 @@ export async function registrarVenta(
         total,
         dispositivoId,
         datos.comprobanteUri ?? null,
+        datos.clienteId ?? null,
       ]
     );
 
@@ -185,16 +198,43 @@ export async function registrarVenta(
 
 export async function listarVentas(
   db: SQLiteDatabase,
-  opciones: { incluirAnuladas?: boolean } = {}
+  opciones: { incluirAnuladas?: boolean; rango?: { desde: string; hasta: string } } = {}
 ): Promise<Venta[]> {
-  const condicion = opciones.incluirAnuladas ? 'v.anulada = 1' : 'v.anulada = 0';
+  const condiciones = [opciones.incluirAnuladas ? 'v.anulada = 1' : 'v.anulada = 0'];
+  const parametros: string[] = [];
+  if (opciones.rango) {
+    condiciones.push('v.ts_cliente BETWEEN ? AND ?');
+    parametros.push(opciones.rango.desde, opciones.rango.hasta);
+  }
+
   const filas = await db.getAllAsync<FilaVenta>(
     `SELECT ${COLUMNAS_VENTA}
-     FROM ventas v
-     JOIN usuarios u ON u.id = v.promotor_id
-     LEFT JOIN puntos pt ON pt.id = v.punto_id
-     WHERE ${condicion}
-     ORDER BY v.ts_cliente DESC`
+     ${JOIN_VENTA}
+     WHERE ${condiciones.join(' AND ')}
+     ORDER BY v.ts_cliente DESC`,
+    parametros
+  );
+  return filas.map(aVenta);
+}
+
+/**
+ * Ventas del promotor dentro del turno actual (desde `horaInicio` hasta
+ * `horaFin` o ahora si sigue abierto) — para "Ventas del turno" en
+ * app/promotor/. Incluye anuladas (marcadas en la UI) para que el listado
+ * coincida con lo que el promotor recuerda haber hecho ese turno.
+ */
+export async function listarVentasTurno(
+  db: SQLiteDatabase,
+  promotorId: string,
+  turno: { horaInicio: string; horaFin: string | null }
+): Promise<Venta[]> {
+  const hasta = turno.horaFin ?? new Date().toISOString();
+  const filas = await db.getAllAsync<FilaVenta>(
+    `SELECT ${COLUMNAS_VENTA}
+     ${JOIN_VENTA}
+     WHERE v.promotor_id = ? AND v.ts_cliente BETWEEN ? AND ?
+     ORDER BY v.ts_cliente DESC`,
+    [promotorId, turno.horaInicio, hasta]
   );
   return filas.map(aVenta);
 }
@@ -205,9 +245,7 @@ export async function obtenerVenta(
 ): Promise<{ venta: Venta; items: VentaItem[] } | null> {
   const fila = await db.getFirstAsync<FilaVenta>(
     `SELECT ${COLUMNAS_VENTA}
-     FROM ventas v
-     JOIN usuarios u ON u.id = v.promotor_id
-     LEFT JOIN puntos pt ON pt.id = v.punto_id
+     ${JOIN_VENTA}
      WHERE v.id = ?`,
     [id]
   );
@@ -281,4 +319,18 @@ export async function anularVenta(
       );
     }
   });
+}
+
+/**
+ * Asigna (o quita, con `clienteId = null`) el cliente final de una venta ya
+ * registrada — ej. cuando la persona pide la factura electrónica después de
+ * pagar. No es un movimiento de inventario, así que un UPDATE directo sobre
+ * `ventas` es correcto (mismo criterio que `anularVenta`/`comprobante_uri`).
+ */
+export async function asignarClienteAVenta(
+  db: SQLiteDatabase,
+  ventaId: string,
+  clienteId: string | null
+): Promise<void> {
+  await db.runAsync('UPDATE ventas SET cliente_id = ? WHERE id = ?', [clienteId, ventaId]);
 }

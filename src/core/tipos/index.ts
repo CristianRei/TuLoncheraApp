@@ -53,6 +53,22 @@ export interface UsuarioSesion {
   rol: Rol;
 }
 
+/**
+ * Promotor gestionado desde admin (contratar/editar/dar de baja) — ver
+ * app/admin/promotores/ y migración 0022. `pin` se deriva de `cedula`
+ * (últimos 4 dígitos, ver src/db/promotores.ts) y queda `null` cuando el
+ * promotor está desactivado, liberando ese PIN para reuso futuro.
+ */
+export interface Promotor {
+  id: string;
+  nombre: string;
+  cedula: string | null;
+  celular: string | null;
+  direccion: string | null;
+  pin: string | null;
+  activo: boolean;
+}
+
 export interface Ubicacion {
   id: string;
   tipo: TipoUbicacion;
@@ -65,7 +81,8 @@ export interface Producto {
   sku: string;
   codigoBarras: string | null;
   nombre: string;
-  categoria: string | null;
+  categoriaId: string | null;
+  categoriaNombre: string | null;
   marca: string | null;
   esLicor: boolean;
   esPerecedero: boolean;
@@ -73,6 +90,13 @@ export interface Producto {
   costo: Pesos | null;
   unidadEmpaque: number;
   fotoUri: string | null;
+  activo: boolean;
+}
+
+/** Categoría de producto, administrable por los admins — ver migración 0020. */
+export interface Categoria {
+  id: string;
+  nombre: string;
   activo: boolean;
 }
 
@@ -169,6 +193,20 @@ export interface Venta {
   anulada: boolean;
   motivoAnulacion: string | null;
   comprobanteUri: string | null;
+  clienteId: string | null;
+  clienteNombre: string | null;
+}
+
+/** Cliente final registrado por un promotor en campo — no es parte del inventario, ver migración 0019. */
+export interface Cliente {
+  id: string;
+  nombreCompleto: string;
+  telefono: string | null;
+  direccion: string | null;
+  ciudad: string | null;
+  empresa: string | null;
+  nota: string | null;
+  tsCliente: string;
 }
 
 export interface VentaItem {
@@ -176,6 +214,18 @@ export interface VentaItem {
   productoNombre: string;
   cantidad: number;
   precioUnitario: Pesos;
+}
+
+export type TipoMeta = 'PROMOTOR' | 'PUNTO';
+
+/** Meta de venta mensual por promotor o por punto — ver migración 0021. */
+export interface Meta {
+  id: string;
+  tipo: TipoMeta;
+  entidadId: string;
+  /** "AAAA-MM". */
+  mes: string;
+  montoObjetivo: Pesos;
 }
 
 export interface Conteo {

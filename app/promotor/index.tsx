@@ -37,11 +37,13 @@ import { TarjetaProductoInventario } from '@/ui/TarjetaProductoInventario';
 import { TicketModal } from '@/ui/TicketModal';
 import { useCarrito } from '@/ui/useCarrito';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useVentaEnCurso } from '@/ui/VentaEnCursoContext';
 
 export default function HomePromotor() {
   const usuario = useRequiereSesion(['PROMOTOR']);
   const { cerrarSesion } = useSesion();
   const carrito = useCarrito();
+  const { clienteVentaActual, setClienteVentaActual } = useVentaEnCurso();
 
   const [inventario, setInventario] = useState<ItemInventario[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -241,6 +243,7 @@ export default function HomePromotor() {
             promotorNombre: usuarioActual.nombre,
             metodoPago,
             comprobanteUri,
+            clienteId: clienteVentaActual?.id ?? null,
             items: carrito.items.map((item) => ({
               productoId: item.productoId,
               productoNombre: item.nombre,
@@ -262,6 +265,7 @@ export default function HomePromotor() {
         throw error;
       }
       carrito.vaciar();
+      setClienteVentaActual(null);
       setCobrarVisible(false);
       setTicketVisible(false);
       await cargarInventario(usuarioActual.id);
@@ -287,6 +291,27 @@ export default function HomePromotor() {
               </Text>
             </View>
           )}
+          {clienteVentaActual && (
+            <Pressable
+              style={styles.chipCliente}
+              onPress={() => router.push('/promotor/clientes')}
+              accessibilityRole="button"
+              accessibilityLabel={`Facturando a ${clienteVentaActual.nombreCompleto}. Toca para cambiar.`}
+            >
+              <Ionicons name="person" size={12} color={COLORES.textoSobreOscuro} />
+              <Text style={styles.chipClienteTexto} numberOfLines={1}>
+                Facturando a: {clienteVentaActual.nombreCompleto}
+              </Text>
+              <Pressable
+                hitSlop={8}
+                onPress={() => setClienteVentaActual(null)}
+                accessibilityRole="button"
+                accessibilityLabel="Quitar cliente de la venta actual"
+              >
+                <Ionicons name="close-circle" size={14} color={COLORES.textoSobreOscuro} />
+              </Pressable>
+            </Pressable>
+          )}
         </View>
         <Pressable
           style={styles.botonMenu}
@@ -310,6 +335,26 @@ export default function HomePromotor() {
             >
               <Ionicons name="calendar-outline" size={20} color={COLORES.oscuro} />
               <Text style={styles.opcionMenuTexto}>Mi calendario</Text>
+            </Pressable>
+            <Pressable
+              style={styles.opcionMenu}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push('/promotor/ventas-turno');
+              }}
+            >
+              <Ionicons name="receipt-outline" size={20} color={COLORES.oscuro} />
+              <Text style={styles.opcionMenuTexto}>Ventas del turno</Text>
+            </Pressable>
+            <Pressable
+              style={styles.opcionMenu}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push('/promotor/clientes');
+              }}
+            >
+              <Ionicons name="people-outline" size={20} color={COLORES.oscuro} />
+              <Text style={styles.opcionMenuTexto}>Clientes</Text>
             </Pressable>
             <Pressable
               style={styles.opcionMenu}
@@ -430,6 +475,12 @@ export default function HomePromotor() {
         onVaciar={carrito.vaciar}
         onCerrar={() => setTicketVisible(false)}
         onCobrar={abrirCobrar}
+        clienteVentaActual={clienteVentaActual}
+        onQuitarCliente={() => setClienteVentaActual(null)}
+        onAsignarCliente={() => {
+          setTicketVisible(false);
+          router.push('/promotor/clientes');
+        }}
       />
 
       <CobrarModal
@@ -439,6 +490,7 @@ export default function HomePromotor() {
         procesando={procesandoVenta}
         onSeleccionar={cobrar}
         onCerrar={() => setCobrarVisible(false)}
+        clienteNombre={clienteVentaActual?.nombreCompleto}
       />
 
       <EscanerCodigoBarras
@@ -483,6 +535,8 @@ export default function HomePromotor() {
               onVaciar={carrito.vaciar}
               onCerrar={() => setTicketVisible(false)}
               onCobrar={abrirCobrar}
+              clienteVentaActual={clienteVentaActual}
+              onQuitarCliente={() => setClienteVentaActual(null)}
             />
             <CobrarModal
               variante="superpuesto"
@@ -492,6 +546,7 @@ export default function HomePromotor() {
               procesando={procesandoVenta}
               onSeleccionar={cobrar}
               onCerrar={() => setCobrarVisible(false)}
+              clienteNombre={clienteVentaActual?.nombreCompleto}
             />
           </>
         }
@@ -539,6 +594,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: TIPOGRAFIA_PROMOTOR.medio,
     color: COLORES.textoSobreOscuro,
+  },
+  chipCliente: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 4,
+    maxWidth: '100%',
+  },
+  chipClienteTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
+    color: COLORES.textoSobreOscuro,
+    flexShrink: 1,
   },
   botonMenu: {
     width: 38,
