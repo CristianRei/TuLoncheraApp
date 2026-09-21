@@ -17,24 +17,30 @@ import { formatearPesos } from '@/core/dinero';
 import type { MetodoPago, Producto, Punto, UsuarioSesion } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import {
+  compararConPeriodoAnterior,
+  obtenerMargenPorProducto,
   obtenerResumenVentas,
   obtenerSaldoTotalBodega,
   obtenerVentasPorCategoria,
   obtenerVentasPorPromotor,
   obtenerVentasPorPunto,
+  type ComparacionPeriodo,
   type FiltrosVentas,
   type RangoFechas,
+  type ResumenMargen,
   type ResumenVentasPeriodo,
   type SaldoTotalBodega,
   type TotalPorCategoria,
   type TotalPorPromotor,
   type TotalPorPunto,
 } from '@/db/analitica';
+import { listarNotificaciones } from '@/db/notificaciones';
 import { listarCategoriasDistintas, listarMarcasDistintas, listarProductos } from '@/db/productos';
 import { listarPuntos } from '@/db/puntos';
 import { listarPromotores } from '@/db/usuarios';
 import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { ModalDetalleSeccion, type SeccionDetalle } from '@/ui/ModalDetalleSeccion';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -42,7 +48,6 @@ import { useRequiereSesion } from '@/ui/useRequiereSesion';
 type Periodo = 'HOY' | 'SEMANA' | 'MES' | 'PERSONALIZADO';
 
 const OFFSET_BOGOTA_MS = 5 * 60 * 60 * 1000;
-const REFRESCO_MS = 15000;
 
 const ETIQUETAS_PERIODO: Record<Exclude<Periodo, 'PERSONALIZADO'>, string> = {
   HOY: 'Hoy',
@@ -224,11 +229,14 @@ export default function Dashboard() {
   const [porPromotor, setPorPromotor] = useState<TotalPorPromotor[]>([]);
   const [porPunto, setPorPunto] = useState<TotalPorPunto[]>([]);
   const [porCategoria, setPorCategoria] = useState<TotalPorCategoria[]>([]);
+  const [comparacion, setComparacion] = useState<ComparacionPeriodo | null>(null);
+  const [margen, setMargen] = useState<ResumenMargen | null>(null);
+  const [notificacionesCriticas, setNotificacionesCriticas] = useState(0);
+  const [seccionDetalle, setSeccionDetalle] = useState<SeccionDetalle | null>(null);
   const [datosFiltro, setDatosFiltro] = useState<DatosFiltro | null>(null);
   const [cargando, setCargando] = useState(true);
-  const [segundosDesdeActualizacion, setSegundosDesdeActualizacion] = useState(0);
+  const [minutosDesdeActualizacion, setMinutosDesdeActualizacion] = useState(0);
   const insets = useSafeAreaInsets();
-  const enfocado = useRef(true);
   const ultimaActualizacion = useRef<number>(0);
 
   const rango: RangoFechas | null = useMemo(() => {
@@ -247,20 +255,35 @@ export default function Dashboard() {
     setCargando(true);
     try {
       const db = await getDb();
-      const [resumenVentas, saldo, promotorTotales, puntoTotales, categoriaTotales] = await Promise.all([
+      const [
+        resumenVentas,
+        saldo,
+        promotorTotales,
+        puntoTotales,
+        categoriaTotales,
+        comparacionPeriodo,
+        margenPeriodo,
+        criticas,
+      ] = await Promise.all([
         obtenerResumenVentas(db, rango, filtros),
         obtenerSaldoTotalBodega(db),
         obtenerVentasPorPromotor(db, rango, filtros),
         obtenerVentasPorPunto(db, rango, filtros),
         obtenerVentasPorCategoria(db, rango, filtros),
+        compararConPeriodoAnterior(db, rango, filtros),
+        obtenerMargenPorProducto(db, rango, filtros),
+        listarNotificaciones(db, { soloNoLeidas: true }),
       ]);
       setResumen(resumenVentas);
       setSaldoBodega(saldo);
       setPorPromotor(promotorTotales);
       setPorPunto(puntoTotales);
       setPorCategoria(categoriaTotales);
+      setComparacion(comparacionPeriodo);
+      setMargen(margenPeriodo);
+      setNotificacionesCriticas(criticas.filter((n) => n.nivel === 'CRITICO').length);
       ultimaActualizacion.current = Date.now();
-      setSegundosDesdeActualizacion(0);
+      setMinutosDesdeActualizacion(0);
     } finally {
       setCargando(false);
     }
@@ -280,27 +303,19 @@ export default function Dashboard() {
 
   useFocusEffect(
     useCallback(() => {
-      enfocado.current = true;
       cargar();
       cargarDatosFiltro();
-      return () => {
-        enfocado.current = false;
-      };
     }, [cargar, cargarDatosFiltro])
   );
 
-  // "Tiempo real" dentro de este dispositivo: refresca mientras la pantalla
-  // está enfocada. No hay push desde otros dispositivos — la app es local
-  // sin servidor todavía (CLAUDE.md sección 1, Fase 5 sin construir).
+  // El dashboard ya no se refresca solo — el admin decide cuándo actualizar
+  // (botón de refrescar). Solo se mantiene un contador de "hace cuántos
+  // minutos" para que sea evidente que los datos pueden estar desactualizados.
   useEffect(() => {
-    const intervaloRefresco = setInterval(() => {
-      if (enfocado.current) cargar();
-    }, REFRESCO_MS);
     const intervaloContador = setInterval(() => {
-      setSegundosDesdeActualizacion(Math.floor((Date.now() - ultimaActualizacion.current) / 1000));
-    }, 1000);
+      setMinutosDesdeActualizacion(Math.floor((Date.now() - ultimaActualizacion.current) / 60000));
+    }, 30000);
     return () => {
-      clearInterval(intervaloRefresco);
       clearInterval(intervaloContador);
     };
   }, [cargar]);
@@ -347,8 +362,19 @@ export default function Dashboard() {
             <View style={styles.encabezadoDerecha}>
               <View style={styles.enVivoIndicador}>
                 <View style={styles.enVivoPunto} />
-                <Text style={styles.enVivoTexto}>Auto-actualiza cada 15s</Text>
+                <Text style={styles.enVivoTexto}>Actualización manual</Text>
               </View>
+              {notificacionesCriticas > 0 && (
+                <Pressable
+                  style={styles.botonNotificaciones}
+                  onPress={() => router.push('/admin/notificaciones')}
+                >
+                  <Ionicons name="warning-outline" size={15} color="#FFFFFF" />
+                  <Text style={styles.botonNotificacionesTexto}>
+                    {notificacionesCriticas} crítica{notificacionesCriticas === 1 ? '' : 's'}
+                  </Text>
+                </Pressable>
+              )}
               <Pressable style={styles.botonRecibos} onPress={() => router.push('/admin/ventas')}>
                 <Ionicons name="receipt-outline" size={15} color={COLORES_ADMIN.vino} />
                 <Text style={styles.botonRecibosTexto}>Recibos</Text>
@@ -406,10 +432,13 @@ export default function Dashboard() {
                 <View style={styles.actualizadoFila}>
                   <View style={styles.actualizadoPunto} />
                   <Text style={styles.actualizadoTexto}>
-                    Actualizado hace {segundosDesdeActualizacion}s
+                    {minutosDesdeActualizacion === 0
+                      ? 'Actualizado hace instantes'
+                      : `Actualizado hace ${minutosDesdeActualizacion} min`}
                   </Text>
                   <Pressable style={styles.botonRefrescar} onPress={cargar}>
                     <Ionicons name="sync-outline" size={15} color={COLORES_ADMIN.textoSecundario} />
+                    <Text style={styles.botonRefrescarTexto}>Actualizar</Text>
                   </Pressable>
                 </View>
               </View>
@@ -490,12 +519,14 @@ export default function Dashboard() {
                     etiqueta="Total vendido"
                     valor={formatearPesos(resumen.totalVendido)}
                     pie={`COP · período ${periodo === 'PERSONALIZADO' ? 'personalizado' : ETIQUETAS_PERIODO[periodo]}`}
+                    variacionPct={comparacion?.variacionTotalPct}
                   />
                   <TarjetaKpi
                     icono="receipt-outline"
                     etiqueta="Ventas emitidas"
                     valor={String(resumen.cantidadVentas)}
                     pie="Recibos emitidos"
+                    variacionPct={comparacion?.variacionCantidadPct}
                   />
                   <TarjetaKpi
                     icono="stats-chart-outline"
@@ -554,7 +585,17 @@ export default function Dashboard() {
                           const porcentaje =
                             resumen.totalVendido === 0 ? 0 : (m.total / resumen.totalVendido) * 100;
                           return (
-                            <View key={m.metodoPago} style={{ gap: 5 }}>
+                            <Pressable
+                              key={m.metodoPago}
+                              style={{ gap: 5 }}
+                              onPress={() =>
+                                setSeccionDetalle({
+                                  campo: 'metodoPago',
+                                  valor: m.metodoPago,
+                                  titulo: ETIQUETAS_METODO[m.metodoPago],
+                                })
+                              }
+                            >
                               <View style={styles.barraProgresoEncabezado}>
                                 <Text style={styles.barraProgresoNombre}>
                                   {ETIQUETAS_METODO[m.metodoPago]}
@@ -575,7 +616,7 @@ export default function Dashboard() {
                               <Text style={styles.barraProgresoPorcentaje}>
                                 {porcentaje.toFixed(1)}%
                               </Text>
-                            </View>
+                            </Pressable>
                           );
                         })}
                       </View>
@@ -594,7 +635,17 @@ export default function Dashboard() {
                     ) : (
                       <View style={{ gap: 8 }}>
                         {porPromotor.map((p, indice) => (
-                          <View key={p.promotorId} style={styles.filaRanking}>
+                          <Pressable
+                            key={p.promotorId}
+                            style={styles.filaRanking}
+                            onPress={() =>
+                              setSeccionDetalle({
+                                campo: 'promotorId',
+                                valor: p.promotorId,
+                                titulo: p.promotorNombre,
+                              })
+                            }
+                          >
                             <View style={styles.filaRankingIzquierda}>
                               <View
                                 style={[
@@ -625,7 +676,7 @@ export default function Dashboard() {
                                 % del total
                               </Text>
                             </View>
-                          </View>
+                          </Pressable>
                         ))}
                       </View>
                     )}
@@ -646,7 +697,17 @@ export default function Dashboard() {
                           const porcentaje =
                             resumen.totalVendido === 0 ? 0 : (p.totalVendido / resumen.totalVendido) * 100;
                           return (
-                            <View key={p.puntoId} style={styles.puntoCard}>
+                            <Pressable
+                              key={p.puntoId}
+                              style={styles.puntoCard}
+                              onPress={() =>
+                                setSeccionDetalle({
+                                  campo: 'puntoId',
+                                  valor: p.puntoId,
+                                  titulo: `${p.empresaNombre} · ${p.puntoNombre}`,
+                                })
+                              }
+                            >
                               <View style={styles.barraProgresoEncabezado}>
                                 <Text style={styles.barraProgresoNombre}>
                                   {p.empresaNombre} · {p.puntoNombre}
@@ -665,7 +726,7 @@ export default function Dashboard() {
                                 <Text style={styles.puntoCardSub}>{p.cantidadVentas} ventas</Text>
                                 <Text style={styles.puntoCardSub}>{porcentaje.toFixed(1)}% aporte</Text>
                               </View>
-                            </View>
+                            </Pressable>
                           );
                         })}
                       </View>
@@ -686,7 +747,13 @@ export default function Dashboard() {
                     ) : (
                       <View style={styles.categoriaGrilla}>
                         {porCategoria.map((c) => (
-                          <View key={c.categoria} style={styles.categoriaCard}>
+                          <Pressable
+                            key={c.categoria}
+                            style={styles.categoriaCard}
+                            onPress={() =>
+                              setSeccionDetalle({ campo: 'categoria', valor: c.categoria, titulo: c.categoria })
+                            }
+                          >
                             <View style={styles.barraProgresoEncabezado}>
                               <Text style={styles.barraProgresoNombre}>{c.categoria}</Text>
                               <View style={styles.categoriaBadge}>
@@ -694,7 +761,7 @@ export default function Dashboard() {
                               </View>
                             </View>
                             <Text style={styles.categoriaMonto}>{formatearPesos(c.totalVendido)}</Text>
-                          </View>
+                          </Pressable>
                         ))}
                       </View>
                     )}
@@ -736,6 +803,53 @@ export default function Dashboard() {
                       </View>
                     )}
                   </View>
+                </View>
+
+                <View style={styles.tarjeta}>
+                  <View style={styles.seccionEncabezadoFila}>
+                    <View style={styles.seccionEncabezadoIcono}>
+                      <Ionicons name="trending-up-outline" size={17} color={COLORES_ADMIN.textoSecundario} />
+                      <Text style={styles.seccionTitulo}>Margen (cobertura parcial)</Text>
+                    </View>
+                  </View>
+                  {!margen || margen.productos.length === 0 ? (
+                    <Text style={styles.vacio}>
+                      Ningún producto vendido en este período tiene costo capturado todavía.
+                    </Text>
+                  ) : (
+                    <>
+                      {margen.productosConCosto < margen.productosVendidosTotal && (
+                        <Text style={styles.margenCobertura}>
+                          {margen.productosConCosto} de {margen.productosVendidosTotal} productos vendidos
+                          tienen costo capturado — el margen mostrado es parcial.
+                        </Text>
+                      )}
+                      <View style={{ gap: 4 }}>
+                        {margen.productos.slice(0, 8).map((p, indice) => (
+                          <View
+                            key={p.productoId}
+                            style={[
+                              styles.filaProducto,
+                              indice < Math.min(margen.productos.length, 8) - 1 && styles.filaProductoBorde,
+                            ]}
+                          >
+                            <View style={styles.filaProductoIzquierda}>
+                              <View style={styles.filaProductoIndice}>
+                                <Text style={styles.filaProductoIndiceTexto}>{indice + 1}</Text>
+                              </View>
+                              <View>
+                                <Text style={styles.filaProductoNombre}>{p.productoNombre}</Text>
+                                <Text style={styles.filaProductoUnidades}>
+                                  {p.unidadesVendidas} unidades vendidas
+                                </Text>
+                              </View>
+                            </View>
+                            <Text style={styles.filaProductoTotal}>{formatearPesos(p.margenTotal)}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  )}
                 </View>
 
                 <View style={styles.piePagina}>
@@ -858,6 +972,13 @@ export default function Dashboard() {
           </View>
         </View>
       </Modal>
+
+      <ModalDetalleSeccion
+        seccion={seccionDetalle}
+        rango={rango}
+        filtrosBase={filtros}
+        onCerrar={() => setSeccionDetalle(null)}
+      />
     </View>
   );
 }
@@ -892,11 +1013,13 @@ function TarjetaKpi({
   etiqueta,
   valor,
   pie,
+  variacionPct,
 }: {
   icono: keyof typeof Ionicons.glyphMap;
   etiqueta: string;
   valor: string;
   pie: string;
+  variacionPct?: number | null;
 }) {
   return (
     <View style={styles.kpi}>
@@ -904,7 +1027,26 @@ function TarjetaKpi({
         <Text style={styles.kpiEtiqueta}>{etiqueta}</Text>
         <Ionicons name={icono} size={17} color={COLORES_ADMIN.textoSecundario} />
       </View>
-      <Text style={styles.kpiValor}>{valor}</Text>
+      <View style={styles.kpiValorFila}>
+        <Text style={styles.kpiValor}>{valor}</Text>
+        {variacionPct !== undefined && variacionPct !== null && (
+          <View style={styles.kpiVariacionChip}>
+            <Ionicons
+              name={variacionPct >= 0 ? 'arrow-up' : 'arrow-down'}
+              size={10}
+              color={variacionPct >= 0 ? COLORES_ADMIN.positivo : COLORES_ADMIN.error}
+            />
+            <Text
+              style={[
+                styles.kpiVariacionTexto,
+                { color: variacionPct >= 0 ? COLORES_ADMIN.positivo : COLORES_ADMIN.error },
+              ]}
+            >
+              {Math.abs(variacionPct)}%
+            </Text>
+          </View>
+        )}
+      </View>
       <View style={styles.kpiPieDivisor} />
       <Text style={styles.kpiPie}>{pie}</Text>
     </View>
@@ -987,6 +1129,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: '#FFE9E2',
+  },
+  botonNotificaciones: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORES_ADMIN.error,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  botonNotificacionesTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#FFFFFF',
   },
   botonRecibos: {
     flexDirection: 'row',
@@ -1082,12 +1238,18 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   botonRefrescar: {
-    width: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     height: 28,
     borderRadius: 8,
     backgroundColor: COLORES_ADMIN.superficieBaja,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  botonRefrescarTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
   },
   selectoresFila: {
     flexDirection: 'row',
@@ -1232,10 +1394,25 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  kpiValorFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   kpiValor: {
     fontSize: 24,
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
+  },
+  kpiVariacionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  kpiVariacionTexto: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
   },
   kpiPieDivisor: {
     height: 1,
@@ -1302,6 +1479,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
+  },
+  margenCobertura: {
+    fontSize: 11.5,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    marginBottom: 10,
   },
   graficoBloque: {
     gap: 10,

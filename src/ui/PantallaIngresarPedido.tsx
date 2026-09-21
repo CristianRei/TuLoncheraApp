@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -18,6 +19,7 @@ import { registrarEntradaBodega } from '@/db/entradasBodega';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
 import { COLORES } from './colores';
 import { EscanerCodigoBarras } from './EscanerCodigoBarras';
+import { SelectorFechaUnica } from './SelectorFechaUnica';
 
 interface Props {
   usuarioId: string;
@@ -28,15 +30,6 @@ interface LineaPedido {
   nombre: string;
   cantidad: number;
   fechaVencimiento: string | null;
-}
-
-const PATRON_FECHA = /^\d{4}-\d{2}-\d{2}$/;
-
-/** "20260315" tecleado en number-pad → "2026-03-15", insertando guiones. */
-function formatearEntradaFecha(texto: string): string {
-  const digitos = texto.replace(/\D/g, '').slice(0, 8);
-  const partes = [digitos.slice(0, 4), digitos.slice(4, 6), digitos.slice(6, 8)].filter(Boolean);
-  return partes.join('-');
 }
 
 /**
@@ -54,7 +47,8 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
     nombre: string;
   } | null>(null);
   const [cantidadTexto, setCantidadTexto] = useState('');
-  const [fechaTexto, setFechaTexto] = useState('');
+  const [fechaTexto, setFechaTexto] = useState<string | null>(null);
+  const [calendarioVisible, setCalendarioVisible] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   async function manejarCodigoEscaneado(codigo: string) {
@@ -71,15 +65,14 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setProductoPendiente({ id: producto.id, nombre: producto.nombre });
     setCantidadTexto('');
-    setFechaTexto('');
+    setFechaTexto(null);
   }
 
   function confirmarCantidad() {
     if (!productoPendiente) return;
     const cantidad = parseInt(cantidadTexto, 10);
     if (!Number.isFinite(cantidad) || cantidad <= 0) return;
-    if (fechaTexto && !PATRON_FECHA.test(fechaTexto)) return;
-    const fechaVencimiento = fechaTexto || null;
+    const fechaVencimiento = fechaTexto;
 
     setItems((actual) => {
       const existente = actual.find(
@@ -97,7 +90,7 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
     });
     setProductoPendiente(null);
     setCantidadTexto('');
-    setFechaTexto('');
+    setFechaTexto(null);
   }
 
   function quitarLinea(indice: number) {
@@ -207,24 +200,16 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
                   autoFocus
                 />
                 <Text style={styles.modalTexto}>Fecha de vencimiento (opcional)</Text>
-                <TextInput
-                  style={styles.modalInputFecha}
-                  placeholder="AAAA-MM-DD"
-                  placeholderTextColor="#999"
-                  value={fechaTexto}
-                  onChangeText={(texto) => setFechaTexto(formatearEntradaFecha(texto))}
-                  keyboardType="number-pad"
-                  maxLength={10}
-                />
-                {fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto) && (
-                  <Text style={styles.modalErrorFecha}>Formato: AAAA-MM-DD</Text>
-                )}
+                <Pressable style={styles.modalInputFecha} onPress={() => setCalendarioVisible(true)}>
+                  <Ionicons name="calendar-outline" size={16} color={COLORES.oscuro} />
+                  <Text style={styles.modalInputFechaTexto}>{fechaTexto ?? 'Elegir fecha'}</Text>
+                </Pressable>
                 <View style={styles.modalAcciones}>
                   <Pressable
                     onPress={() => {
                       setProductoPendiente(null);
                       setCantidadTexto('');
-                      setFechaTexto('');
+                      setFechaTexto(null);
                     }}
                   >
                     <Text style={styles.modalCancelar}>Cancelar</Text>
@@ -232,16 +217,9 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
                   <Pressable
                     style={[
                       styles.modalConfirmar,
-                      (!cantidadTexto ||
-                        parseInt(cantidadTexto, 10) <= 0 ||
-                        (fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto))) &&
-                        styles.botonDeshabilitado,
+                      (!cantidadTexto || parseInt(cantidadTexto, 10) <= 0) && styles.botonDeshabilitado,
                     ]}
-                    disabled={
-                      !cantidadTexto ||
-                      parseInt(cantidadTexto, 10) <= 0 ||
-                      (fechaTexto.length > 0 && !PATRON_FECHA.test(fechaTexto))
-                    }
+                    disabled={!cantidadTexto || parseInt(cantidadTexto, 10) <= 0}
                     onPress={confirmarCantidad}
                   >
                     <Text style={styles.modalConfirmarTexto}>Agregar</Text>
@@ -252,6 +230,18 @@ export function PantallaIngresarPedido({ usuarioId }: Props) {
           )
         }
       />
+
+      <Modal visible={calendarioVisible} animationType="fade" transparent>
+        <View style={styles.fondoModalCalendario}>
+          <View style={styles.tarjetaModalCalendario}>
+            <Text style={styles.modalTitulo}>Fecha de vencimiento</Text>
+            <SelectorFechaUnica valor={fechaTexto} onCambiar={setFechaTexto} colorAcento={COLORES.oscuro} />
+            <Pressable style={styles.modalCerrarCalendario} onPress={() => setCalendarioVisible(false)}>
+              <Text style={styles.modalCerrarCalendarioTexto}>Listo</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -385,19 +375,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalInputFecha: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 10,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
+    paddingVertical: 12,
   },
-  modalErrorFecha: {
-    fontSize: 12,
-    color: '#B00020',
-    textAlign: 'center',
+  modalInputFechaTexto: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+  },
+  fondoModalCalendario: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tarjetaModalCalendario: {
+    backgroundColor: '#FFF',
+    borderRadius: 18,
+    padding: 20,
+    gap: 12,
+  },
+  modalCerrarCalendario: {
+    backgroundColor: COLORES.oscuro,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCerrarCalendarioTexto: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   modalAcciones: {
     flexDirection: 'row',

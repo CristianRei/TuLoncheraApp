@@ -6,10 +6,17 @@ import type { MetodoPago } from '@/core/tipos';
 import { asignarPromotorAPunto } from './eventos';
 import { crearEmpresa } from './empresas';
 import { crearDescuento } from './descuentos';
+import { crearLote } from './lotes';
 import { registrarMovimiento } from './movimientos';
 import { listarProductos } from './productos';
 import { crearPunto } from './puntos';
 import { obtenerOCrearUbicacionBodega, obtenerOCrearUbicacionPromotor } from './ubicaciones';
+
+/** SKU al que el seed deja poco stock a propósito, para poder ver la notificación STOCK_BAJO funcionando. */
+const SKU_STOCK_BAJO = 'TL001';
+/** SKU al que el seed le crea un lote por vencer, para poder ver LOTE_POR_VENCER funcionando. */
+const SKU_LOTE_POR_VENCER = 'TL002';
+const DIAS_PARA_VENCER_DEMO = 4;
 
 const MOTIVO_SEED = 'seed-demo';
 
@@ -183,7 +190,9 @@ export async function sembrarDatosDemo(
     dispositivoId
   );
 
-  // Stock de bodega suficiente para que cada promotor tenga saldo a vender
+  // Stock de bodega suficiente para que cada promotor tenga saldo a vender.
+  // SKU_STOCK_BAJO recibe muy poco a propósito, para que la notificación
+  // STOCK_BAJO tenga algo real que detectar contra sus ventas del período.
   const ubicacionBodega = await obtenerOCrearUbicacionBodega(db, dispositivoId);
   for (const sku of SKUS_VENTA) {
     const producto = productoPorSku.get(sku);
@@ -193,7 +202,31 @@ export async function sembrarDatosDemo(
       {
         tipo: 'COMPRA_PROVEEDOR',
         productoId: producto.id,
-        cantidad: 400,
+        cantidad: sku === SKU_STOCK_BAJO ? 5 : 400,
+        ubicacionOrigenId: null,
+        ubicacionDestinoId: ubicacionBodega,
+        usuarioId: adminId,
+        motivo: MOTIVO_SEED,
+      },
+      dispositivoId
+    );
+  }
+
+  // Un lote por vencer en los próximos días, para que la notificación
+  // LOTE_POR_VENCER tenga algo real que detectar.
+  const productoLotePorVencer = productoPorSku.get(SKU_LOTE_POR_VENCER);
+  if (productoLotePorVencer) {
+    const fechaVencimiento = new Date(Date.now() + DIAS_PARA_VENCER_DEMO * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const loteId = await crearLote(db, productoLotePorVencer.id, fechaVencimiento, dispositivoId);
+    await registrarMovimiento(
+      db,
+      {
+        tipo: 'COMPRA_PROVEEDOR',
+        productoId: productoLotePorVencer.id,
+        loteId,
+        cantidad: 20,
         ubicacionOrigenId: null,
         ubicacionDestinoId: ubicacionBodega,
         usuarioId: adminId,
@@ -215,6 +248,7 @@ export async function sembrarDatosDemo(
     for (const sku of SKUS_VENTA) {
       const producto = productoPorSku.get(sku);
       if (!producto) continue;
+      if (sku === SKU_STOCK_BAJO) continue; // se queda casi todo en bodega, con poco stock a propósito
       await registrarMovimiento(
         db,
         {

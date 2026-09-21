@@ -106,6 +106,52 @@ function clausulaIn(ids: string[]): string {
   return ids.map(() => '?').join(', ');
 }
 
+/** Productos vendidos dentro de un conjunto ya resuelto de IDs de venta, de mayor a menor unidades. */
+async function listarProductosVendidosPorIds(
+  db: SQLiteDatabase,
+  ids: string[],
+  limite?: number
+): Promise<ProductoMasVendido[]> {
+  if (ids.length === 0) return [];
+  const filas = await db.getAllAsync<{
+    producto_id: string;
+    nombre: string;
+    unidades: number;
+    total: number;
+  }>(
+    `SELECT vi.producto_id, p.nombre, SUM(vi.cantidad) as unidades,
+            SUM(vi.cantidad * vi.precio_unitario) as total
+     FROM venta_items vi
+     JOIN productos p ON p.id = vi.producto_id
+     WHERE vi.venta_id IN (${clausulaIn(ids)})
+     GROUP BY vi.producto_id
+     ORDER BY unidades DESC
+     ${limite ? 'LIMIT ?' : ''}`,
+    limite ? [...ids, limite] : ids
+  );
+  return filas.map((fila) => ({
+    productoId: fila.producto_id,
+    productoNombre: fila.nombre,
+    unidadesVendidas: fila.unidades,
+    totalVendido: fila.total,
+  }));
+}
+
+/**
+ * Todos los productos vendidos en el rango/filtros dados, sin límite — para
+ * el detalle "ver todos" del dashboard y para detectar stock bajo (ver
+ * src/db/notificaciones.ts). `obtenerResumenVentas` usa la variante interna
+ * con límite 10 para su `topProductos`.
+ */
+export async function listarProductosVendidos(
+  db: SQLiteDatabase,
+  rango: RangoFechas,
+  filtros: FiltrosVentas = {}
+): Promise<ProductoMasVendido[]> {
+  const ids = await resolverVentaIdsFiltradas(db, rango, filtros);
+  return listarProductosVendidosPorIds(db, ids);
+}
+
 /**
  * Resumen agregado de ventas activas (no anuladas) en un rango de fechas,
  * con filtros opcionales combinables. `porMetodoPago` y `topProductos` se
@@ -149,22 +195,7 @@ export async function obtenerResumenVentas(
     ids
   );
 
-  const topProductosFilas = await db.getAllAsync<{
-    producto_id: string;
-    nombre: string;
-    unidades: number;
-    total: number;
-  }>(
-    `SELECT vi.producto_id, p.nombre, SUM(vi.cantidad) as unidades,
-            SUM(vi.cantidad * vi.precio_unitario) as total
-     FROM venta_items vi
-     JOIN productos p ON p.id = vi.producto_id
-     WHERE vi.venta_id IN (${enLista})
-     GROUP BY vi.producto_id
-     ORDER BY unidades DESC
-     LIMIT 10`,
-    ids
-  );
+  const topProductos = await listarProductosVendidosPorIds(db, ids, 10);
 
   const ventasCrudas = await db.getAllAsync<{
     ts_cliente: string;
@@ -191,12 +222,7 @@ export async function obtenerResumenVentas(
       total: fila.total,
       cantidadVentas: fila.cantidad,
     })),
-    topProductos: topProductosFilas.map((fila) => ({
-      productoId: fila.producto_id,
-      productoNombre: fila.nombre,
-      unidadesVendidas: fila.unidades,
-      totalVendido: fila.total,
-    })),
+    topProductos,
     porHora: agruparVentasPorHora(
       ventasCrudas.map((fila) => ({
         tsCliente: fila.ts_cliente,
@@ -359,5 +385,175 @@ export async function obtenerSaldoTotalBodega(db: SQLiteDatabase): Promise<Saldo
     valorEstimado,
     productosConCosto: itemsConCosto.length,
     productosTotal: items.length,
+  };
+}
+
+export interface VentaResumida {
+  id: string;
+  numeroRecibo: string;
+  promotorNombre: string;
+  puntoNombre: string | null;
+  tsCliente: string;
+  metodoPago: MetodoPago;
+  total: Pesos;
+}
+
+/**
+ * Listado completo de transacciones que cumplen rango/filtros — para el
+ * detalle expandido de cada sección del dashboard (ej. "todas las ventas en
+ * Efectivo de este período"), a diferencia de `obtenerResumenVentas` que
+ * solo agrega totales.
+ */
+export async function listarVentasFiltradas(
+  db: SQLiteDatabase,
+  rango: RangoFechas,
+  filtros: FiltrosVentas = {}
+): Promise<VentaResumida[]> {
+  const ids = await resolverVentaIdsFiltradas(db, rango, filtros);
+  if (ids.length === 0) return [];
+
+  const filas = await db.getAllAsync<{
+    id: string;
+    numero_recibo: string;
+    promotor_nombre: string;
+    punto_nombre: string | null;
+    ts_cliente: string;
+    metodo_pago: MetodoPago;
+    total: number;
+  }>(
+    `SELECT v.id, v.numero_recibo, u.nombre as promotor_nombre, pt.nombre as punto_nombre,
+            v.ts_cliente, v.metodo_pago, v.total
+     FROM ventas v
+     JOIN usuarios u ON u.id = v.promotor_id
+     LEFT JOIN puntos pt ON pt.id = v.punto_id
+     WHERE v.id IN (${clausulaIn(ids)})
+     ORDER BY v.ts_cliente DESC`,
+    ids
+  );
+  return filas.map((fila) => ({
+    id: fila.id,
+    numeroRecibo: fila.numero_recibo,
+    promotorNombre: fila.promotor_nombre,
+    puntoNombre: fila.punto_nombre,
+    tsCliente: fila.ts_cliente,
+    metodoPago: fila.metodo_pago,
+    total: fila.total,
+  }));
+}
+
+export interface ComparacionPeriodo {
+  totalVendido: Pesos;
+  cantidadVentas: number;
+  /** null si el período anterior equivalente no tuvo ventas — no hay variación que calcular. */
+  variacionTotalPct: number | null;
+  variacionCantidadPct: number | null;
+}
+
+function calcularVariacionPct(actual: number, anterior: number): number | null {
+  if (anterior === 0) return null;
+  return Math.round(((actual - anterior) / anterior) * 100);
+}
+
+/**
+ * Compara el total/cantidad de ventas del rango dado contra el mismo rango
+ * desplazado hacia atrás por su misma duración — ej. si `rango` son 7 días,
+ * se compara contra los 7 días inmediatamente anteriores. Esto compara
+ * siempre tramos de igual duración (incluye "hoy parcial" vs. "ayer a la
+ * misma hora", nunca un día completo contra uno parcial).
+ */
+export async function compararConPeriodoAnterior(
+  db: SQLiteDatabase,
+  rango: RangoFechas,
+  filtros: FiltrosVentas = {}
+): Promise<ComparacionPeriodo> {
+  const duracionMs = new Date(rango.hasta).getTime() - new Date(rango.desde).getTime();
+  const rangoAnterior: RangoFechas = {
+    desde: new Date(new Date(rango.desde).getTime() - duracionMs).toISOString(),
+    hasta: rango.desde,
+  };
+
+  const idsActual = await resolverVentaIdsFiltradas(db, rango, filtros);
+  const idsAnterior = await resolverVentaIdsFiltradas(db, rangoAnterior, filtros);
+
+  async function totalYCantidad(ids: string[]): Promise<{ total: number; cantidad: number }> {
+    if (ids.length === 0) return { total: 0, cantidad: 0 };
+    const fila = await db.getFirstAsync<{ total: number | null; cantidad: number }>(
+      `SELECT SUM(total) as total, COUNT(*) as cantidad FROM ventas WHERE id IN (${clausulaIn(ids)})`,
+      ids
+    );
+    return { total: fila?.total ?? 0, cantidad: fila?.cantidad ?? 0 };
+  }
+
+  const actual = await totalYCantidad(idsActual);
+  const anterior = await totalYCantidad(idsAnterior);
+
+  return {
+    totalVendido: actual.total,
+    cantidadVentas: actual.cantidad,
+    variacionTotalPct: calcularVariacionPct(actual.total, anterior.total),
+    variacionCantidadPct: calcularVariacionPct(actual.cantidad, anterior.cantidad),
+  };
+}
+
+export interface MargenProducto {
+  productoId: string;
+  productoNombre: string;
+  unidadesVendidas: number;
+  margenTotal: Pesos;
+}
+
+export interface ResumenMargen {
+  productos: MargenProducto[];
+  /** Cuántos productos vendidos en el período tienen costo capturado (y por tanto entran al cálculo). */
+  productosConCosto: number;
+  /** Total de productos distintos vendidos en el período. */
+  productosVendidosTotal: number;
+}
+
+/**
+ * Margen por producto — (precioUnitario - costo) * cantidad — solo para los
+ * productos que tienen `costo` capturado en el catálogo (hoy son pocos, ver
+ * ADR 0003). Nunca se agrega un "margen total" que sugiera cubrir todo lo
+ * vendido: se expone `productosConCosto`/`productosVendidosTotal` para que
+ * la UI muestre la cobertura, mismo patrón que `obtenerSaldoTotalBodega`.
+ */
+export async function obtenerMargenPorProducto(
+  db: SQLiteDatabase,
+  rango: RangoFechas,
+  filtros: FiltrosVentas = {}
+): Promise<ResumenMargen> {
+  const ids = await resolverVentaIdsFiltradas(db, rango, filtros);
+  if (ids.length === 0) return { productos: [], productosConCosto: 0, productosVendidosTotal: 0 };
+
+  const filas = await db.getAllAsync<{
+    producto_id: string;
+    nombre: string;
+    costo: number | null;
+    unidades: number;
+    margen: number | null;
+  }>(
+    `SELECT vi.producto_id, p.nombre, p.costo, SUM(vi.cantidad) as unidades,
+            CASE WHEN p.costo IS NOT NULL
+                 THEN SUM((vi.precio_unitario - p.costo) * vi.cantidad)
+                 ELSE NULL END as margen
+     FROM venta_items vi
+     JOIN productos p ON p.id = vi.producto_id
+     WHERE vi.venta_id IN (${clausulaIn(ids)})
+     GROUP BY vi.producto_id
+     ORDER BY margen DESC`,
+    ids
+  );
+
+  const conCosto = filas.filter((fila) => fila.costo !== null);
+
+  return {
+    productos: conCosto.map((fila) => ({
+      productoId: fila.producto_id,
+      productoNombre: fila.nombre,
+      unidadesVendidas: fila.unidades,
+      margenTotal: fila.margen ?? 0,
+    })),
+    productosConCosto: conCosto.length,
+    productosVendidosTotal: filas.length,
   };
 }

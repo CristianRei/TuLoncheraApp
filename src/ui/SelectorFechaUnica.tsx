@@ -3,21 +3,24 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from './calendarioGrilla';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from './tema';
 
 interface Props {
   /** "AAAA-MM-DD" o null si no hay selección todavía. */
-  desde: string | null;
-  hasta: string | null;
-  onCambiar: (desde: string | null, hasta: string | null) => void;
+  valor: string | null;
+  onCambiar: (valor: string | null) => void;
+  colorAcento: string;
 }
 
+const TAMANO_CELDA = 36;
+
 /**
- * Calendario de mes con selección de rango: el primer toque fija "desde",
- * el segundo fija "hasta" (o reinicia si es anterior). Sin dependencias
- * externas — usa el sistema de diseño de src/ui/tema.ts.
+ * Calendario de mes para elegir un solo día — variante de un solo valor de
+ * CalendarioRango (comparten la grilla en src/ui/calendarioGrilla.ts). Recibe
+ * `colorAcento` en vez de usar tema.ts directamente porque lo comparten
+ * pantallas que no tienen el rediseño de admin (Bodega también usa
+ * PantallaIngresarPedido, con su propio color de marca).
  */
-export function CalendarioRango({ desde, hasta, onCambiar }: Props) {
+export function SelectorFechaUnica({ valor, onCambiar, colorAcento }: Props) {
   const hoy = new Date();
   const [mesVisible, setMesVisible] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() });
 
@@ -40,30 +43,17 @@ export function CalendarioRango({ desde, hasta, onCambiar }: Props) {
     });
   }
 
-  function tocarDia(dia: number) {
-    const clave = aClaveFecha(mesVisible.anio, mesVisible.mes, dia);
-    if (!desde || (desde && hasta)) {
-      onCambiar(clave, null);
-      return;
-    }
-    if (clave < desde) {
-      onCambiar(clave, desde);
-      return;
-    }
-    onCambiar(desde, clave);
-  }
-
   return (
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
         <Pressable style={styles.navBoton} onPress={irMesAnterior}>
-          <Ionicons name="chevron-back" size={18} color={COLORES_ADMIN.vino} />
+          <Ionicons name="chevron-back" size={18} color={colorAcento} />
         </Pressable>
-        <Text style={styles.mesTexto}>
+        <Text style={[styles.mesTexto, { color: colorAcento }]}>
           {NOMBRES_MES[mesVisible.mes]} {mesVisible.anio}
         </Text>
         <Pressable style={styles.navBoton} onPress={irMesSiguiente}>
-          <Ionicons name="chevron-forward" size={18} color={COLORES_ADMIN.vino} />
+          <Ionicons name="chevron-forward" size={18} color={colorAcento} />
         </Pressable>
       </View>
 
@@ -81,29 +71,26 @@ export function CalendarioRango({ desde, hasta, onCambiar }: Props) {
             if (dia === null) return <View key={indiceDia} style={styles.celda} />;
             const clave = aClaveFecha(mesVisible.anio, mesVisible.mes, dia);
             const esHoy = clave === hoyClave;
-            const esDesde = clave === desde;
-            const esHasta = clave === hasta;
-            const enRango = desde && hasta && clave > desde && clave < hasta;
-            const seleccionado = esDesde || esHasta;
+            const seleccionado = clave === valor;
 
             return (
               <Pressable
                 key={indiceDia}
-                style={[styles.celda, enRango && styles.celdaEnRango]}
-                onPress={() => tocarDia(dia)}
+                style={styles.celda}
+                onPress={() => onCambiar(seleccionado ? null : clave)}
               >
                 <View
                   style={[
                     styles.diaCirculo,
-                    seleccionado && styles.diaCirculoSeleccionado,
-                    esHoy && !seleccionado && styles.diaCirculoHoy,
+                    seleccionado && { backgroundColor: colorAcento },
+                    esHoy && !seleccionado && { borderWidth: 1.5, borderColor: colorAcento },
                   ]}
                 >
                   <Text
                     style={[
                       styles.diaTexto,
                       seleccionado && styles.diaTextoSeleccionado,
-                      esHoy && !seleccionado && styles.diaTextoHoy,
+                      esHoy && !seleccionado && { color: colorAcento, fontWeight: '700' },
                     ]}
                   >
                     {dia}
@@ -116,11 +103,9 @@ export function CalendarioRango({ desde, hasta, onCambiar }: Props) {
       ))}
 
       <View style={styles.pie}>
-        <Text style={styles.pieTexto}>
-          {desde && hasta ? `${desde} — ${hasta}` : desde ? `${desde} — elige el final` : 'Elige la fecha inicial'}
-        </Text>
-        {(desde || hasta) && (
-          <Pressable onPress={() => onCambiar(null, null)}>
+        <Text style={styles.pieTexto}>{valor ?? 'Sin fecha seleccionada'}</Text>
+        {valor && (
+          <Pressable onPress={() => onCambiar(null)}>
             <Text style={styles.pieLimpiar}>Limpiar</Text>
           </Pressable>
         )}
@@ -129,14 +114,12 @@ export function CalendarioRango({ desde, hasta, onCambiar }: Props) {
   );
 }
 
-const TAMANO_CELDA = 36;
-
 const styles = StyleSheet.create({
   contenedor: {
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
+    borderColor: '#EADFD7',
     padding: 14,
     gap: 8,
     maxWidth: 320,
@@ -151,14 +134,13 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
+    backgroundColor: '#F5EFEB',
     alignItems: 'center',
     justifyContent: 'center',
   },
   mesTexto: {
     fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.vino,
+    fontWeight: '700',
   },
   filaDias: {
     flexDirection: 'row',
@@ -167,17 +149,14 @@ const styles = StyleSheet.create({
     width: TAMANO_CELDA,
     textAlign: 'center',
     fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
+    fontWeight: '700',
+    color: '#888',
   },
   celda: {
     width: TAMANO_CELDA,
     height: TAMANO_CELDA,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  celdaEnRango: {
-    backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   diaCirculo: {
     width: 28,
@@ -186,25 +165,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  diaCirculoSeleccionado: {
-    backgroundColor: COLORES_ADMIN.vino,
-  },
-  diaCirculoHoy: {
-    borderWidth: 1.5,
-    borderColor: COLORES_ADMIN.dorado,
-  },
   diaTexto: {
     fontSize: 12.5,
-    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
-    color: COLORES_ADMIN.texto,
+    color: '#333',
   },
   diaTextoSeleccionado: {
     color: '#FFFFFF',
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
-  },
-  diaTextoHoy: {
-    color: COLORES_ADMIN.vino,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    fontWeight: '700',
   },
   pie: {
     flexDirection: 'row',
@@ -213,16 +180,15 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: COLORES_ADMIN.superficie,
+    borderTopColor: '#F0F0F0',
   },
   pieTexto: {
-    fontSize: 11.5,
-    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
-    color: COLORES_ADMIN.textoSecundario,
+    fontSize: 12,
+    color: '#888',
   },
   pieLimpiar: {
     fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.error,
+    fontWeight: '700',
+    color: '#B00020',
   },
 });

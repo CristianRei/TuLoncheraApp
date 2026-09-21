@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { agruparVentasPorHora, calcularRangoHoyBogota, type VentaParaAgrupar } from './index.ts';
+import {
+  agruparVentasPorDia,
+  agruparVentasPorHora,
+  calcularRangoHoyBogota,
+  type VentaParaAgrupar,
+} from './index.ts';
 
 function mezclar<T>(items: T[]): T[] {
   const copia = [...items];
@@ -99,4 +104,29 @@ test('calcularRangoHoyBogota: 03:00 UTC todavía es "ayer" en Bogotá, desde cae
   const ahora = new Date('2026-01-02T03:00:00.000Z');
   const rango = calcularRangoHoyBogota(ahora);
   assert.equal(rango.desde, '2026-01-01T05:00:00.000Z');
+});
+
+test('agruparVentasPorDia: una venta a las 03:00 UTC cae en el día anterior en Bogotá', () => {
+  const resultado = agruparVentasPorDia([{ tsCliente: '2026-01-02T03:00:00.000Z', total: 10_000 }]);
+  assert.deepEqual(resultado, [{ fecha: '2026-01-01', cantidadVentas: 1, totalVendido: 10_000 }]);
+});
+
+test('agruparVentasPorDia: varias ventas del mismo día en Bogotá se suman', () => {
+  const resultado = agruparVentasPorDia([
+    { tsCliente: '2026-01-02T14:00:00.000Z', total: 10_000 },
+    { tsCliente: '2026-01-02T20:00:00.000Z', total: 5_000 },
+  ]);
+  assert.deepEqual(resultado, [{ fecha: '2026-01-02', cantidadVentas: 2, totalVendido: 15_000 }]);
+});
+
+test('agruparVentasPorDia: resultado ordenado por fecha ascendente', () => {
+  const resultado = agruparVentasPorDia([
+    { tsCliente: '2026-01-05T14:00:00.000Z', total: 1_000 },
+    { tsCliente: '2026-01-03T14:00:00.000Z', total: 2_000 },
+    { tsCliente: '2026-01-04T14:00:00.000Z', total: 3_000 },
+  ]);
+  assert.deepEqual(
+    resultado.map((r) => r.fecha),
+    ['2026-01-03', '2026-01-04', '2026-01-05']
+  );
 });

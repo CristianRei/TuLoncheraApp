@@ -169,6 +169,21 @@ export interface ConteoLinea {
   motivo: string | null;
 }
 
+export type TipoNotificacion = 'STOCK_BAJO' | 'LOTE_POR_VENCER';
+export type NivelNotificacion = 'INFO' | 'ALERTA' | 'CRITICO';
+
+export interface Notificacion {
+  id: string;
+  tipo: TipoNotificacion;
+  nivel: NivelNotificacion;
+  titulo: string;
+  detalle: string;
+  productoId: string | null;
+  loteId: string | null;
+  leida: boolean;
+  tsCliente: string;
+}
+
 /**
  * Estado del backoff/bloqueo de PIN para una combinación dispositivo+modo,
  * a mostrar en la pantalla de login.

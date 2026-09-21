@@ -21,3 +21,31 @@ export async function crearLote(
   );
   return id;
 }
+
+export interface LoteConVencimiento {
+  id: string;
+  productoId: string;
+  productoNombre: string;
+  fechaVencimiento: string;
+}
+
+/** Lotes con fecha de vencimiento — para cruzar contra su saldo y detectar los próximos a vencer. */
+export async function listarLotesConVencimiento(db: SQLiteDatabase): Promise<LoteConVencimiento[]> {
+  const filas = await db.getAllAsync<{
+    id: string;
+    producto_id: string;
+    producto_nombre: string;
+    fecha_vencimiento: string;
+  }>(
+    `SELECT l.id, l.producto_id, p.nombre as producto_nombre, l.fecha_vencimiento
+     FROM lotes l
+     JOIN productos p ON p.id = l.producto_id
+     WHERE l.fecha_vencimiento IS NOT NULL`
+  );
+  return filas.map((fila) => ({
+    id: fila.id,
+    productoId: fila.producto_id,
+    productoNombre: fila.producto_nombre,
+    fechaVencimiento: fila.fecha_vencimiento,
+  }));
+}

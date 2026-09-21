@@ -1,6 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { calcularSaldosPorProducto } from '@/core/inventario';
+import { calcularSaldosPorLote, calcularSaldosPorProducto } from '@/core/inventario';
 import type { Producto } from '@/core/tipos';
 
 import { listarMovimientosPorUbicacion } from './movimientos';
@@ -98,4 +98,29 @@ export async function obtenerSaldosBodega(db: SQLiteDatabase): Promise<Map<strin
   const ubicacion = await buscarUbicacionBodega(db);
   if (!ubicacion) return new Map();
   return calcularSaldosUbicacion(db, ubicacion);
+}
+
+/**
+ * Saldo por lote, sin importar en qué ubicación estén sus unidades — para
+ * detectar lotes con saldo > 0 próximos a vencer (ver src/db/notificaciones.ts).
+ */
+export async function obtenerSaldosPorLote(db: SQLiteDatabase): Promise<Map<string, number>> {
+  const filas = await db.getAllAsync<{
+    lote_id: string | null;
+    cantidad: number;
+    ubicacion_origen_id: string | null;
+    ubicacion_destino_id: string | null;
+  }>(
+    `SELECT lote_id, cantidad, ubicacion_origen_id, ubicacion_destino_id
+     FROM movimientos
+     WHERE lote_id IS NOT NULL`
+  );
+  return calcularSaldosPorLote(
+    filas.map((fila) => ({
+      loteId: fila.lote_id,
+      cantidad: fila.cantidad,
+      ubicacionOrigenId: fila.ubicacion_origen_id,
+      ubicacionDestinoId: fila.ubicacion_destino_id,
+    }))
+  );
 }

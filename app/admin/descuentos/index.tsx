@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,8 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Descuento } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { desactivarDescuento, listarDescuentos } from '@/db/descuentos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'VIGENTES' | 'VENCIDOS';
@@ -77,12 +78,14 @@ export default function Descuentos() {
       <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.encabezadoFila}>
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Admin</Text>
+            <Pressable style={styles.volverBoton} onPress={() => router.back()}>
+              <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
+              <Text style={styles.volverTexto}>Admin</Text>
             </Pressable>
             <Text style={styles.titulo}>Descuentos</Text>
-            <Pressable onPress={() => router.push('/admin/descuentos/nuevo')}>
-              <Text style={styles.agregar}>+ Nuevo</Text>
+            <Pressable style={styles.agregarBoton} onPress={() => router.push('/admin/descuentos/nuevo')}>
+              <Ionicons name="add" size={16} color={COLORES_ADMIN.vino} />
+              <Text style={styles.agregarTexto}>Nuevo</Text>
             </Pressable>
           </View>
         </ContenedorAncho>
@@ -111,7 +114,7 @@ export default function Descuentos() {
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : filtrados.length === 0 ? (
         <View style={styles.centrado}>
@@ -128,15 +131,28 @@ export default function Descuentos() {
             renderItem={({ item }) => (
               <View style={styles.fila}>
                 <View style={styles.filaTexto}>
-                  <Text style={styles.filaValor}>{describirValor(item)}</Text>
+                  <View style={styles.filaEncabezado}>
+                    <Text style={styles.filaValor}>{describirValor(item)}</Text>
+                    {filtro === 'VIGENTES' ? (
+                      <View style={styles.badgeVigente}>
+                        <Text style={styles.badgeVigenteTexto}>Vigente</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.badgeInactivo}>
+                        <Text style={styles.badgeInactivoTexto}>
+                          {item.activo ? 'Vencido' : 'Desactivado'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.filaAlcance}>{describirAlcance(item)}</Text>
                   <Text style={styles.filaVigencia}>
                     {formatearFecha(item.desde)} — {formatearFecha(item.hasta)}
                   </Text>
                 </View>
                 {filtro === 'VIGENTES' && (
-                  <Pressable onPress={() => desactivar(item.id)}>
-                    <Text style={styles.botonDesactivar}>Desactivar</Text>
+                  <Pressable style={styles.botonDesactivar} onPress={() => desactivar(item.id)}>
+                    <Text style={styles.botonDesactivarTexto}>Desactivar</Text>
                   </Pressable>
                 )}
               </View>
@@ -151,10 +167,10 @@ export default function Descuentos() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
+    backgroundColor: COLORES_ADMIN.background,
   },
   encabezado: {
-    backgroundColor: COLORES.oscuro,
+    backgroundColor: COLORES_ADMIN.vino,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -163,21 +179,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
+  volverBoton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  volverTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: '#FFE9E2',
   },
   titulo: {
-    color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
-  },
-  agregar: {
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
+  },
+  agregarBoton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORES_ADMIN.dorado,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  agregarTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
   },
   tabs: {
     flexDirection: 'row',
@@ -189,21 +222,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
-    borderColor: '#EBD3D3',
+    borderColor: COLORES_ADMIN.bordeSuave,
   },
   tabActivo: {
-    backgroundColor: COLORES.oscuro,
-    borderColor: COLORES.oscuro,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderColor: COLORES_ADMIN.vino,
   },
   tabTexto: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
   },
   tabTextoActivo: {
     color: '#FFFFFF',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   centrado: {
     flex: 1,
@@ -213,7 +247,8 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
   },
   lista: {
@@ -224,37 +259,73 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
     padding: 14,
     gap: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
   },
   filaTexto: {
     flex: 1,
-    gap: 2,
+    gap: 3,
+  },
+  filaEncabezado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   filaValor: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: COLORES.oscuro,
+    fontSize: 17,
+    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    color: COLORES_ADMIN.vino,
+  },
+  badgeVigente: {
+    backgroundColor: '#EAF5EA',
+    borderWidth: 1,
+    borderColor: '#C3E3C3',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeVigenteTexto: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.positivo,
+    textTransform: 'uppercase',
+  },
+  badgeInactivo: {
+    backgroundColor: COLORES_ADMIN.superficie,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeInactivoTexto: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
+    textTransform: 'uppercase',
   },
   filaAlcance: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.texto,
   },
   filaVigencia: {
     fontSize: 12,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
+    color: COLORES_ADMIN.textoSecundario,
   },
   botonDesactivar: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#B00020',
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.error,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  botonDesactivarTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.error,
   },
 });

@@ -1,9 +1,11 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,20 +22,17 @@ import { crearDescuento } from '@/db/descuentos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { listarProductos } from '@/db/productos';
 import { listarPuntos } from '@/db/puntos';
-import { COLORES } from '@/ui/colores';
+import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
-const PATRON_FECHA = /^\d{4}-\d{2}-\d{2}$/;
-
-/** "20260315" tecleado en number-pad → "2026-03-15", insertando guiones. */
-function formatearEntradaFecha(texto: string): string {
-  const digitos = texto.replace(/\D/g, '').slice(0, 8);
-  const partes = [digitos.slice(0, 4), digitos.slice(4, 6), digitos.slice(6, 8)].filter(Boolean);
-  return partes.join('-');
-}
-
 type PasoSelector = 'PRODUCTO' | 'PUNTO' | null;
+
+function formatearFechaCorta(iso: string | null): string {
+  if (!iso) return '';
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 export default function NuevoDescuento() {
   const usuario = useRequiereSesion(['ADMIN']);
@@ -45,8 +44,9 @@ export default function NuevoDescuento() {
   const [busqueda, setBusqueda] = useState('');
   const [tipo, setTipo] = useState<TipoDescuento>('PORCENTAJE');
   const [valorTexto, setValorTexto] = useState('');
-  const [desdeTexto, setDesdeTexto] = useState('');
-  const [hastaTexto, setHastaTexto] = useState('');
+  const [desdeTexto, setDesdeTexto] = useState<string | null>(null);
+  const [hastaTexto, setHastaTexto] = useState<string | null>(null);
+  const [calendarioVisible, setCalendarioVisible] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const insets = useSafeAreaInsets();
@@ -65,14 +65,13 @@ export default function NuevoDescuento() {
   const usuarioActual = usuario;
 
   const valor = tipo === 'PORCENTAJE' ? parseInt(valorTexto, 10) || 0 : parsearPesos(valorTexto);
-  const fechasValidas =
-    PATRON_FECHA.test(desdeTexto) && PATRON_FECHA.test(hastaTexto) && desdeTexto <= hastaTexto;
+  const fechasValidas = !!desdeTexto && !!hastaTexto;
   const valorValido =
     valor > 0 && (tipo === 'MONTO_FIJO' || (valor <= 100 && Number.isInteger(valor)));
   const puedeGuardar = valorValido && fechasValidas && !guardando;
 
   async function confirmar() {
-    if (!puedeGuardar) return;
+    if (!puedeGuardar || !desdeTexto || !hastaTexto) return;
     setGuardando(true);
     try {
       const db = await getDb();
@@ -115,7 +114,7 @@ export default function NuevoDescuento() {
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : selector === 'PRODUCTO' ? (
         <ContenedorAncho anchoMaximo={600} llenarAlto>
@@ -123,7 +122,7 @@ export default function NuevoDescuento() {
             <TextInput
               style={styles.buscador}
               placeholder="Buscar producto..."
-              placeholderTextColor="#999"
+              placeholderTextColor={COLORES_ADMIN.textoSecundario}
               value={busqueda}
               onChangeText={setBusqueda}
             />
@@ -244,7 +243,7 @@ export default function NuevoDescuento() {
                 <TextInput
                   style={styles.input}
                   placeholder={tipo === 'PORCENTAJE' ? '0' : '$ 0'}
-                  placeholderTextColor="#999"
+                  placeholderTextColor={COLORES_ADMIN.textoSecundario}
                   value={valorTexto}
                   onChangeText={(texto) =>
                     setValorTexto(tipo === 'PORCENTAJE' ? texto.replace(/\D/g, '').slice(0, 3) : texto)
@@ -254,34 +253,17 @@ export default function NuevoDescuento() {
               </View>
 
               <View style={styles.campo}>
-                <Text style={styles.etiqueta}>Desde</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="AAAA-MM-DD"
-                  placeholderTextColor="#999"
-                  value={desdeTexto}
-                  onChangeText={(texto) => setDesdeTexto(formatearEntradaFecha(texto))}
-                  keyboardType="number-pad"
-                  maxLength={10}
-                />
-              </View>
-
-              <View style={styles.campo}>
-                <Text style={styles.etiqueta}>Hasta</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="AAAA-MM-DD"
-                  placeholderTextColor="#999"
-                  value={hastaTexto}
-                  onChangeText={(texto) => setHastaTexto(formatearEntradaFecha(texto))}
-                  keyboardType="number-pad"
-                  maxLength={10}
-                />
-                {desdeTexto.length === 10 && hastaTexto.length === 10 && desdeTexto > hastaTexto && (
-                  <Text style={styles.error}>
-                    La fecha &quot;hasta&quot; debe ser igual o posterior a &quot;desde&quot;.
-                  </Text>
-                )}
+                <Text style={styles.etiqueta}>Vigencia</Text>
+                <Pressable style={styles.selectorBoton} onPress={() => setCalendarioVisible(true)}>
+                  <View style={styles.selectorBotonIconoTexto}>
+                    <Ionicons name="calendar-outline" size={16} color={COLORES_ADMIN.dorado} />
+                    <Text style={styles.selectorBotonTexto}>
+                      {desdeTexto && hastaTexto
+                        ? `${formatearFechaCorta(desdeTexto)} — ${formatearFechaCorta(hastaTexto)}`
+                        : 'Elegir fechas'}
+                    </Text>
+                  </View>
+                </Pressable>
               </View>
 
               <Pressable
@@ -299,6 +281,32 @@ export default function NuevoDescuento() {
           </ContenedorAncho>
         </ScrollView>
       )}
+
+      <Modal visible={calendarioVisible} animationType="fade" transparent>
+        <View style={styles.fondoModal}>
+          <View style={styles.tarjetaModalCalendario}>
+            <Text style={styles.modalCalendarioTitulo}>Elige la vigencia del descuento</Text>
+            <CalendarioRango
+              desde={desdeTexto}
+              hasta={hastaTexto}
+              onCambiar={(desde, hasta) => {
+                setDesdeTexto(desde);
+                setHastaTexto(hasta);
+              }}
+            />
+            <Pressable
+              style={[styles.modalCalendarioConfirmar, (!desdeTexto || !hastaTexto) && styles.botonDeshabilitado]}
+              disabled={!desdeTexto || !hastaTexto}
+              onPress={() => setCalendarioVisible(false)}
+            >
+              <Text style={styles.modalCalendarioConfirmarTexto}>Aplicar vigencia</Text>
+            </Pressable>
+            <Pressable style={styles.modalCerrar} onPress={() => setCalendarioVisible(false)}>
+              <Text style={styles.modalCerrarTexto}>Cerrar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -306,10 +314,10 @@ export default function NuevoDescuento() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
+    backgroundColor: COLORES_ADMIN.background,
   },
   encabezado: {
-    backgroundColor: COLORES.oscuro,
+    backgroundColor: COLORES_ADMIN.vino,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -317,47 +325,51 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   volver: {
-    color: '#FFFFFF',
+    color: '#FFE9E2',
     fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
   },
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
   },
   buscadorContenedor: {
     paddingHorizontal: 20,
     paddingTop: 16,
   },
   buscador: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.texto,
     borderWidth: 1,
-    borderColor: '#EBD3D3',
+    borderColor: COLORES_ADMIN.bordeSuave,
   },
   lista: {
     padding: 20,
     gap: 8,
   },
   filaSelector: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
     padding: 14,
   },
   filaSelectorTexto: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.texto,
   },
   form: {
     padding: 20,
@@ -368,30 +380,37 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   etiqueta: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#555',
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   selectorBoton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+  },
+  selectorBotonIconoTexto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   selectorBotonTexto: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '600',
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.texto,
   },
   quitar: {
     fontSize: 12,
-    color: '#B00020',
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.error,
   },
   tipoFila: {
     flexDirection: 'row',
@@ -400,38 +419,37 @@ const styles = StyleSheet.create({
   tipoBoton: {
     flex: 1,
     borderWidth: 1.5,
-    borderColor: '#DDD',
+    borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
   },
   tipoBotonActivo: {
-    backgroundColor: COLORES.oscuro,
-    borderColor: COLORES.oscuro,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderColor: COLORES_ADMIN.vino,
   },
   tipoBotonTexto: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#555',
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
   },
   tipoBotonTextoActivo: {
     color: '#FFF',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#FFF',
-  },
-  error: {
-    fontSize: 12,
-    color: '#B00020',
+    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    color: COLORES_ADMIN.texto,
   },
   botonGuardar: {
-    backgroundColor: COLORES.oscuro,
+    backgroundColor: COLORES_ADMIN.vino,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -442,7 +460,45 @@ const styles = StyleSheet.create({
   },
   botonGuardarTexto: {
     color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  fondoModal: {
+    flex: 1,
+    backgroundColor: 'rgba(41,23,15,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tarjetaModalCalendario: {
+    backgroundColor: COLORES_ADMIN.background,
+    borderRadius: 16,
+    padding: 20,
+    gap: 12,
+  },
+  modalCalendarioTitulo: {
+    fontSize: 15,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
+    textAlign: 'center',
+  },
+  modalCalendarioConfirmar: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  modalCalendarioConfirmarTexto: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#FFFFFF',
+  },
+  modalCerrar: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  modalCerrarTexto: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
   },
 });

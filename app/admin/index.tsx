@@ -8,7 +8,9 @@ import { calcularRangoHoyBogota } from '@/core/analitica';
 import { obtenerResumenVentas } from '@/db/analitica';
 import { getDb } from '@/db/client';
 import { contarConteosConDescuadre } from '@/db/conteos';
+import { getDispositivoId } from '@/db/dispositivo';
 import { contarPromotoresConPuntoVigente } from '@/db/eventos';
+import { contarNotificacionesNoLeidas, generarNotificaciones } from '@/db/notificaciones';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { TarjetaModulo } from '@/ui/TarjetaModulo';
@@ -86,6 +88,12 @@ const MODULOS: {
     soloPantallaAncha: true,
   },
   {
+    ruta: '/admin/notificaciones',
+    titulo: 'Notificaciones',
+    descripcion: 'Stock bajo, lotes por vencer y otras alertas del negocio.',
+    icono: 'notifications-outline',
+  },
+  {
     ruta: '/admin/intentos-pin',
     titulo: 'Seguridad de acceso',
     descripcion: 'Dispositivos bloqueados e intentos fallidos de PIN.',
@@ -97,6 +105,7 @@ interface Indicadores {
   promotoresConPunto: number;
   conteosConDescuadre: number;
   ventasHoy: number;
+  notificacionesNoLeidas: number;
 }
 
 export default function HomeAdmin() {
@@ -108,16 +117,20 @@ export default function HomeAdmin() {
 
   const cargarIndicadores = useCallback(async () => {
     const db = await getDb();
+    const dispositivoId = await getDispositivoId(db);
+    await generarNotificaciones(db, dispositivoId);
     const rangoHoy = calcularRangoHoyBogota();
-    const [promotoresConPunto, conteosConDescuadre, resumenHoy] = await Promise.all([
+    const [promotoresConPunto, conteosConDescuadre, resumenHoy, notificacionesNoLeidas] = await Promise.all([
       contarPromotoresConPuntoVigente(db),
       contarConteosConDescuadre(db, rangoHoy),
       obtenerResumenVentas(db, rangoHoy),
+      contarNotificacionesNoLeidas(db),
     ]);
     setIndicadores({
       promotoresConPunto,
       conteosConDescuadre,
       ventasHoy: resumenHoy.cantidadVentas,
+      notificacionesNoLeidas,
     });
   }, []);
 
@@ -208,18 +221,24 @@ export default function HomeAdmin() {
 
           <View style={[styles.grilla, anchaPantalla && styles.grillaAncha]}>
             {MODULOS.filter((modulo) => !modulo.soloPantallaAncha || anchaPantalla).map(
-              (modulo) => (
-                <TarjetaModulo
-                  key={modulo.ruta}
-                  icono={modulo.icono}
-                  titulo={modulo.titulo}
-                  descripcion={modulo.descripcion}
-                  badge={modulo.badge}
-                  destacada={modulo.destacada}
-                  ancha={anchaPantalla}
-                  onPress={() => router.push(modulo.ruta as Parameters<typeof router.push>[0])}
-                />
-              )
+              (modulo) => {
+                const badge =
+                  modulo.ruta === '/admin/notificaciones' && indicadores && indicadores.notificacionesNoLeidas > 0
+                    ? `${indicadores.notificacionesNoLeidas} sin leer`
+                    : modulo.badge;
+                return (
+                  <TarjetaModulo
+                    key={modulo.ruta}
+                    icono={modulo.icono}
+                    titulo={modulo.titulo}
+                    descripcion={modulo.descripcion}
+                    badge={badge}
+                    destacada={modulo.destacada}
+                    ancha={anchaPantalla}
+                    onPress={() => router.push(modulo.ruta as Parameters<typeof router.push>[0])}
+                  />
+                );
+              }
             )}
           </View>
         </ContenedorAncho>

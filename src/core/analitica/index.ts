@@ -39,6 +39,13 @@ function horaBogota(tsCliente: string): number {
   return (horaUtc - OFFSET_BOGOTA_HORAS + 24) % 24;
 }
 
+/** "AAAA-MM-DD" del día en Bogotá al que corresponde ese instante. */
+function fechaBogota(tsCliente: string): string {
+  const offsetMs = OFFSET_BOGOTA_HORAS * 60 * 60 * 1000;
+  const fechaBogotaMs = new Date(tsCliente).getTime() - offsetMs;
+  return new Date(fechaBogotaMs).toISOString().slice(0, 10);
+}
+
 export interface RangoIso {
   /** ISO 8601 en UTC, límite inferior inclusive. */
   desde: string;
@@ -102,4 +109,33 @@ export function agruparVentasPorHora(ventas: VentaParaAgrupar[]): VentasPorHora[
       porPromotor: [...datos.porPromotor.values()].sort((a, b) => b.totalVendido - a.totalVendido),
     }))
     .sort((a, b) => a.hora - b.hora);
+}
+
+export interface VentasPorDia {
+  /** "AAAA-MM-DD" en horario de Bogotá. */
+  fecha: string;
+  cantidadVentas: number;
+  totalVendido: number;
+}
+
+/**
+ * Agrupa ventas por día en horario de Bogotá — para el gráfico dentro del
+ * detalle de "Por método de pago" cuando el rango cubre varios días. Solo
+ * devuelve días con al menos una venta; la UI rellena los días faltantes.
+ */
+export function agruparVentasPorDia(ventas: { tsCliente: string; total: number }[]): VentasPorDia[] {
+  const acumulado = new Map<string, { cantidadVentas: number; totalVendido: number }>();
+
+  for (const venta of ventas) {
+    const fecha = fechaBogota(venta.tsCliente);
+    const actual = acumulado.get(fecha) ?? { cantidadVentas: 0, totalVendido: 0 };
+    acumulado.set(fecha, {
+      cantidadVentas: actual.cantidadVentas + 1,
+      totalVendido: actual.totalVendido + venta.total,
+    });
+  }
+
+  return [...acumulado.entries()]
+    .map(([fecha, datos]) => ({ fecha, ...datos }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
 }

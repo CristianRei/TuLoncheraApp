@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { calcularSaldosPorProducto, type MovimientoParaSaldo } from './index.ts';
+import {
+  calcularSaldosPorLote,
+  calcularSaldosPorProducto,
+  type MovimientoParaSaldo,
+  type MovimientoParaSaldoLote,
+} from './index.ts';
 
 const PROMOTOR = 'ubicacion-promotor-1';
+const BODEGA = 'ubicacion-bodega';
 const PRODUCTO_A = 'producto-a';
 const PRODUCTO_B = 'producto-b';
+const LOTE_1 = 'lote-1';
+const LOTE_2 = 'lote-2';
 
 function mezclar<T>(items: T[]): T[] {
   const copia = [...items];
@@ -58,4 +66,30 @@ test('propiedad: el saldo no depende del orden de los movimientos', () => {
 
   assert.equal(saldoEnOrdenOriginal.get(PRODUCTO_A), 22);
   assert.equal(saldoEnOrdenOriginal.get(PRODUCTO_B), 0);
+});
+
+test('calcularSaldosPorLote: suma sin importar en qué ubicación estén las unidades', () => {
+  const movimientos: MovimientoParaSaldoLote[] = [
+    { loteId: LOTE_1, cantidad: 20, ubicacionOrigenId: null, ubicacionDestinoId: BODEGA },
+    { loteId: LOTE_1, cantidad: 8, ubicacionOrigenId: BODEGA, ubicacionDestinoId: PROMOTOR },
+    { loteId: LOTE_1, cantidad: 3, ubicacionOrigenId: PROMOTOR, ubicacionDestinoId: null },
+  ];
+
+  const saldos = calcularSaldosPorLote(movimientos);
+
+  // 20 entraron a bodega, 8 salieron de bodega hacia el promotor (bodega neta: 12),
+  // de esos 8 el promotor vendió 3 (promotor neto: 5) → total del lote: 17
+  assert.equal(saldos.get(LOTE_1), 17);
+});
+
+test('calcularSaldosPorLote: ignora movimientos sin loteId (producto sin vencimiento conocido)', () => {
+  const movimientos: MovimientoParaSaldoLote[] = [
+    { loteId: null, cantidad: 50, ubicacionOrigenId: null, ubicacionDestinoId: BODEGA },
+    { loteId: LOTE_2, cantidad: 10, ubicacionOrigenId: null, ubicacionDestinoId: BODEGA },
+  ];
+
+  const saldos = calcularSaldosPorLote(movimientos);
+
+  assert.equal(saldos.size, 1);
+  assert.equal(saldos.get(LOTE_2), 10);
 });
