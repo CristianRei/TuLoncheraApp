@@ -14,6 +14,7 @@ referencia y explica qué cambió — no se edita el anterior.
 | [0005](0005-puntos-y-descuentos.md) | Puntos, asignación de promotor y descuentos | Aceptado. Activa `empresas`/`eventos`, corrige parcialmente [0002](0002-ventas-sin-evento.md) |
 | [0006](0006-sincronizacion-turnos-comprobantes.md) | Sincronización: turnos y comprobantes de transferencia (Fase 5, primera rebanada) | Aceptado |
 | [0007](0007-cargues-pendientes.md) | Cargue en dos pasos: admin planea, bodega entrega | Aceptado |
+| [0008](0008-conexiones-flujo-diario.md) | Conectar calendario, cargue, turno y conteo (huecos del flujo diario) | Aceptado |
 
 ## Cómo agregar un ADR nuevo
 

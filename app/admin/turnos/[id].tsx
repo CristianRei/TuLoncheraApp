@@ -3,9 +3,10 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Turno } from '@/core/tipos';
+import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
+import type { Evento, Turno } from '@/core/tipos';
 import { getDb } from '@/db/client';
-import { obtenerTurno } from '@/db/turnos';
+import { obtenerEventoDeHoyPromotor, obtenerTurno } from '@/db/turnos';
 import { listarTurnosRemotos } from '@/db/turnosRemotos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
@@ -33,27 +34,32 @@ export default function DetalleTurno() {
   const usuario = useRequiereSesion(['ADMIN']);
   const { id } = useLocalSearchParams<{ id: string }>();
   const [turno, setTurno] = useState<Turno | null>(null);
+  const [eventoDelDia, setEventoDelDia] = useState<Evento | null>(null);
   const [cargando, setCargando] = useState(true);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     (async () => {
       const db = await getDb();
-      const local = await obtenerTurno(db, id);
-      if (local) {
-        setTurno(local);
-        setCargando(false);
-        return;
+      let encontrado: Turno | null = await obtenerTurno(db, id);
+      if (!encontrado) {
+        // No está en este dispositivo — puede ser un turno originado en otro.
+        try {
+          const remotos = await listarTurnosRemotos();
+          encontrado = remotos.find((t) => t.id === id) ?? null;
+        } catch {
+          encontrado = null;
+        }
       }
-      // No está en este dispositivo — puede ser un turno originado en otro.
-      try {
-        const remotos = await listarTurnosRemotos();
-        setTurno(remotos.find((t) => t.id === id) ?? null);
-      } catch {
-        setTurno(null);
-      } finally {
-        setCargando(false);
+      setTurno(encontrado);
+
+      // Solo se cruza con el calendario si el turno es de hoy — no hay
+      // forma de resolver "evento de una fecha pasada" sin construir una
+      // función nueva, fuera de alcance de esta rebanada informativa.
+      if (encontrado && fechaBogota(encontrado.horaInicio) === fechaHoyBogota()) {
+        setEventoDelDia(await obtenerEventoDeHoyPromotor(db, encontrado.promotorId));
       }
+      setCargando(false);
     })();
   }, [id]);
 
@@ -95,6 +101,15 @@ export default function DetalleTurno() {
                 <Text style={styles.resumenDetalle}>Sin ubicación registrada</Text>
               )}
             </View>
+
+            {eventoDelDia && (
+              <View style={styles.chipEvento}>
+                <Text style={styles.chipEventoTitulo}>Evento del calendario hoy</Text>
+                <Text style={styles.chipEventoTexto}>
+                  {eventoDelDia.empresaNombre} · {eventoDelDia.puntoNombre}
+                </Text>
+              </View>
+            )}
           </View>
         </ContenedorAncho>
       )}
@@ -165,5 +180,22 @@ const styles = StyleSheet.create({
     color: COLORES.oscuro,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  chipEvento: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    gap: 2,
+  },
+  chipEventoTitulo: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#888',
+    textTransform: 'uppercase',
+  },
+  chipEventoTexto: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
 });

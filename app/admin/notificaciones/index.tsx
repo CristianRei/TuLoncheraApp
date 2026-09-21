@@ -21,11 +21,13 @@ type Filtro = 'NO_LEIDAS' | 'TODAS';
 const ETIQUETAS_TIPO: Record<TipoNotificacion, string> = {
   STOCK_BAJO: 'Stock bajo',
   LOTE_POR_VENCER: 'Vencimiento próximo',
+  CARGUE_REVISAR: 'Cargue a revisar',
 };
 
 const ICONOS_TIPO: Record<TipoNotificacion, keyof typeof Ionicons.glyphMap> = {
   STOCK_BAJO: 'cube-outline',
   LOTE_POR_VENCER: 'time-outline',
+  CARGUE_REVISAR: 'alert-circle-outline',
 };
 
 function formatearFechaRelativa(iso: string): string {

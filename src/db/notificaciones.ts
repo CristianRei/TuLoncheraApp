@@ -117,7 +117,38 @@ const detectorLotePorVencer: DetectorNotificacion = {
   },
 };
 
-const DETECTORES: DetectorNotificacion[] = [detectorStockBajo, detectorLotePorVencer];
+const detectorCargueRevisar: DetectorNotificacion = {
+  async detectar(db: SQLiteDatabase): Promise<NotificacionCandidata[]> {
+    const filas = await db.getAllAsync<{
+      id: string;
+      promotor_nombre: string;
+      producto_nombre: string;
+      cantidad_planeada: number;
+      cantidad_entregada: number;
+      motivo_revision: string | null;
+    }>(
+      `SELECT cl.id, u.nombre as promotor_nombre, p.nombre as producto_nombre,
+              cl.cantidad_planeada, cl.cantidad_entregada, cl.motivo_revision
+       FROM cargue_lineas cl
+       JOIN cargues c ON c.id = cl.cargue_id
+       JOIN usuarios u ON u.id = c.promotor_id
+       JOIN productos p ON p.id = cl.producto_id
+       WHERE cl.estado = 'REVISAR'`
+    );
+
+    return filas.map((fila) => ({
+      tipo: 'CARGUE_REVISAR',
+      nivel: 'ALERTA',
+      titulo: `Cargue a revisar: ${fila.producto_nombre}`,
+      detalle: `${fila.promotor_nombre} — entregado ${fila.cantidad_entregada} de ${fila.cantidad_planeada} planeados.${fila.motivo_revision ? ` Motivo: ${fila.motivo_revision}` : ''}`,
+      productoId: null,
+      loteId: null,
+      claveDeduplicacion: `CARGUE_REVISAR:${fila.id}`,
+    }));
+  },
+};
+
+const DETECTORES: DetectorNotificacion[] = [detectorStockBajo, detectorLotePorVencer, detectorCargueRevisar];
 
 /**
  * Corre todos los detectores y sincroniza la tabla: las claves de

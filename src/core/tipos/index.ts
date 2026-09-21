@@ -216,7 +216,7 @@ export interface CargueLinea {
   motivoRevision: string | null;
 }
 
-export type TipoNotificacion = 'STOCK_BAJO' | 'LOTE_POR_VENCER';
+export type TipoNotificacion = 'STOCK_BAJO' | 'LOTE_POR_VENCER' | 'CARGUE_REVISAR';
 export type NivelNotificacion = 'INFO' | 'ALERTA' | 'CRITICO';
 
 export interface Notificacion {

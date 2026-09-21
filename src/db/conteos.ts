@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
 import type { Conteo, ConteoLinea } from '@/core/tipos';
 
 import { obtenerSaldosPromotor } from './inventario';
@@ -201,4 +202,18 @@ export async function contarConteosConDescuadre(
     [rango.desde, rango.hasta]
   );
   return fila?.total ?? 0;
+}
+
+/**
+ * Si el promotor ya hizo algún conteo de cierre hoy — para advertir (nunca
+ * bloquear, decisión explícita) al finalizar turno sin haber contado.
+ * Mismo corte de fecha Bogotá que turnos/eventos.
+ */
+export async function existeConteoHoy(db: SQLiteDatabase, promotorId: string): Promise<boolean> {
+  const filas = await db.getAllAsync<{ ts_cliente: string }>(
+    'SELECT ts_cliente FROM conteos WHERE promotor_id = ?',
+    [promotorId]
+  );
+  const hoy = fechaHoyBogota();
+  return filas.some((fila) => fechaBogota(fila.ts_cliente) === hoy);
 }

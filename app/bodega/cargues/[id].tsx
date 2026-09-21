@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Cargue, CargueLinea } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { confirmarLineaCargue, obtenerCargue } from '@/db/cargues';
+import { confirmarLineaCargue, obtenerCargue, SinTurnoParaCargueError } from '@/db/cargues';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
@@ -114,7 +114,11 @@ export default function EntregarCargue() {
       setEscanerVisible(false);
       await cargar();
     } catch (error) {
-      Alert.alert('No se pudo confirmar', error instanceof Error ? error.message : 'Error inesperado.');
+      if (error instanceof SinTurnoParaCargueError) {
+        Alert.alert('Sin turno abierto', error.message);
+      } else {
+        Alert.alert('No se pudo confirmar', error instanceof Error ? error.message : 'Error inesperado.');
+      }
     } finally {
       setGuardando(false);
     }

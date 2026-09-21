@@ -2,9 +2,25 @@ import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
-import type { Turno } from '@/core/tipos';
+import type { Evento, Turno } from '@/core/tipos';
 
+import { obtenerPuntoVigentePromotor } from './eventos';
 import { encolarSync } from './syncCola';
+
+/**
+ * El evento del calendario asignado a un promotor hoy (si existe) — solo
+ * informativo, nunca bloquea iniciar turno (decisión explícita: el
+ * calendario y el turno son sistemas independientes que se cruzan, no se
+ * exigen entre sí). Delega directo a `obtenerPuntoVigentePromotor`
+ * (src/db/eventos.ts), que ya resuelve "evento de hoy, sin cancelar" por
+ * fecha — no se duplica esa lógica aquí.
+ */
+export async function obtenerEventoDeHoyPromotor(
+  db: SQLiteDatabase,
+  promotorId: string
+): Promise<Evento | null> {
+  return obtenerPuntoVigentePromotor(db, promotorId);
+}
 
 interface FilaTurno {
   id: string;

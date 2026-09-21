@@ -16,13 +16,14 @@ import {
 } from 'react-native';
 
 import { formatearPesos } from '@/core/dinero';
-import type { MetodoPago, Turno } from '@/core/tipos';
+import type { Evento, MetodoPago, Turno } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { guardarFotoComprobante } from '@/db/fotos';
+import { existeConteoHoy } from '@/db/conteos';
 import { obtenerSaldoProducto, listarInventarioPromotor, type ItemInventario } from '@/db/inventario';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
-import { finalizarTurno, obtenerTurnoAbiertoHoy } from '@/db/turnos';
+import { finalizarTurno, obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { registrarVenta, SinTurnoAbiertoError } from '@/db/ventas';
 import { CobrarModal } from '@/ui/CobrarModal';
 import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
@@ -50,6 +51,7 @@ export default function HomePromotor() {
   const [menuVisible, setMenuVisible] = useState(false);
   // undefined = todavía no se sabe; null = confirmado que no hay turno abierto hoy.
   const [turno, setTurno] = useState<Turno | null | undefined>(undefined);
+  const [eventoHoy, setEventoHoy] = useState<Evento | null>(null);
   const avisoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cargarInventario = useCallback(async (promotorId: string) => {
@@ -65,6 +67,7 @@ export default function HomePromotor() {
   const cargarTurno = useCallback(async (promotorId: string) => {
     const db = await getDb();
     setTurno(await obtenerTurnoAbiertoHoy(db, promotorId));
+    setEventoHoy(await obtenerEventoDeHoyPromotor(db, promotorId));
   }, []);
 
   useFocusEffect(
@@ -102,23 +105,31 @@ export default function HomePromotor() {
     );
   }
 
-  function confirmarFinalizarTurno() {
+  async function confirmarFinalizarTurno() {
     if (!turno) return;
-    Alert.alert('Finalizar turno', '¿Seguro que quieres terminar tu turno de hoy?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Finalizar',
-        style: 'destructive',
-        onPress: async () => {
-          setTicketVisible(false);
-          setCobrarVisible(false);
-          setEscanerVisible(false);
-          const db = await getDb();
-          await finalizarTurno(db, { turnoId: turno.id });
-          await cargarTurno(usuarioActual.id);
+    const db = await getDb();
+    const yaConto = await existeConteoHoy(db, usuarioActual.id);
+
+    Alert.alert(
+      'Finalizar turno',
+      yaConto
+        ? '¿Seguro que quieres terminar tu turno de hoy?'
+        : 'No has hecho tu conteo de cierre hoy. ¿Aun así quieres finalizar turno?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Finalizar',
+          style: 'destructive',
+          onPress: async () => {
+            setTicketVisible(false);
+            setCobrarVisible(false);
+            setEscanerVisible(false);
+            await finalizarTurno(db, { turnoId: turno.id });
+            await cargarTurno(usuarioActual.id);
+          },
         },
-      },
-    ]);
+      ]
+    );
   }
 
   function mostrarAvisoEscaner(texto: string) {
@@ -232,7 +243,17 @@ export default function HomePromotor() {
   return (
     <View style={styles.contenedor}>
       <View style={styles.encabezado}>
-        <Text style={styles.saludo}>Hola, {usuario.nombre}</Text>
+        <View style={styles.encabezadoTexto}>
+          <Text style={styles.saludo}>Hola, {usuario.nombre}</Text>
+          {eventoHoy && (
+            <View style={styles.chipEvento}>
+              <Ionicons name="location-outline" size={12} color={COLORES.textoSobreOscuro} />
+              <Text style={styles.chipEventoTexto} numberOfLines={1}>
+                {eventoHoy.empresaNombre} · {eventoHoy.puntoNombre}
+              </Text>
+            </View>
+          )}
+        </View>
         <Pressable
           style={styles.botonMenu}
           onPress={() => setMenuVisible(true)}
@@ -459,9 +480,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  encabezadoTexto: {
+    flex: 1,
+    gap: 4,
+    marginRight: 12,
+  },
   saludo: {
     fontSize: 18,
     fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    color: COLORES.textoSobreOscuro,
+  },
+  chipEvento: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    maxWidth: '100%',
+  },
+  chipEventoTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
     color: COLORES.textoSobreOscuro,
   },
   botonMenu: {

@@ -30,22 +30,22 @@ const MODULOS: {
   soloPantallaAncha?: boolean;
 }[] = [
   {
-    ruta: '/admin/catalogo',
-    titulo: 'Catálogo de productos',
-    descripcion: 'Agregar, editar y eliminar productos y precios.',
-    icono: 'pricetags-outline',
-  },
-  {
-    ruta: '/admin/inventario',
-    titulo: 'Inventario',
-    descripcion: 'Ver el stock de bodega e ingresar pedidos.',
-    icono: 'cube-outline',
+    ruta: '/admin/calendario',
+    titulo: 'Calendario de eventos',
+    descripcion: 'Planear qué promotor va a cada empresa y punto, día a día.',
+    icono: 'calendar-outline',
   },
   {
     ruta: '/admin/cargue',
     titulo: 'Cargue a promotor',
     descripcion: 'Asignar productos del stock de bodega a un promotor.',
     icono: 'swap-horizontal-outline',
+  },
+  {
+    ruta: '/admin/turnos',
+    titulo: 'Turnos',
+    descripcion: 'Selfie, hora y ubicación de inicio/fin de turno de cada promotor.',
+    icono: 'time-outline',
   },
   {
     ruta: '/admin/ventas',
@@ -61,22 +61,22 @@ const MODULOS: {
     badge: 'Auditoría',
   },
   {
-    ruta: '/admin/turnos',
-    titulo: 'Turnos',
-    descripcion: 'Selfie, hora y ubicación de inicio/fin de turno de cada promotor.',
-    icono: 'time-outline',
+    ruta: '/admin/inventario',
+    titulo: 'Inventario',
+    descripcion: 'Ver el stock de bodega e ingresar pedidos.',
+    icono: 'cube-outline',
+  },
+  {
+    ruta: '/admin/catalogo',
+    titulo: 'Catálogo de productos',
+    descripcion: 'Agregar, editar y eliminar productos y precios.',
+    icono: 'pricetags-outline',
   },
   {
     ruta: '/admin/empresas',
     titulo: 'Empresas y puntos',
     descripcion: 'Clientes y sus sedes (ej. Falabella Norte, Falabella Sur).',
     icono: 'business-outline',
-  },
-  {
-    ruta: '/admin/calendario',
-    titulo: 'Calendario de eventos',
-    descripcion: 'Planear qué promotor va a cada empresa y punto, día a día.',
-    icono: 'calendar-outline',
   },
   {
     ruta: '/admin/descuentos',

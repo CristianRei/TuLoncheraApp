@@ -5,8 +5,23 @@ import type { Cargue, CargueLinea } from '@/core/tipos';
 
 import { registrarCargue, StockInsuficienteError } from './cargue';
 import { obtenerSaldosBodega } from './inventario';
+import { obtenerTurnoAbiertoHoy } from './turnos';
 
 export { StockInsuficienteError };
+
+/**
+ * Bodega no puede confirmar una línea de cargue a un promotor sin turno
+ * abierto hoy — nadie puede confirmar que esa persona está trabajando ese
+ * día. Mismo espíritu que `SinTurnoAbiertoError` de `src/db/ventas.ts`, en
+ * su propio archivo para no crear una dependencia cruzada entre cargues y
+ * ventas por un solo tipo de error.
+ */
+export class SinTurnoParaCargueError extends Error {
+  constructor() {
+    super('Este promotor no ha iniciado turno hoy — no se puede entregar hasta que lo haga.');
+    this.name = 'SinTurnoParaCargueError';
+  }
+}
 
 interface ItemPlaneado {
   productoId: string;
@@ -224,6 +239,9 @@ export async function confirmarLineaCargue(
     [linea.cargue_id]
   );
   if (!cargue) throw new Error('El cargue de esta línea ya no existe.');
+
+  const turnoAbierto = await obtenerTurnoAbiertoHoy(db, cargue.promotor_id);
+  if (!turnoAbierto) throw new SinTurnoParaCargueError();
 
   if (entregada > 0) {
     await registrarCargue(
