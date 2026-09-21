@@ -1,4 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
@@ -15,15 +16,18 @@ import {
 } from 'react-native';
 
 import { formatearPesos } from '@/core/dinero';
-import type { MetodoPago } from '@/core/tipos';
+import type { MetodoPago, Turno } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
+import { guardarFotoComprobante } from '@/db/fotos';
 import { obtenerSaldoProducto, listarInventarioPromotor, type ItemInventario } from '@/db/inventario';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
+import { finalizarTurno, obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { registrarVenta } from '@/db/ventas';
 import { CobrarModal } from '@/ui/CobrarModal';
 import { COLORES } from '@/ui/colores';
 import { EscanerCodigoBarras } from '@/ui/EscanerCodigoBarras';
+import { PantallaIniciarTurno } from '@/ui/PantallaIniciarTurno';
 import { useSesion } from '@/ui/SesionContext';
 import { TarjetaProductoInventario } from '@/ui/TarjetaProductoInventario';
 import { TicketModal } from '@/ui/TicketModal';
@@ -44,6 +48,8 @@ export default function HomePromotor() {
   const [procesandoVenta, setProcesandoVenta] = useState(false);
   const [avisoEscaner, setAvisoEscaner] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  // undefined = todavía no se sabe; null = confirmado que no hay turno abierto hoy.
+  const [turno, setTurno] = useState<Turno | null | undefined>(undefined);
   const avisoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cargarInventario = useCallback(async (promotorId: string) => {
@@ -56,18 +62,59 @@ export default function HomePromotor() {
     }
   }, []);
 
+  const cargarTurno = useCallback(async (promotorId: string) => {
+    const db = await getDb();
+    setTurno(await obtenerTurnoAbiertoHoy(db, promotorId));
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      if (usuario) cargarInventario(usuario.id);
-    }, [usuario, cargarInventario])
+      if (usuario) {
+        cargarTurno(usuario.id);
+        cargarInventario(usuario.id);
+      }
+    }, [usuario, cargarTurno, cargarInventario])
   );
 
   if (!usuario) return null;
   const usuarioActual = usuario;
 
+  if (turno === undefined) {
+    return (
+      <View style={[styles.contenedor, styles.centrado]}>
+        <ActivityIndicator size="large" color={COLORES.primario} />
+      </View>
+    );
+  }
+
+  if (turno === null) {
+    return (
+      <PantallaIniciarTurno
+        promotorId={usuarioActual.id}
+        onIniciado={() => cargarTurno(usuarioActual.id)}
+      />
+    );
+  }
+
   function salir() {
     cerrarSesion();
     router.replace('/');
+  }
+
+  function confirmarFinalizarTurno() {
+    if (!turno) return;
+    Alert.alert('Finalizar turno', '¿Seguro que quieres terminar tu turno de hoy?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Finalizar',
+        style: 'destructive',
+        onPress: async () => {
+          const db = await getDb();
+          await finalizarTurno(db, { turnoId: turno.id });
+          await cargarTurno(usuarioActual.id);
+        },
+      },
+    ]);
   }
 
   function mostrarAvisoEscaner(texto: string) {
@@ -123,17 +170,27 @@ export default function HomePromotor() {
     setCobrarVisible(true);
   }
 
-  async function cobrar(metodoPago: MetodoPago) {
+  async function cobrar(metodoPago: MetodoPago, comprobanteUriTemp?: string) {
     setProcesandoVenta(true);
     try {
       const db = await getDb();
       const dispositivoId = await getDispositivoId(db);
+
+      // El id se genera aquí (R3) porque el comprobante necesita guardarse
+      // con el id final de la venta antes de insertarla.
+      const ventaId = Crypto.randomUUID();
+      const comprobanteUri = comprobanteUriTemp
+        ? await guardarFotoComprobante(comprobanteUriTemp, ventaId)
+        : null;
+
       await registrarVenta(
         db,
         {
+          id: ventaId,
           promotorId: usuarioActual.id,
           promotorNombre: usuarioActual.nombre,
           metodoPago,
+          comprobanteUri,
           items: carrito.items.map((item) => ({
             productoId: item.productoId,
             productoNombre: item.nombre,
@@ -188,6 +245,16 @@ export default function HomePromotor() {
             >
               <Ionicons name="clipboard-outline" size={20} color={COLORES.oscuro} />
               <Text style={styles.opcionMenuTexto}>Conteo de cierre</Text>
+            </Pressable>
+            <Pressable
+              style={styles.opcionMenu}
+              onPress={() => {
+                setMenuVisible(false);
+                confirmarFinalizarTurno();
+              }}
+            >
+              <Ionicons name="exit-outline" size={20} color={COLORES.oscuro} />
+              <Text style={styles.opcionMenuTexto}>Finalizar turno</Text>
             </Pressable>
             <View style={styles.separadorMenu} />
             <Pressable

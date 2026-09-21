@@ -56,7 +56,13 @@
         }
       ],
       "expo-sharing",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Tu Lonchera usa tu ubicación para registrar dónde inicias tu turno."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

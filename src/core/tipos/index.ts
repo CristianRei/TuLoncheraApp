@@ -115,6 +115,17 @@ export interface SerieRecurrencia {
   fechaHasta: string;
 }
 
+export interface Turno {
+  id: string;
+  promotorId: string;
+  promotorNombre: string;
+  selfieUri: string;
+  latitud: number | null;
+  longitud: number | null;
+  horaInicio: string;
+  horaFin: string | null;
+}
+
 export type TipoDescuento = 'PORCENTAJE' | 'MONTO_FIJO';
 
 export interface Descuento {
@@ -157,6 +168,7 @@ export interface Venta {
   total: Pesos;
   anulada: boolean;
   motivoAnulacion: string | null;
+  comprobanteUri: string | null;
 }
 
 export interface VentaItem {

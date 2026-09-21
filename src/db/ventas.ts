@@ -17,10 +17,13 @@ interface ItemVenta {
 }
 
 interface DatosVenta {
+  /** Id pre-generado en el cliente (R3) — necesario cuando ya se guardó una foto de comprobante con ese id antes de insertar la venta. Si se omite, se genera aquí. */
+  id?: string;
   promotorId: string;
   promotorNombre: string;
   items: ItemVenta[];
   metodoPago: MetodoPago;
+  comprobanteUri?: string | null;
 }
 
 interface FilaVenta {
@@ -35,11 +38,12 @@ interface FilaVenta {
   total: number;
   anulada: number;
   motivo_anulacion: string | null;
+  comprobante_uri: string | null;
 }
 
 const COLUMNAS_VENTA = `v.id, v.numero_recibo, v.promotor_id, u.nombre as promotor_nombre,
    v.punto_id, pt.nombre as punto_nombre,
-   v.ts_cliente, v.metodo_pago, v.total, v.anulada, v.motivo_anulacion`;
+   v.ts_cliente, v.metodo_pago, v.total, v.anulada, v.motivo_anulacion, v.comprobante_uri`;
 
 function aVenta(fila: FilaVenta): Venta {
   return {
@@ -54,6 +58,7 @@ function aVenta(fila: FilaVenta): Venta {
     total: fila.total,
     anulada: fila.anulada === 1,
     motivoAnulacion: fila.motivo_anulacion,
+    comprobanteUri: fila.comprobante_uri,
   };
 }
 
@@ -92,7 +97,7 @@ export async function registrarVenta(
   datos: DatosVenta,
   dispositivoId: string
 ): Promise<Venta> {
-  const id = Crypto.randomUUID();
+  const id = datos.id ?? Crypto.randomUUID();
   const ahora = new Date().toISOString();
   const puntoVigente = await obtenerPuntoVigentePromotor(db, datos.promotorId);
   const puntoId = puntoVigente?.puntoId ?? null;
@@ -113,9 +118,19 @@ export async function registrarVenta(
     const numeroRecibo = await generarNumeroRecibo(db, dispositivoId);
 
     await db.runAsync(
-      `INSERT INTO ventas (id, numero_recibo, promotor_id, punto_id, ts_cliente, metodo_pago, total, dispositivo_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, numeroRecibo, datos.promotorId, puntoId, ahora, datos.metodoPago, total, dispositivoId]
+      `INSERT INTO ventas (id, numero_recibo, promotor_id, punto_id, ts_cliente, metodo_pago, total, dispositivo_id, comprobante_uri)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        numeroRecibo,
+        datos.promotorId,
+        puntoId,
+        ahora,
+        datos.metodoPago,
+        total,
+        dispositivoId,
+        datos.comprobanteUri ?? null,
+      ]
     );
 
     const ubicacionPromotor = await obtenerOCrearUbicacionPromotor(

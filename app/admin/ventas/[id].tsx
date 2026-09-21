@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   Pressable,
   StyleSheet,
@@ -123,6 +124,17 @@ export default function DetalleVenta() {
               Pagado con {ETIQUETAS_METODO[venta.metodoPago] ?? venta.metodoPago}
             </Text>
           </View>
+
+          {venta.metodoPago === 'TRANSFERENCIA' && (
+            <View style={styles.bloqueComprobante}>
+              <Text style={styles.comprobanteTitulo}>Comprobante de transferencia</Text>
+              {venta.comprobanteUri ? (
+                <Image source={{ uri: venta.comprobanteUri }} style={styles.comprobanteImagen} />
+              ) : (
+                <Text style={styles.comprobanteFaltante}>Sin comprobante</Text>
+              )}
+            </View>
+          )}
 
           {venta.anulada && (
             <View style={styles.avisoAnulada}>
@@ -263,6 +275,29 @@ const styles = StyleSheet.create({
   resumenDetalle: {
     fontSize: 13,
     color: '#777',
+  },
+  bloqueComprobante: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 12,
+    borderRadius: 14,
+    padding: 16,
+    gap: 8,
+  },
+  comprobanteTitulo: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#555',
+  },
+  comprobanteImagen: {
+    width: '100%',
+    height: 220,
+    borderRadius: 10,
+    backgroundColor: '#F0F0F0',
+  },
+  comprobanteFaltante: {
+    fontSize: 13,
+    color: '#B00020',
   },
   avisoAnulada: {
     backgroundColor: '#FBE4E4',

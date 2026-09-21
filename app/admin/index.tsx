@@ -61,6 +61,12 @@ const MODULOS: {
     badge: 'Auditoría',
   },
   {
+    ruta: '/admin/turnos',
+    titulo: 'Turnos',
+    descripcion: 'Selfie, hora y ubicación de inicio/fin de turno de cada promotor.',
+    icono: 'time-outline',
+  },
+  {
     ruta: '/admin/empresas',
     titulo: 'Empresas y puntos',
     descripcion: 'Clientes y sus sedes (ej. Falabella Norte, Falabella Sur).',

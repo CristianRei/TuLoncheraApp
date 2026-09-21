@@ -1,4 +1,6 @@
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatearPesos } from '@/core/dinero';
 import type { MetodoPago } from '@/core/tipos';
@@ -8,7 +10,8 @@ interface Props {
   total: number;
   colorAcento: string;
   procesando: boolean;
-  onSeleccionar: (metodo: MetodoPago) => void;
+  /** `comprobanteUri` solo viene con TRANSFERENCIA — la foto ya se tomó antes de llamar esto. */
+  onSeleccionar: (metodo: MetodoPago, comprobanteUri?: string) => void;
   onCerrar: () => void;
   /**
    * 'modal' (default): Modal nativo propio. 'superpuesto': sin Modal propio,
@@ -34,7 +37,31 @@ export function CobrarModal({
   onCerrar,
   variante = 'modal',
 }: Props) {
+  const [tomandoFoto, setTomandoFoto] = useState(false);
+
   if (variante === 'superpuesto' && !visible) return null;
+
+  async function elegirMetodo(metodo: MetodoPago) {
+    if (metodo !== 'TRANSFERENCIA') {
+      onSeleccionar(metodo);
+      return;
+    }
+
+    const permiso = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permiso.granted) {
+      Alert.alert('Falta permiso de cámara', 'La transferencia necesita foto del comprobante.');
+      return;
+    }
+
+    setTomandoFoto(true);
+    try {
+      const resultado = await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.7 });
+      if (resultado.canceled || !resultado.assets[0]) return;
+      onSeleccionar('TRANSFERENCIA', resultado.assets[0].uri);
+    } finally {
+      setTomandoFoto(false);
+    }
+  }
 
   const contenido = (
     <View style={[StyleSheet.absoluteFill, styles.fondo]}>
@@ -44,7 +71,7 @@ export function CobrarModal({
 
         <Text style={styles.pregunta}>¿Cómo va a pagar?</Text>
 
-        {procesando ? (
+        {procesando || tomandoFoto ? (
           <ActivityIndicator size="large" color={colorAcento} style={styles.cargando} />
         ) : (
           <View style={styles.opciones}>
@@ -52,7 +79,7 @@ export function CobrarModal({
               <Pressable
                 key={opcion.metodo}
                 style={[styles.opcion, { borderColor: colorAcento }]}
-                onPress={() => onSeleccionar(opcion.metodo)}
+                onPress={() => elegirMetodo(opcion.metodo)}
               >
                 <Text style={[styles.opcionTexto, { color: colorAcento }]}>
                   {opcion.etiqueta}
@@ -62,7 +89,7 @@ export function CobrarModal({
           </View>
         )}
 
-        {!procesando && (
+        {!procesando && !tomandoFoto && (
           <Pressable onPress={onCerrar}>
             <Text style={styles.cancelar}>Cancelar</Text>
           </Pressable>
