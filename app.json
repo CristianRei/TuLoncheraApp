@@ -62,7 +62,8 @@
         {
           "locationWhenInUsePermission": "Tu Lonchera usa tu ubicación para registrar dónde inicias tu turno."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
