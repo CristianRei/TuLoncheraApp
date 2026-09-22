@@ -8,15 +8,15 @@ import { getDb } from '@/db/client';
 import { listarEventosPromotor } from '@/db/eventos';
 import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from '@/ui/calendarioGrilla';
 import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
-
-const TAMANO_CELDA = 40;
 
 function colorEstado(estado: Evento['estado']): string {
   if (estado === 'CANCELADO') return COLORES.error;
   if (estado === 'CERRADO') return COLORES.textoSecundario;
   if (estado === 'EN_CURSO') return COLORES.positivo;
-  return COLORES.oscuro;
+  return COLORES.primario;
 }
 
 const ETIQUETAS_ESTADO: Record<Evento['estado'], string> = {
@@ -26,8 +26,28 @@ const ETIQUETAS_ESTADO: Record<Evento['estado'], string> = {
   CANCELADO: 'Cancelado',
 };
 
+const NOMBRES_DIA_LARGO = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const NOMBRES_DIA_SEMANA_LARGO = [
+  'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
+];
+
+function numeroSemanaISO(fecha: Date): number {
+  const d = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+  const diaSemana = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - diaSemana);
+  const inicioAnio = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - inicioAnio.getTime()) / 86400000 + 1) / 7);
+}
+
+function formatearFechaLarga(clave: string): { diaSemana: string; semana: number } {
+  const [anio, mes, dia] = clave.split('-').map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
+  return { diaSemana: NOMBRES_DIA_SEMANA_LARGO[fecha.getDay()], semana: numeroSemanaISO(fecha) };
+}
+
 export default function CalendarioPromotor() {
   const usuario = useRequiereSesion(['PROMOTOR']);
+  const pantallaAncha = useEsPantallaAncha();
   const hoy = new Date();
   const [mesVisible, setMesVisible] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() });
   const [eventos, setEventos] = useState<Evento[]>([]);
@@ -74,6 +94,11 @@ export default function CalendarioPromotor() {
     });
   }
 
+  function irAHoy() {
+    setMesVisible({ anio: hoy.getFullYear(), mes: hoy.getMonth() });
+    setDiaSeleccionado(hoyClave);
+  }
+
   const semanas = construirGrilla(mesVisible.anio, mesVisible.mes);
   const eventosPorDia = new Map<string, Evento[]>();
   for (const evento of eventos) {
@@ -82,6 +107,8 @@ export default function CalendarioPromotor() {
     eventosPorDia.set(evento.fecha, lista);
   }
   const eventosDelDia = diaSeleccionado ? (eventosPorDia.get(diaSeleccionado) ?? []) : [];
+
+  const fechaSeleccionadaInfo = diaSeleccionado ? formatearFechaLarga(diaSeleccionado) : null;
 
   return (
     <View style={styles.contenedor}>
@@ -93,128 +120,175 @@ export default function CalendarioPromotor() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.calendario}>
-          <View style={styles.mesEncabezado}>
-            <Pressable
-              style={styles.navBoton}
-              onPress={irMesAnterior}
-              accessibilityRole="button"
-              accessibilityLabel="Mes anterior"
-            >
-              <Ionicons name="chevron-back" size={18} color={COLORES.oscuro} />
-            </Pressable>
-            <Text style={styles.mesTexto}>
-              {NOMBRES_MES[mesVisible.mes]} {mesVisible.anio}
-            </Text>
-            <Pressable
-              style={styles.navBoton}
-              onPress={irMesSiguiente}
-              accessibilityRole="button"
-              accessibilityLabel="Mes siguiente"
-            >
-              <Ionicons name="chevron-forward" size={18} color={COLORES.oscuro} />
-            </Pressable>
-          </View>
-
-          <View style={styles.filaDias}>
-            {NOMBRES_DIA.map((nombre) => (
-              <Text key={nombre} style={styles.diaEtiqueta}>
-                {nombre}
-              </Text>
-            ))}
-          </View>
-
-          {semanas.map((semana, indiceSemana) => (
-            <View key={indiceSemana} style={styles.filaDias}>
-              {semana.map((dia, indiceDia) => {
-                if (dia === null) return <View key={indiceDia} style={styles.celda} />;
-                const clave = aClaveFecha(mesVisible.anio, mesVisible.mes, dia);
-                const esHoy = clave === hoyClave;
-                const seleccionado = clave === diaSeleccionado;
-                const eventosDia = eventosPorDia.get(clave) ?? [];
-                const tieneCancelado = eventosDia.some((e) => e.estado === 'CANCELADO');
-                const tieneActivo = eventosDia.some((e) => e.estado !== 'CANCELADO');
-
-                return (
-                  <Pressable
-                    key={indiceDia}
-                    style={styles.celda}
-                    onPress={() => setDiaSeleccionado(seleccionado ? null : clave)}
-                  >
-                    <View
-                      style={[
-                        styles.diaCirculo,
-                        seleccionado && styles.diaCirculoSeleccionado,
-                        esHoy && !seleccionado && styles.diaCirculoHoy,
-                      ]}
+        <ContenedorAncho anchoMaximo={1100}>
+          <View style={pantallaAncha ? styles.layoutAncho : styles.layoutAngosto}>
+            <View style={[styles.columnaCalendario, pantallaAncha && styles.columnaCalendarioAncha]}>
+              <View style={styles.calendario}>
+                <View style={styles.mesEncabezado}>
+                  <View style={styles.mesEncabezadoIzquierda}>
+                    <Pressable
+                      style={styles.navBoton}
+                      onPress={irMesAnterior}
+                      accessibilityRole="button"
+                      accessibilityLabel="Mes anterior"
                     >
-                      <Text
+                      <Ionicons name="chevron-back" size={18} color={COLORES.oscuro} />
+                    </Pressable>
+                    <Text style={styles.mesTexto}>
+                      {NOMBRES_MES[mesVisible.mes]} {mesVisible.anio}
+                    </Text>
+                    <Pressable
+                      style={styles.navBoton}
+                      onPress={irMesSiguiente}
+                      accessibilityRole="button"
+                      accessibilityLabel="Mes siguiente"
+                    >
+                      <Ionicons name="chevron-forward" size={18} color={COLORES.oscuro} />
+                    </Pressable>
+                  </View>
+                  <Pressable style={styles.botonHoy} onPress={irAHoy}>
+                    <Text style={styles.botonHoyTexto}>Ir a hoy ({hoy.getDate()})</Text>
+                  </Pressable>
+                </View>
+
+                <View style={styles.filaDias}>
+                  {NOMBRES_DIA_LARGO.map((nombre, indice) => (
+                    <Text key={nombre} style={styles.diaEtiqueta}>
+                      {pantallaAncha ? nombre : NOMBRES_DIA[indice]}
+                    </Text>
+                  ))}
+                </View>
+
+                {semanas.map((semana, indiceSemana) => (
+                  <View key={indiceSemana} style={styles.filaDias}>
+                    {semana.map((dia, indiceDia) => {
+                      if (dia === null) return <View key={indiceDia} style={styles.celdaVacia} />;
+                      const clave = aClaveFecha(mesVisible.anio, mesVisible.mes, dia);
+                      const esHoy = clave === hoyClave;
+                      const seleccionado = clave === diaSeleccionado;
+                      const eventosDia = eventosPorDia.get(clave) ?? [];
+                      const coloresDia = [...new Set(eventosDia.map((e) => colorEstado(e.estado)))].slice(0, 3);
+
+                      return (
+                        <Pressable
+                          key={indiceDia}
+                          style={[
+                            styles.celda,
+                            seleccionado && styles.celdaSeleccionada,
+                            esHoy && !seleccionado && styles.celdaHoy,
+                          ]}
+                          onPress={() => setDiaSeleccionado(seleccionado ? null : clave)}
+                        >
+                          <Text
+                            style={[
+                              styles.diaNumero,
+                              seleccionado && styles.diaNumeroSeleccionado,
+                              esHoy && !seleccionado && styles.diaNumeroHoy,
+                            ]}
+                          >
+                            {dia}
+                          </Text>
+                          {coloresDia.length > 0 && (
+                            <View style={styles.puntosFila}>
+                              {coloresDia.map((color) => (
+                                <View key={color} style={[styles.punto, { backgroundColor: color }]} />
+                              ))}
+                            </View>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ))}
+
+                <View style={styles.leyenda}>
+                  <Text style={styles.leyendaTitulo}>Convención:</Text>
+                  <View style={styles.leyendaItems}>
+                    <View style={styles.leyendaItem}>
+                      <View style={[styles.leyendaPunto, { backgroundColor: COLORES.primario }]} />
+                      <Text style={styles.leyendaTexto}>Planeado</Text>
+                    </View>
+                    <View style={styles.leyendaItem}>
+                      <View style={[styles.leyendaPunto, { backgroundColor: COLORES.positivo }]} />
+                      <Text style={styles.leyendaTexto}>En curso</Text>
+                    </View>
+                    <View style={styles.leyendaItem}>
+                      <View style={[styles.leyendaPunto, { backgroundColor: COLORES.textoSecundario }]} />
+                      <Text style={styles.leyendaTexto}>Cerrado</Text>
+                    </View>
+                    <View style={styles.leyendaItem}>
+                      <View style={[styles.leyendaPunto, { backgroundColor: COLORES.error }]} />
+                      <Text style={styles.leyendaTexto}>Cancelado</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <View style={[styles.columnaDetalle, pantallaAncha && styles.columnaDetalleAncha]}>
+              {cargando ? (
+                <ActivityIndicator color={COLORES.oscuro} style={{ marginTop: 20 }} />
+              ) : diaSeleccionado && fechaSeleccionadaInfo ? (
+                <View style={styles.detalleDia}>
+                  <Text style={styles.badgeDiaSeleccionado}>Día seleccionado</Text>
+                  <Text style={styles.detalleDiaTitulo}>{diaSeleccionado}</Text>
+                  <Text style={styles.detalleDiaSubtitulo}>
+                    {fechaSeleccionadaInfo.diaSemana} · Semana {fechaSeleccionadaInfo.semana}
+                  </Text>
+
+                  {eventosDelDia.length === 0 ? (
+                    <View style={styles.vacioContenedor}>
+                      <Ionicons name="calendar-outline" size={28} color={COLORES.borde} />
+                      <Text style={styles.vacio}>Sin eventos asignados este día.</Text>
+                    </View>
+                  ) : (
+                    eventosDelDia.map((evento) => (
+                      <View
+                        key={evento.id}
                         style={[
-                          styles.diaTexto,
-                          seleccionado && styles.diaTextoSeleccionado,
-                          esHoy && !seleccionado && styles.diaTextoHoy,
+                          styles.tarjetaEvento,
+                          { borderLeftColor: colorEstado(evento.estado) },
+                          evento.estado === 'CANCELADO' && styles.tarjetaEventoCancelada,
                         ]}
                       >
-                        {dia}
-                      </Text>
-                    </View>
-                    {(tieneActivo || tieneCancelado) && (
-                      <View
-                        style={[
-                          styles.punto,
-                          tieneActivo && styles.puntoActivo,
-                          !tieneActivo && tieneCancelado && styles.puntoCancelado,
-                        ]}
-                      />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
-        </View>
-
-        {cargando ? (
-          <ActivityIndicator color={COLORES.oscuro} style={{ marginTop: 20 }} />
-        ) : diaSeleccionado ? (
-          <View style={styles.detalleDia}>
-            <Text style={styles.detalleDiaTitulo}>{diaSeleccionado}</Text>
-            {eventosDelDia.length === 0 ? (
-              <Text style={styles.vacio}>Sin eventos asignados este día.</Text>
-            ) : (
-              eventosDelDia.map((evento) => (
-                <View
-                  key={evento.id}
-                  style={[styles.filaEvento, evento.estado === 'CANCELADO' && styles.filaEventoCancelada]}
-                >
-                  <View style={styles.filaEventoTexto}>
-                    <Text
-                      style={[
-                        styles.filaEventoEmpresa,
-                        evento.estado === 'CANCELADO' && styles.textoTachado,
-                      ]}
-                    >
-                      {evento.empresaNombre}
-                    </Text>
-                    <Text
-                      style={[styles.filaEventoPunto, evento.estado === 'CANCELADO' && styles.textoTachado]}
-                    >
-                      {evento.puntoNombre}
-                    </Text>
-                    {evento.estado === 'CANCELADO' && evento.motivoCancelacion && (
-                      <Text style={styles.filaEventoMotivo}>Motivo: {evento.motivoCancelacion}</Text>
-                    )}
-                  </View>
-                  <Text style={[styles.badgeEstado, { color: colorEstado(evento.estado) }]}>
-                    {ETIQUETAS_ESTADO[evento.estado]}
-                  </Text>
+                        <View style={styles.tarjetaEventoEncabezado}>
+                          <View
+                            style={[styles.badgeEstadoPill, { backgroundColor: colorEstado(evento.estado) }]}
+                          >
+                            <Text style={styles.badgeEstadoPillTexto}>{ETIQUETAS_ESTADO[evento.estado]}</Text>
+                          </View>
+                        </View>
+                        <Text
+                          style={[
+                            styles.filaEventoEmpresa,
+                            evento.estado === 'CANCELADO' && styles.textoTachado,
+                          ]}
+                        >
+                          {evento.empresaNombre}
+                        </Text>
+                        <Text
+                          style={[styles.filaEventoPunto, evento.estado === 'CANCELADO' && styles.textoTachado]}
+                        >
+                          {evento.puntoNombre}
+                        </Text>
+                        {evento.estado === 'CANCELADO' && evento.motivoCancelacion && (
+                          <Text style={styles.filaEventoMotivo}>Motivo: {evento.motivoCancelacion}</Text>
+                        )}
+                      </View>
+                    ))
+                  )}
                 </View>
-              ))
-            )}
+              ) : (
+                <View style={styles.detalleDia}>
+                  <View style={styles.vacioContenedor}>
+                    <Ionicons name="calendar-outline" size={28} color={COLORES.borde} />
+                    <Text style={styles.vacio}>Toca un día para ver dónde estás asignado.</Text>
+                  </View>
+                </View>
+              )}
+            </View>
           </View>
-        ) : (
-          <Text style={styles.vacio}>Toca un día para ver dónde estás asignado.</Text>
-        )}
+        </ContenedorAncho>
       </ScrollView>
     </View>
   );
@@ -237,68 +311,139 @@ const styles = StyleSheet.create({
   },
   titulo: { fontSize: 18, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
   scroll: { padding: 16, gap: 14 },
+  layoutAngosto: { gap: 14 },
+  layoutAncho: { flexDirection: 'row', alignItems: 'flex-start', gap: 18 },
+  columnaCalendario: { width: '100%' },
+  columnaCalendarioAncha: { flex: 7 },
+  columnaDetalle: { width: '100%' },
+  columnaDetalleAncha: { flex: 5 },
   calendario: {
     backgroundColor: COLORES.superficie,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORES.borde,
     padding: 14,
-    gap: 8,
+    gap: 6,
   },
-  mesEncabezado: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
+  mesEncabezado: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORES.borde,
+  },
+  mesEncabezadoIzquierda: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   navBoton: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: COLORES.fondo,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mesTexto: { fontSize: 15, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.oscuro },
+  mesTexto: { fontSize: 16, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.oscuro },
+  botonHoy: {
+    backgroundColor: COLORES.fondo,
+    borderWidth: 1,
+    borderColor: COLORES.primario,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  botonHoyTexto: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita, color: COLORES.oscuro },
   filaDias: { flexDirection: 'row' },
   diaEtiqueta: {
-    width: TAMANO_CELDA,
+    flex: 1,
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    textTransform: 'uppercase',
     color: COLORES.textoSecundario,
+    paddingBottom: 8,
   },
-  celda: { width: TAMANO_CELDA, height: TAMANO_CELDA, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  diaCirculo: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  diaCirculoSeleccionado: { backgroundColor: COLORES.oscuro },
-  diaCirculoHoy: { borderWidth: 1.5, borderColor: COLORES.primario },
-  diaTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.medio, color: COLORES.textoSobreOscuro },
-  diaTextoSeleccionado: { color: '#FFFFFF', fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
-  diaTextoHoy: { color: COLORES.oscuro, fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
-  punto: { width: 5, height: 5, borderRadius: 3 },
-  puntoActivo: { backgroundColor: COLORES.primario },
-  puntoCancelado: { backgroundColor: COLORES.error },
+  celdaVacia: { flex: 1, minHeight: 48, margin: 2 },
+  celda: {
+    flex: 1,
+    minHeight: 48,
+    margin: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+    padding: 6,
+    justifyContent: 'space-between',
+  },
+  celdaSeleccionada: { backgroundColor: COLORES.oscuro, borderColor: COLORES.oscuro },
+  celdaHoy: { borderWidth: 1.5, borderColor: COLORES.primario, backgroundColor: COLORES.fondo },
+  diaNumero: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.medio, color: COLORES.textoSobreOscuro },
+  diaNumeroSeleccionado: { color: '#FFFFFF', fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
+  diaNumeroHoy: { color: COLORES.oscuro, fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
+  puntosFila: { flexDirection: 'row', gap: 3 },
+  punto: { width: 6, height: 6, borderRadius: 3 },
+  leyenda: { marginTop: 10, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORES.borde, gap: 8 },
+  leyendaTitulo: { fontSize: 11, fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita, color: COLORES.textoSobreOscuro },
+  leyendaItems: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  leyendaPunto: { width: 8, height: 8, borderRadius: 4 },
+  leyendaTexto: { fontSize: 11, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
   vacio: {
     fontSize: 13,
     fontFamily: TIPOGRAFIA_PROMOTOR.regular,
     color: COLORES.textoSecundario,
-    marginTop: 8,
     textAlign: 'center',
   },
+  vacioContenedor: { alignItems: 'center', gap: 8, paddingVertical: 24 },
   detalleDia: {
     backgroundColor: COLORES.superficie,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORES.borde,
     padding: 16,
-    gap: 10,
+    gap: 8,
   },
-  detalleDiaTitulo: { fontSize: 15, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.oscuro },
-  filaEvento: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  badgeDiaSeleccionado: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: '#FFFFFF',
+    backgroundColor: COLORES.oscuro,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    overflow: 'hidden',
+  },
+  detalleDiaTitulo: { fontSize: 18, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.oscuro },
+  detalleDiaSubtitulo: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSecundario,
+    textTransform: 'capitalize',
+    marginBottom: 4,
+  },
+  tarjetaEvento: {
     backgroundColor: COLORES.fondo,
     borderRadius: 10,
+    borderLeftWidth: 3,
     padding: 12,
+    gap: 4,
   },
-  filaEventoCancelada: { opacity: 0.6 },
-  filaEventoTexto: { gap: 2, flex: 1 },
+  tarjetaEventoCancelada: { opacity: 0.6 },
+  tarjetaEventoEncabezado: { flexDirection: 'row', justifyContent: 'flex-end' },
+  badgeEstadoPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+  badgeEstadoPillTexto: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   filaEventoEmpresa: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
   filaEventoPunto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
   filaEventoMotivo: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.error, marginTop: 2 },

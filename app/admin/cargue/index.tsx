@@ -13,6 +13,7 @@ import { listarPromotores } from '@/db/usuarios';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETAS_ESTADO: Record<Cargue['estado'], string> = {
@@ -38,6 +39,7 @@ export default function PantallaCargue() {
   const [guardando, setGuardando] = useState(false);
   const [cargues, setCargues] = useState<Cargue[]>([]);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargarBase = useCallback(async () => {
     const db = await getDb();
@@ -111,12 +113,21 @@ export default function PantallaCargue() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          <Pressable onPress={() => (promotor ? setPromotor(null) : router.back())}>
-            <Text style={styles.volver}>‹ {promotor ? 'Elegir otro promotor' : 'Admin'}</Text>
-          </Pressable>
-          <Text style={styles.titulo}>
+          {(!anchaPantalla || promotor) && (
+            <Pressable onPress={() => (promotor ? setPromotor(null) : router.back())}>
+              <Text style={anchaPantalla ? styles.volverAncho : styles.volver}>
+                ‹ {promotor ? 'Elegir otro promotor' : 'Admin'}
+              </Text>
+            </Pressable>
+          )}
+          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>
             {promotor ? `Cargue para ${promotor.nombre}` : 'Cargue a promotor'}
           </Text>
         </ContenedorAncho>
@@ -247,6 +258,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoContenido: {
     gap: 4,
   },
@@ -255,9 +271,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textDecorationLine: 'underline',
   },
+  volverAncho: {
+    color: COLORES.oscuro,
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '700',
+  },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
     fontWeight: '700',
   },
   pestanas: {

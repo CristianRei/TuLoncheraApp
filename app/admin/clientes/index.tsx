@@ -19,6 +19,7 @@ import { crearCliente, listarClientes } from '@/db/clientes';
 import { getDispositivoId } from '@/db/dispositivo';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function ClientesAdmin() {
@@ -35,6 +36,7 @@ export default function ClientesAdmin() {
   const [nota, setNota] = useState('');
   const [guardando, setGuardando] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async (termino?: string) => {
     setCargando(true);
@@ -97,21 +99,28 @@ export default function ClientesAdmin() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
           <View style={styles.encabezadoFila}>
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Admin</Text>
-            </Pressable>
-            <Text style={styles.titulo}>Clientes</Text>
+            {!anchaPantalla && (
+              <Pressable onPress={() => router.back()}>
+                <Text style={styles.volver}>‹ Admin</Text>
+              </Pressable>
+            )}
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Clientes</Text>
             <Pressable onPress={() => setModalVisible(true)}>
-              <Text style={styles.agregar}>+ Nuevo</Text>
+              <Text style={anchaPantalla ? styles.agregarAncho : styles.agregar}>+ Nuevo</Text>
             </Pressable>
           </View>
           <TextInput
-            style={styles.busqueda}
+            style={anchaPantalla ? styles.busquedaAncho : styles.busqueda}
             placeholder="Buscar por nombre, teléfono o empresa..."
-            placeholderTextColor="rgba(255,255,255,0.6)"
+            placeholderTextColor={anchaPantalla ? '#A8988F' : 'rgba(255,255,255,0.6)'}
             value={busqueda}
             onChangeText={buscar}
           />
@@ -247,6 +256,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoContenido: {
     gap: 12,
   },
@@ -265,8 +279,19 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
+    fontWeight: '700',
+  },
   agregar: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  agregarAncho: {
+    color: COLORES.oscuro,
     fontSize: 14,
     fontWeight: '700',
     textDecorationLine: 'underline',
@@ -278,6 +303,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: '#FFFFFF',
+  },
+  busquedaAncho: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EADFD7',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: COLORES.oscuro,
   },
   centrado: {
     flex: 1,

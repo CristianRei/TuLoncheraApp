@@ -13,6 +13,7 @@ import { listarVentas } from '@/db/ventas';
 import { COLORES } from '@/ui/colores';
 import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'ACTIVAS' | 'ANULADAS';
@@ -41,6 +42,7 @@ export default function Ventas() {
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   async function exportar() {
     setExportando(true);
@@ -91,18 +93,25 @@ export default function Ventas() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.encabezadoFila}>
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Admin</Text>
-            </Pressable>
-            <Text style={styles.titulo}>Ventas</Text>
+            {!anchaPantalla && (
+              <Pressable onPress={() => router.back()}>
+                <Text style={styles.volver}>‹ Admin</Text>
+              </Pressable>
+            )}
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Ventas</Text>
             <Pressable onPress={exportar} disabled={exportando || ventas.length === 0}>
               {exportando ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <ActivityIndicator size="small" color={anchaPantalla ? COLORES.oscuro : '#FFFFFF'} />
               ) : (
-                <Text style={styles.exportar}>Excel</Text>
+                <Text style={anchaPantalla ? styles.exportarAncho : styles.exportar}>Excel</Text>
               )}
             </Pressable>
           </View>
@@ -252,6 +261,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -267,8 +281,19 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
+    fontWeight: '700',
+  },
   exportar: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  exportarAncho: {
+    color: COLORES.oscuro,
     fontSize: 14,
     fontWeight: '700',
     textDecorationLine: 'underline',

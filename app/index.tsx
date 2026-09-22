@@ -21,7 +21,13 @@ import { FondoFlotante, HaloResplandor } from '@/ui/FondoAnimado';
 import { ModalDesbloqueoPin } from '@/ui/ModalDesbloqueoPin';
 import { useSesion } from '@/ui/SesionContext';
 
-const LARGO_PIN = 4;
+// Admin usa PIN de 6 dígitos (ver src/core/pin.ts, modoPinParaRol); el resto
+// de roles sigue derivando el PIN de los últimos 4 dígitos de la cédula.
+const LARGO_PIN: Record<ModoLogin, number> = {
+  PROMOTOR: 4,
+  ADMIN: 6,
+  BODEGA: 4,
+};
 
 const TITULOS: Record<ModoLogin, string> = {
   PROMOTOR: 'Tu Lonchera',
@@ -123,7 +129,7 @@ export default function Login() {
   }, [estadoIntentos.estado, dispositivoId, modo]);
 
   useEffect(() => {
-    if (pin.length !== LARGO_PIN || !dispositivoId) return;
+    if (pin.length !== LARGO_PIN[modo] || !dispositivoId) return;
     if (estadoIntentos.estado !== 'NORMAL') return;
 
     let cancelado = false;
@@ -196,6 +202,7 @@ export default function Login() {
 
         <CampoPin
           pin={pin}
+          largo={LARGO_PIN[modo]}
           deshabilitado={verificando || estadoIntentos.estado !== 'NORMAL'}
           colorAcento={tema.colorTexto}
           intentoFallido={intentoFallido}
@@ -203,7 +210,7 @@ export default function Login() {
             tema.haloEnTeclado ? <HaloResplandor color={tema.colorDecoracion} /> : undefined
           }
           onPresionar={(digito) =>
-            setPin((actual) => (actual.length < LARGO_PIN ? actual + digito : actual))
+            setPin((actual) => (actual.length < LARGO_PIN[modo] ? actual + digito : actual))
           }
           onBorrar={() => setPin((actual) => actual.slice(0, -1))}
         />

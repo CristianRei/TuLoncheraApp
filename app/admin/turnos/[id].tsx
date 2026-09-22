@@ -10,6 +10,7 @@ import { obtenerEventoDeHoyPromotor, obtenerTurno } from '@/db/turnos';
 import { listarTurnosRemotos } from '@/db/turnosRemotos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(ts: string): string {
@@ -37,6 +38,7 @@ export default function DetalleTurno() {
   const [eventoDelDia, setEventoDelDia] = useState<Evento | null>(null);
   const [cargando, setCargando] = useState(true);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   useEffect(() => {
     (async () => {
@@ -67,12 +69,19 @@ export default function DetalleTurno() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.volver}>‹ Turnos</Text>
-          </Pressable>
-          <Text style={styles.titulo}>Detalle del turno</Text>
+          {!anchaPantalla && (
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Turnos</Text>
+            </Pressable>
+          )}
+          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Detalle del turno</Text>
         </ContenedorAncho>
       </View>
 
@@ -127,6 +136,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoContenido: {
     gap: 4,
   },
@@ -138,6 +152,11 @@ const styles = StyleSheet.create({
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '700',
+  },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
     fontWeight: '700',
   },
   centrado: {

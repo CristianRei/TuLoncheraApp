@@ -86,6 +86,18 @@ async function aEventos(db: SQLiteDatabase, filas: FilaEvento[]): Promise<Evento
   });
 }
 
+/** Un evento en fecha anterior a hoy (Bogotá) ya ocurrió — no se crea ni se edita, solo se consulta. */
+export class EventoEnFechaPasadaError extends Error {
+  constructor() {
+    super('No se pueden crear ni editar eventos en una fecha anterior a hoy.');
+    this.name = 'EventoEnFechaPasadaError';
+  }
+}
+
+function verificarFechaNoPasada(fecha: string): void {
+  if (fecha < fechaHoyBogota()) throw new EventoEnFechaPasadaError();
+}
+
 async function insertarEvento(
   db: SQLiteDatabase,
   datos: {
@@ -121,6 +133,7 @@ export async function crearEvento(
   datos: { empresaId: string; puntoId: string; fecha: string; promotorIds: string[]; creadoPor: string },
   dispositivoId: string
 ): Promise<Evento> {
+  verificarFechaNoPasada(datos.fecha);
   let id = '';
   await db.withTransactionAsync(async () => {
     id = await insertarEvento(db, datos, dispositivoId);
@@ -150,6 +163,7 @@ export async function crearSerieRecurrente(
   },
   dispositivoId: string
 ): Promise<Evento[]> {
+  verificarFechaNoPasada(datos.fechaDesde);
   const ocurrencias = calcularOcurrencias(datos.frecuencia, datos.intervalo, datos.fechaDesde, datos.fechaHasta);
   const serieId = Crypto.randomUUID();
   const ahora = new Date().toISOString();
@@ -241,6 +255,10 @@ export async function reasignarEvento(
   db: SQLiteDatabase,
   datos: { eventoId: string; promotorIds: string[] }
 ): Promise<Evento> {
+  const actual = await obtenerEvento(db, datos.eventoId);
+  if (!actual) throw new Error('Este evento ya no existe.');
+  verificarFechaNoPasada(actual.fecha);
+
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM evento_promotores WHERE evento_id = ?', [datos.eventoId]);
     for (const promotorId of datos.promotorIds) {
@@ -260,6 +278,10 @@ export async function cancelarEvento(
   db: SQLiteDatabase,
   datos: { eventoId: string; motivo: string }
 ): Promise<void> {
+  const actual = await obtenerEvento(db, datos.eventoId);
+  if (!actual) throw new Error('Este evento ya no existe.');
+  verificarFechaNoPasada(actual.fecha);
+
   await db.runAsync("UPDATE eventos SET estado = 'CANCELADO', motivo_cancelacion = ? WHERE id = ?", [
     datos.motivo,
     datos.eventoId,
@@ -271,6 +293,10 @@ export async function cambiarEstadoEvento(
   db: SQLiteDatabase,
   datos: { eventoId: string; estado: Exclude<EstadoEvento, 'CANCELADO'> }
 ): Promise<void> {
+  const actual = await obtenerEvento(db, datos.eventoId);
+  if (!actual) throw new Error('Este evento ya no existe.');
+  verificarFechaNoPasada(actual.fecha);
+
   await db.runAsync('UPDATE eventos SET estado = ? WHERE id = ?', [datos.estado, datos.eventoId]);
 }
 

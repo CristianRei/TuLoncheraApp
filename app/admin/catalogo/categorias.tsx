@@ -15,6 +15,7 @@ import {
 import { getDispositivoId } from '@/db/dispositivo';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function CategoriasCatalogo() {
@@ -25,6 +26,7 @@ export default function CategoriasCatalogo() {
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [guardando, setGuardando] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -72,13 +74,20 @@ export default function CategoriasCatalogo() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.volver}>‹ Catálogo</Text>
-          </Pressable>
-          <Text style={styles.titulo}>Categorías</Text>
-          <Text style={styles.subtitulo}>
+          {!anchaPantalla && (
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Catálogo</Text>
+            </Pressable>
+          )}
+          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Categorías</Text>
+          <Text style={anchaPantalla ? styles.subtituloAncho : styles.subtitulo}>
             Solo se puede elegir entre estas — para evitar categorías repetidas por mayúsculas o
             espacios, agrégalas aquí.
           </Text>
@@ -154,6 +163,12 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 4,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 4,
+  },
   volver: {
     color: '#FFFFFF',
     fontSize: 14,
@@ -165,8 +180,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 4,
   },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
+    fontWeight: '700',
+    marginTop: 4,
+  },
   subtitulo: {
     color: '#FFE9E2',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  subtituloAncho: {
+    color: '#6B5B3F',
     fontSize: 12,
     marginTop: 2,
   },

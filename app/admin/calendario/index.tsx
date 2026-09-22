@@ -24,6 +24,7 @@ import {
   cancelarEvento,
   crearEvento,
   crearSerieRecurrente,
+  EventoEnFechaPasadaError,
   listarEventosPorRango,
   reasignarEvento,
 } from '@/db/eventos';
@@ -32,6 +33,7 @@ import { listarPromotores } from '@/db/usuarios';
 import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from '@/ui/calendarioGrilla';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETAS_ESTADO: Record<EstadoEvento, string> = {
@@ -55,9 +57,38 @@ function colorEstado(estado: EstadoEvento): string {
   return COLORES_ADMIN.dorado;
 }
 
+const NOMBRES_DIA_LARGO = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const NOMBRES_DIA_SEMANA_LARGO = [
+  'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado',
+];
+
+function numeroSemanaISO(fecha: Date): number {
+  const d = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+  const diaSemana = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - diaSemana);
+  const inicioAnio = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - inicioAnio.getTime()) / 86400000 + 1) / 7);
+}
+
+function formatearFechaLarga(clave: string): { diaSemana: string; fechaCorta: string; semana: number } {
+  const [anio, mes, dia] = clave.split('-').map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
+  return {
+    diaSemana: NOMBRES_DIA_SEMANA_LARGO[fecha.getDay()],
+    fechaCorta: clave,
+    semana: numeroSemanaISO(fecha),
+  };
+}
+
+/** Compara claves AAAA-MM-DD como texto: mismo formato, orden lexicográfico = orden cronológico. */
+function esFechaPasada(clave: string, hoyClave: string): boolean {
+  return clave < hoyClave;
+}
+
 export default function CalendarioAdmin() {
   const usuario = useRequiereSesion(['ADMIN']);
   const insets = useSafeAreaInsets();
+  const pantallaAncha = useEsPantallaAncha();
 
   const hoy = new Date();
   const [mesVisible, setMesVisible] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() });
@@ -123,6 +154,11 @@ export default function CalendarioAdmin() {
     });
   }
 
+  function irAHoy() {
+    setMesVisible({ anio: hoy.getFullYear(), mes: hoy.getMonth() });
+    setDiaSeleccionado(hoyClave);
+  }
+
   const semanas = construirGrilla(mesVisible.anio, mesVisible.mes);
   const eventosPorDia = new Map<string, Evento[]>();
   for (const evento of eventos) {
@@ -133,6 +169,10 @@ export default function CalendarioAdmin() {
   const eventosDelDia = diaSeleccionado ? (eventosPorDia.get(diaSeleccionado) ?? []) : [];
 
   function abrirNuevoEvento() {
+    if (diaSeleccionado && esFechaPasada(diaSeleccionado, hoyClave)) {
+      Alert.alert('Fecha pasada', 'No se pueden crear eventos en un día anterior a hoy.');
+      return;
+    }
     if (empresas.length === 0) {
       Alert.alert('Sin empresas', 'Crea una empresa y un punto primero en "Empresas y puntos".');
       return;
@@ -144,122 +184,211 @@ export default function CalendarioAdmin() {
     await cargarEventos();
   }
 
+  const totalEventosMes = eventos.filter((e) => e.estado !== 'CANCELADO').length;
+  const fechaSeleccionadaInfo = diaSeleccionado ? formatearFechaLarga(diaSeleccionado) : null;
+
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 16 }]}>
-        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.volver}>‹ Admin</Text>
-          </Pressable>
-          <Text style={styles.titulo}>Calendario de eventos</Text>
+      <View
+        style={[
+          pantallaAncha ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: pantallaAncha ? 16 : insets.top + 16 },
+        ]}
+      >
+        <ContenedorAncho anchoMaximo={1200} style={styles.encabezadoContenido}>
+          {!pantallaAncha && (
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Admin</Text>
+            </Pressable>
+          )}
+          <Text style={pantallaAncha ? styles.tituloAncho : styles.titulo}>Calendario de eventos</Text>
         </ContenedorAncho>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ContenedorAncho anchoMaximo={720}>
-          <View style={styles.calendario}>
-            <View style={styles.mesEncabezado}>
-              <Pressable style={styles.navBoton} onPress={irMesAnterior}>
-                <Ionicons name="chevron-back" size={18} color={COLORES_ADMIN.vino} />
-              </Pressable>
-              <Text style={styles.mesTexto}>
-                {NOMBRES_MES[mesVisible.mes]} {mesVisible.anio}
-              </Text>
-              <Pressable style={styles.navBoton} onPress={irMesSiguiente}>
-                <Ionicons name="chevron-forward" size={18} color={COLORES_ADMIN.vino} />
-              </Pressable>
-            </View>
-
-            <View style={styles.filaDias}>
-              {NOMBRES_DIA.map((nombre) => (
-                <Text key={nombre} style={styles.diaEtiqueta}>
-                  {nombre}
-                </Text>
-              ))}
-            </View>
-
-            {semanas.map((semana, indiceSemana) => (
-              <View key={indiceSemana} style={styles.filaDias}>
-                {semana.map((dia, indiceDia) => {
-                  if (dia === null) return <View key={indiceDia} style={styles.celda} />;
-                  const clave = aClaveFecha(mesVisible.anio, mesVisible.mes, dia);
-                  const esHoy = clave === hoyClave;
-                  const seleccionado = clave === diaSeleccionado;
-                  const cantidadEventos = eventosPorDia.get(clave)?.length ?? 0;
-
-                  return (
-                    <Pressable
-                      key={indiceDia}
-                      style={styles.celda}
-                      onPress={() => setDiaSeleccionado(seleccionado ? null : clave)}
-                    >
-                      <View
-                        style={[
-                          styles.diaCirculo,
-                          seleccionado && styles.diaCirculoSeleccionado,
-                          esHoy && !seleccionado && styles.diaCirculoHoy,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.diaTexto,
-                            seleccionado && styles.diaTextoSeleccionado,
-                            esHoy && !seleccionado && styles.diaTextoHoy,
-                          ]}
-                        >
-                          {dia}
-                        </Text>
-                      </View>
-                      {cantidadEventos > 0 && (
-                        <View style={[styles.punto, seleccionado && styles.puntoSeleccionado]} />
-                      )}
+        <ContenedorAncho anchoMaximo={1200}>
+          <View style={pantallaAncha ? styles.layoutAncho : styles.layoutAngosto}>
+            <View style={[styles.columnaCalendario, pantallaAncha && styles.columnaCalendarioAncha]}>
+              <View style={styles.calendario}>
+                <View style={styles.mesEncabezado}>
+                  <View style={styles.mesEncabezadoIzquierda}>
+                    <Pressable style={styles.navBoton} onPress={irMesAnterior}>
+                      <Ionicons name="chevron-back" size={18} color={COLORES_ADMIN.vino} />
                     </Pressable>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
+                    <Text style={styles.mesTexto}>
+                      {NOMBRES_MES[mesVisible.mes]} {mesVisible.anio}
+                    </Text>
+                    <Pressable style={styles.navBoton} onPress={irMesSiguiente}>
+                      <Ionicons name="chevron-forward" size={18} color={COLORES_ADMIN.vino} />
+                    </Pressable>
+                  </View>
+                  <Pressable style={styles.botonHoy} onPress={irAHoy}>
+                    <Text style={styles.botonHoyTexto}>Ir a hoy ({hoy.getDate()})</Text>
+                  </Pressable>
+                </View>
 
-          {cargando ? (
-            <ActivityIndicator color={COLORES_ADMIN.vino} style={{ marginTop: 20 }} />
-          ) : diaSeleccionado ? (
-            <View style={styles.detalleDia}>
-              <View style={styles.detalleDiaEncabezado}>
-                <Text style={styles.detalleDiaTitulo}>{diaSeleccionado}</Text>
-                <Pressable style={styles.botonNuevo} onPress={abrirNuevoEvento}>
-                  <Ionicons name="add" size={16} color="#FFFFFF" />
-                  <Text style={styles.botonNuevoTexto}>Nuevo evento</Text>
-                </Pressable>
-              </View>
+                <View style={styles.filaDias}>
+                  {NOMBRES_DIA_LARGO.map((nombre, indice) => (
+                    <Text
+                      key={nombre}
+                      style={[
+                        styles.diaEtiqueta,
+                        indice === 5 && styles.diaEtiquetaSabado,
+                        indice === 6 && styles.diaEtiquetaDomingo,
+                      ]}
+                    >
+                      {pantallaAncha ? nombre : NOMBRES_DIA[indice]}
+                    </Text>
+                  ))}
+                </View>
 
-              {eventosDelDia.length === 0 ? (
-                <Text style={styles.vacio}>Sin eventos este día.</Text>
-              ) : (
-                eventosDelDia.map((evento) => (
-                  <Pressable
-                    key={evento.id}
-                    style={styles.filaEvento}
-                    onPress={() => setDetalleEvento(evento)}
-                  >
-                    <View style={styles.filaEventoTexto}>
-                      <Text style={styles.filaEventoEmpresa}>{evento.empresaNombre}</Text>
-                      <Text style={styles.filaEventoPunto}>{evento.puntoNombre}</Text>
-                      <Text style={styles.filaEventoPromotores}>
-                        {evento.promotorNombres.length > 0
-                          ? evento.promotorNombres.join(', ')
-                          : 'Sin promotor asignado'}
+                {semanas.map((semana, indiceSemana) => (
+                  <View key={indiceSemana} style={styles.filaDias}>
+                    {semana.map((dia, indiceDia) => {
+                      if (dia === null) return <View key={indiceDia} style={styles.celdaVacia} />;
+                      const clave = aClaveFecha(mesVisible.anio, mesVisible.mes, dia);
+                      const esHoy = clave === hoyClave;
+                      const seleccionado = clave === diaSeleccionado;
+                      const eventosDia = eventosPorDia.get(clave) ?? [];
+                      const coloresDia = [...new Set(eventosDia.map((e) => colorEstado(e.estado)))].slice(0, 3);
+
+                      return (
+                        <Pressable
+                          key={indiceDia}
+                          style={[
+                            styles.celda,
+                            seleccionado && styles.celdaSeleccionada,
+                            esHoy && !seleccionado && styles.celdaHoy,
+                          ]}
+                          onPress={() => setDiaSeleccionado(seleccionado ? null : clave)}
+                        >
+                          <Text
+                            style={[
+                              styles.diaNumero,
+                              seleccionado && styles.diaNumeroSeleccionado,
+                              esHoy && !seleccionado && styles.diaNumeroHoy,
+                            ]}
+                          >
+                            {dia}
+                          </Text>
+                          {coloresDia.length > 0 && (
+                            <View style={styles.puntosFila}>
+                              {coloresDia.map((color) => (
+                                <View key={color} style={[styles.punto, { backgroundColor: color }]} />
+                              ))}
+                            </View>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ))}
+
+                <View style={styles.leyenda}>
+                  <Text style={styles.leyendaTitulo}>Convención:</Text>
+                  <View style={styles.leyendaItems}>
+                    <View style={styles.leyendaItem}>
+                      <View style={[styles.leyendaPunto, { backgroundColor: COLORES_ADMIN.dorado }]} />
+                      <Text style={styles.leyendaTexto}>Planeado</Text>
+                    </View>
+                    <View style={styles.leyendaItem}>
+                      <View style={[styles.leyendaPunto, { backgroundColor: COLORES_ADMIN.positivo }]} />
+                      <Text style={styles.leyendaTexto}>En curso</Text>
+                    </View>
+                    <View style={styles.leyendaItem}>
+                      <View style={[styles.leyendaPunto, { backgroundColor: COLORES_ADMIN.textoSecundario }]} />
+                      <Text style={styles.leyendaTexto}>Cerrado</Text>
+                    </View>
+                    <View style={styles.leyendaItem}>
+                      <View style={[styles.leyendaPunto, { backgroundColor: COLORES_ADMIN.error }]} />
+                      <Text style={styles.leyendaTexto}>Cancelado</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.leyendaTotal}>
+                    Total eventos mes: <Text style={styles.leyendaTotalNumero}>{totalEventosMes}</Text>
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={[styles.columnaDetalle, pantallaAncha && styles.columnaDetalleAncha]}>
+              {cargando ? (
+                <ActivityIndicator color={COLORES_ADMIN.vino} style={{ marginTop: 20 }} />
+              ) : diaSeleccionado && fechaSeleccionadaInfo ? (
+                <View style={styles.detalleDia}>
+                  <View style={styles.detalleDiaEncabezado}>
+                    <View style={{ flex: 1 }}>
+                      <View style={styles.detalleDiaBadges}>
+                        <Text style={styles.badgeDiaSeleccionado}>Día seleccionado</Text>
+                        {eventosDelDia.length > 0 && (
+                          <Text style={styles.badgeConteoEventos}>
+                            {eventosDelDia.length} {eventosDelDia.length === 1 ? 'evento' : 'eventos'}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={styles.detalleDiaTitulo}>{fechaSeleccionadaInfo.fechaCorta}</Text>
+                      <Text style={styles.detalleDiaSubtitulo}>
+                        {fechaSeleccionadaInfo.diaSemana} · Semana {fechaSeleccionadaInfo.semana}
                       </Text>
                     </View>
-                    <Text style={[styles.badgeEstado, { color: colorEstado(evento.estado) }]}>
-                      {ETIQUETAS_ESTADO[evento.estado]}
-                    </Text>
-                  </Pressable>
-                ))
+                    {!esFechaPasada(diaSeleccionado, hoyClave) && (
+                      <Pressable style={styles.botonNuevo} onPress={abrirNuevoEvento}>
+                        <Ionicons name="add" size={16} color="#FFFFFF" />
+                        <Text style={styles.botonNuevoTexto}>Nuevo evento</Text>
+                      </Pressable>
+                    )}
+                  </View>
+
+                  <Text style={styles.itinerarioTitulo}>Itinerario del día</Text>
+
+                  {eventosDelDia.length === 0 ? (
+                    <View style={styles.vacioContenedor}>
+                      <Ionicons name="calendar-outline" size={28} color={COLORES_ADMIN.bordeSuave} />
+                      <Text style={styles.vacio}>Sin eventos este día.</Text>
+                    </View>
+                  ) : (
+                    eventosDelDia.map((evento) => (
+                      <Pressable
+                        key={evento.id}
+                        style={[styles.tarjetaEvento, { borderLeftColor: colorEstado(evento.estado) }]}
+                        onPress={() => setDetalleEvento(evento)}
+                      >
+                        <View style={styles.tarjetaEventoEncabezado}>
+                          <View
+                            style={[
+                              styles.badgeEstadoPill,
+                              { backgroundColor: colorEstado(evento.estado) },
+                            ]}
+                          >
+                            <Text style={styles.badgeEstadoPillTexto}>{ETIQUETAS_ESTADO[evento.estado]}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.filaEventoEmpresa}>{evento.empresaNombre}</Text>
+                        <Text style={styles.filaEventoPunto}>{evento.puntoNombre}</Text>
+                        <View style={styles.tarjetaEventoPie}>
+                          <View style={styles.tarjetaEventoPieItem}>
+                            <Ionicons name="people-outline" size={13} color={COLORES_ADMIN.textoSecundario} />
+                            <Text style={styles.filaEventoPromotores}>
+                              {evento.promotorNombres.length > 0
+                                ? evento.promotorNombres.join(', ')
+                                : 'Sin promotor asignado'}
+                            </Text>
+                          </View>
+                        </View>
+                      </Pressable>
+                    ))
+                  )}
+                </View>
+              ) : (
+                <View style={styles.detalleDia}>
+                  <View style={styles.vacioContenedor}>
+                    <Ionicons name="calendar-outline" size={28} color={COLORES_ADMIN.bordeSuave} />
+                    <Text style={styles.vacio}>Toca un día para ver o crear eventos.</Text>
+                  </View>
+                </View>
               )}
             </View>
-          ) : (
-            <Text style={styles.vacio}>Toca un día para ver o crear eventos.</Text>
-          )}
+          </View>
         </ContenedorAncho>
       </ScrollView>
 
@@ -291,6 +420,11 @@ export default function CalendarioAdmin() {
               {detalleEvento.motivoCancelacion && (
                 <Text style={styles.modalTextoMotivo}>Motivo: {detalleEvento.motivoCancelacion}</Text>
               )}
+              {esFechaPasada(detalleEvento.fecha, hoyClave) && (
+                <Text style={styles.modalTextoAviso}>
+                  Este evento ya pasó — no se puede editar, solo consultar.
+                </Text>
+              )}
 
               <Text style={styles.modalSubtitulo}>Promotores asignados</Text>
               {promotores.map((p) => {
@@ -299,7 +433,11 @@ export default function CalendarioAdmin() {
                   <Pressable
                     key={p.id}
                     style={styles.filaCheckbox}
-                    disabled={guardando || detalleEvento.estado === 'CANCELADO'}
+                    disabled={
+                      guardando ||
+                      detalleEvento.estado === 'CANCELADO' ||
+                      esFechaPasada(detalleEvento.fecha, hoyClave)
+                    }
                     onPress={async () => {
                       const nuevos = asignado
                         ? detalleEvento.promotorIds.filter((id) => id !== p.id)
@@ -313,6 +451,12 @@ export default function CalendarioAdmin() {
                         });
                         setDetalleEvento(actualizado);
                         await recargar();
+                      } catch (error) {
+                        if (error instanceof EventoEnFechaPasadaError) {
+                          Alert.alert('Evento pasado', error.message);
+                        } else {
+                          Alert.alert('No se pudo actualizar', error instanceof Error ? error.message : 'Error inesperado.');
+                        }
                       } finally {
                         setGuardando(false);
                       }
@@ -326,7 +470,7 @@ export default function CalendarioAdmin() {
                 );
               })}
 
-              {detalleEvento.estado !== 'CANCELADO' && (
+              {detalleEvento.estado !== 'CANCELADO' && !esFechaPasada(detalleEvento.fecha, hoyClave) && (
                 <View style={styles.modalEstadosFila}>
                   {(['PLANEADO', 'EN_CURSO', 'CERRADO'] as const).map((estado) => (
                     <Pressable
@@ -365,7 +509,7 @@ export default function CalendarioAdmin() {
                 <Pressable onPress={() => setDetalleEvento(null)} disabled={guardando}>
                   <Text style={styles.modalCancelar}>Cerrar</Text>
                 </Pressable>
-                {detalleEvento.estado !== 'CANCELADO' && (
+                {detalleEvento.estado !== 'CANCELADO' && !esFechaPasada(detalleEvento.fecha, hoyClave) && (
                   <Pressable
                     style={styles.botonCancelarEvento}
                     disabled={guardando}
@@ -634,12 +778,15 @@ function FormularioEvento({
   );
 }
 
-const TAMANO_CELDA = 40;
-
 const styles = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: COLORES_ADMIN.background },
   encabezado: {
     backgroundColor: COLORES_ADMIN.vino,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -651,79 +798,208 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   titulo: { color: '#FFFFFF', fontSize: 18, fontFamily: TIPOGRAFIA_ADMIN.negrita },
+  tituloAncho: { color: COLORES_ADMIN.vino, fontSize: 20, fontFamily: TIPOGRAFIA_ADMIN.negrita },
   scroll: { padding: 20, gap: 16 },
+  layoutAngosto: { gap: 16 },
+  layoutAncho: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
+  columnaCalendario: { width: '100%' },
+  columnaCalendarioAncha: { flex: 7 },
+  columnaDetalle: { width: '100%' },
+  columnaDetalleAncha: { flex: 5 },
   calendario: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 16,
-    gap: 8,
+    gap: 6,
   },
   mesEncabezado: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORES_ADMIN.bordeSuave,
   },
+  mesEncabezadoIzquierda: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   navBoton: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mesTexto: { fontSize: 15, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, color: COLORES_ADMIN.vino },
+  mesTexto: { fontSize: 17, fontFamily: TIPOGRAFIA_ADMIN.negrita, color: COLORES_ADMIN.vino },
+  botonHoy: {
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.dorado,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  botonHoyTexto: { fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, color: COLORES_ADMIN.vino },
   filaDias: { flexDirection: 'row' },
   diaEtiqueta: {
-    width: TAMANO_CELDA,
+    flex: 1,
     textAlign: 'center',
-    fontSize: 11,
+    fontSize: 10,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
     color: COLORES_ADMIN.textoSecundario,
+    paddingBottom: 8,
   },
-  celda: { width: TAMANO_CELDA, height: TAMANO_CELDA, alignItems: 'center', justifyContent: 'center', gap: 2 },
-  diaCirculo: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  diaCirculoSeleccionado: { backgroundColor: COLORES_ADMIN.vino },
-  diaCirculoHoy: { borderWidth: 1.5, borderColor: COLORES_ADMIN.dorado },
-  diaTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.monoRegular, color: COLORES_ADMIN.texto },
-  diaTextoSeleccionado: { color: '#FFFFFF', fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita },
-  diaTextoHoy: { color: COLORES_ADMIN.vino, fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita },
-  punto: { width: 5, height: 5, borderRadius: 3, backgroundColor: COLORES_ADMIN.dorado },
-  puntoSeleccionado: { backgroundColor: '#FFFFFF' },
-  vacio: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario, marginTop: 8 },
+  diaEtiquetaSabado: { color: COLORES_ADMIN.dorado },
+  diaEtiquetaDomingo: { color: COLORES_ADMIN.error },
+  celdaVacia: { flex: 1, minHeight: 52, margin: 2 },
+  celda: {
+    flex: 1,
+    minHeight: 52,
+    margin: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: 6,
+    justifyContent: 'space-between',
+  },
+  celdaSeleccionada: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderColor: COLORES_ADMIN.vino,
+  },
+  celdaHoy: {
+    borderWidth: 1.5,
+    borderColor: COLORES_ADMIN.dorado,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+  },
+  diaNumero: { fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.monoMedio, color: COLORES_ADMIN.texto },
+  diaNumeroSeleccionado: { color: '#FFFFFF', fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita },
+  diaNumeroHoy: { color: COLORES_ADMIN.vino, fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita },
+  puntosFila: { flexDirection: 'row', gap: 3 },
+  punto: { width: 6, height: 6, borderRadius: 3 },
+  leyenda: {
+    marginTop: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORES_ADMIN.bordeSuave,
+    gap: 8,
+  },
+  leyendaTitulo: { fontSize: 11, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, color: COLORES_ADMIN.texto },
+  leyendaItems: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  leyendaPunto: { width: 8, height: 8, borderRadius: 4 },
+  leyendaTexto: { fontSize: 11, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
+  leyendaTotal: { fontSize: 11, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
+  leyendaTotalNumero: { fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita, color: COLORES_ADMIN.texto },
+  vacio: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    textAlign: 'center',
+  },
+  vacioContenedor: { alignItems: 'center', gap: 8, paddingVertical: 24 },
   detalleDia: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 16,
     gap: 10,
   },
-  detalleDiaEncabezado: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  detalleDiaTitulo: { fontSize: 15, fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita, color: COLORES_ADMIN.vino },
+  detalleDiaEncabezado: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORES_ADMIN.bordeSuave,
+  },
+  detalleDiaBadges: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  badgeDiaSeleccionado: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.vino,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  badgeConteoEventos: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.positivo,
+    backgroundColor: '#EAF5EA',
+    borderWidth: 1,
+    borderColor: '#C3E3C3',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  detalleDiaTitulo: {
+    fontSize: 19,
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    color: COLORES_ADMIN.texto,
+    marginTop: 4,
+  },
+  detalleDiaSubtitulo: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
+    textTransform: 'capitalize',
+  },
+  itinerarioTitulo: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   botonNuevo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: COLORES_ADMIN.vino,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
   },
-  botonNuevoTexto: { color: '#FFFFFF', fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita },
-  filaEvento: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  botonNuevoTexto: { color: '#FFFFFF', fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita },
+  tarjetaEvento: {
     backgroundColor: COLORES_ADMIN.superficieBaja,
     borderRadius: 10,
+    borderLeftWidth: 3,
     padding: 12,
+    gap: 4,
   },
-  filaEventoTexto: { gap: 2, flex: 1 },
-  filaEventoEmpresa: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, color: COLORES_ADMIN.texto },
+  tarjetaEventoEncabezado: { flexDirection: 'row', justifyContent: 'flex-end' },
+  badgeEstadoPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeEstadoPillTexto: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  filaEventoEmpresa: { fontSize: 14, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, color: COLORES_ADMIN.texto },
   filaEventoPunto: { fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
+  tarjetaEventoPie: { flexDirection: 'row', marginTop: 4 },
+  tarjetaEventoPieItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
   filaEventoPromotores: { fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
   badgeEstado: { fontSize: 11, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, textTransform: 'uppercase' },
   fondoModal: { flex: 1, backgroundColor: 'rgba(42,24,16,0.45)', alignItems: 'center', justifyContent: 'center', padding: 20 },
@@ -746,6 +1022,14 @@ const styles = StyleSheet.create({
   },
   modalTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
   modalTextoMotivo: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.medio, color: COLORES_ADMIN.error },
+  modalTextoAviso: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderRadius: 8,
+    padding: 8,
+  },
   modalInput: {
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,

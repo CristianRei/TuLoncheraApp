@@ -8,6 +8,7 @@ import { getDb } from '@/db/client';
 import { listarResumenIntentosPin, registrarDesbloqueo } from '@/db/intentosPin';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string | null): string {
@@ -25,6 +26,7 @@ export default function IntentosPin() {
   const [cargando, setCargando] = useState(true);
   const [desbloqueando, setDesbloqueando] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -59,14 +61,21 @@ export default function IntentosPin() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.encabezadoFila}>
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Admin</Text>
-            </Pressable>
-            <Text style={styles.titulo}>Seguridad de acceso</Text>
-            <View style={{ width: 40 }} />
+            {!anchaPantalla && (
+              <Pressable onPress={() => router.back()}>
+                <Text style={styles.volver}>‹ Admin</Text>
+              </Pressable>
+            )}
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Seguridad de acceso</Text>
+            {!anchaPantalla && <View style={{ width: 40 }} />}
           </View>
         </ContenedorAncho>
       </View>
@@ -138,6 +147,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -151,6 +165,11 @@ const styles = StyleSheet.create({
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '700',
+  },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
     fontWeight: '700',
   },
   centrado: {

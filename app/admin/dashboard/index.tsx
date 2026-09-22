@@ -559,21 +559,24 @@ export default function Dashboard() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 16 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 16 : insets.top + 16 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={1200}>
           <View style={styles.encabezadoFila}>
             <View style={styles.encabezadoIzquierda}>
-              <Pressable style={styles.volverBoton} onPress={() => router.back()}>
-                <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
-                <Text style={styles.volverTexto}>Admin</Text>
-              </Pressable>
-              <Text style={styles.titulo}>Dashboard</Text>
+              {!anchaPantalla && (
+                <Pressable style={styles.volverBoton} onPress={() => router.back()}>
+                  <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
+                  <Text style={styles.volverTexto}>Admin</Text>
+                </Pressable>
+              )}
+              <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Dashboard</Text>
             </View>
             <View style={styles.encabezadoDerecha}>
-              <View style={styles.enVivoIndicador}>
-                <View style={styles.enVivoPunto} />
-                <Text style={styles.enVivoTexto}>Actualización manual</Text>
-              </View>
               {notificacionesCriticas > 0 && (
                 <Pressable
                   style={styles.botonNotificaciones}
@@ -1559,6 +1562,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1590,30 +1598,15 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: '#FFFFFF',
   },
+  tituloAncho: {
+    fontSize: 20,
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    color: COLORES_ADMIN.vino,
+  },
   encabezadoDerecha: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
-  },
-  enVivoIndicador: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    backgroundColor: 'rgba(0,0,0,0.18)',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  enVivoPunto: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORES_ADMIN.positivo,
-  },
-  enVivoTexto: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: '#FFE9E2',
   },
   botonNotificaciones: {
     flexDirection: 'row',

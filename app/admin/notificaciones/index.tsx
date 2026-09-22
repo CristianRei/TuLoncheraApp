@@ -14,6 +14,7 @@ import {
 } from '@/db/notificaciones';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'NO_LEIDAS' | 'TODAS';
@@ -46,6 +47,7 @@ export default function Notificaciones() {
   const [filtro, setFiltro] = useState<Filtro>('NO_LEIDAS');
   const [cargando, setCargando] = useState(true);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -77,15 +79,22 @@ export default function Notificaciones() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.encabezadoFila}>
-            <Pressable style={styles.volverBoton} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
-              <Text style={styles.volverTexto}>Admin</Text>
-            </Pressable>
-            <Text style={styles.titulo}>Notificaciones</Text>
-            <View style={{ width: 60 }} />
+            {!anchaPantalla && (
+              <Pressable style={styles.volverBoton} onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
+                <Text style={styles.volverTexto}>Admin</Text>
+              </Pressable>
+            )}
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Notificaciones</Text>
+            {!anchaPantalla && <View style={{ width: 60 }} />}
           </View>
         </ContenedorAncho>
       </View>
@@ -178,6 +187,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -201,6 +215,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: '#FFFFFF',
+  },
+  tituloAncho: {
+    fontSize: 20,
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    color: COLORES_ADMIN.vino,
   },
   tabs: {
     flexDirection: 'row',

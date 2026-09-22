@@ -11,6 +11,7 @@ import { crearProducto } from '@/db/productos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { FormularioProducto, type ValoresProducto } from '@/ui/FormularioProducto';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function NuevoProducto() {
@@ -18,6 +19,7 @@ export default function NuevoProducto() {
   const [idNuevo] = useState(() => Crypto.randomUUID());
   const [guardando, setGuardando] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   if (!usuario) return null;
 
@@ -39,9 +41,14 @@ export default function NuevoProducto() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={640}>
-          <Text style={styles.titulo}>Nuevo producto</Text>
+          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Nuevo producto</Text>
         </ContenedorAncho>
       </View>
       <ContenedorAncho anchoMaximo={640} llenarAlto>
@@ -68,9 +75,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '700',
+  },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
     fontWeight: '700',
   },
 });

@@ -25,6 +25,7 @@ import { listarPuntos } from '@/db/puntos';
 import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type PasoSelector = 'PRODUCTO' | 'PUNTO' | null;
@@ -50,6 +51,7 @@ export default function NuevoDescuento() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   useEffect(() => {
     (async () => {
@@ -103,12 +105,21 @@ export default function NuevoDescuento() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={600} style={styles.encabezadoContenido}>
-          <Pressable onPress={() => (selector ? setSelector(null) : router.back())}>
-            <Text style={styles.volver}>‹ {selector ? 'Cancelar' : 'Descuentos'}</Text>
-          </Pressable>
-          <Text style={styles.titulo}>Nuevo descuento</Text>
+          {(!anchaPantalla || selector) && (
+            <Pressable onPress={() => (selector ? setSelector(null) : router.back())}>
+              <Text style={anchaPantalla ? styles.volverAncho : styles.volver}>
+                ‹ {selector ? 'Cancelar' : 'Descuentos'}
+              </Text>
+            </Pressable>
+          )}
+          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Nuevo descuento</Text>
         </ContenedorAncho>
       </View>
 
@@ -321,6 +332,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoContenido: {
     gap: 4,
   },
@@ -329,6 +345,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
+  },
+  volverAncho: {
+    color: COLORES_ADMIN.vino,
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    textDecorationLine: 'underline',
+  },
+  tituloAncho: {
+    color: COLORES_ADMIN.vino,
+    fontSize: 20,
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   titulo: {
     color: '#FFFFFF',

@@ -19,6 +19,7 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { crearPunto, listarPuntos } from '@/db/puntos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function DetalleEmpresa() {
@@ -32,6 +33,7 @@ export default function DetalleEmpresa() {
   const [direccion, setDireccion] = useState('');
   const [guardando, setGuardando] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -78,15 +80,24 @@ export default function DetalleEmpresa() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.volver}>‹ Empresas</Text>
-          </Pressable>
+          {!anchaPantalla && (
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Empresas</Text>
+            </Pressable>
+          )}
           <View style={styles.encabezadoFila}>
-            <Text style={styles.titulo}>{empresa?.nombre ?? 'Puntos'}</Text>
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>
+              {empresa?.nombre ?? 'Puntos'}
+            </Text>
             <Pressable onPress={() => setModalVisible(true)}>
-              <Text style={styles.agregar}>+ Punto</Text>
+              <Text style={anchaPantalla ? styles.agregarAncho : styles.agregar}>+ Punto</Text>
             </Pressable>
           </View>
         </ContenedorAncho>
@@ -181,6 +192,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoContenido: {
     gap: 8,
   },
@@ -199,8 +215,19 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
+    fontWeight: '700',
+  },
   agregar: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  agregarAncho: {
+    color: COLORES.oscuro,
     fontSize: 14,
     fontWeight: '700',
     textDecorationLine: 'underline',

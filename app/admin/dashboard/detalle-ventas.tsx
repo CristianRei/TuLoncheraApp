@@ -109,14 +109,26 @@ export default function DetalleVentas() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 16 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 16 : insets.top + 16 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={1200}>
           <View style={styles.encabezadoFila}>
-            <Pressable style={styles.volverBoton} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
-              <Text style={styles.volverTexto}>Dashboard</Text>
+            <Pressable
+              style={anchaPantalla ? styles.volverBotonAncho : styles.volverBoton}
+              onPress={() => router.back()}
+            >
+              <Ionicons
+                name="chevron-back"
+                size={16}
+                color={anchaPantalla ? COLORES_ADMIN.vino : '#FFE9E2'}
+              />
+              <Text style={anchaPantalla ? styles.volverTextoAncho : styles.volverTexto}>Dashboard</Text>
             </Pressable>
-            <Text style={styles.titulo}>{titulo}</Text>
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>{titulo}</Text>
           </View>
         </ContenedorAncho>
       </View>
@@ -218,6 +230,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -232,15 +249,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
+  volverBotonAncho: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
   volverTexto: {
     fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: '#FFE9E2',
   },
+  volverTextoAncho: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.vino,
+  },
   titulo: {
     fontSize: 17,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: '#FFFFFF',
+  },
+  tituloAncho: {
+    fontSize: 20,
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    color: COLORES_ADMIN.vino,
   },
   centrado: {
     flex: 1,

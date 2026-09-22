@@ -8,7 +8,8 @@ interface UsuarioSemilla {
 }
 
 const USUARIOS_DE_PRUEBA: UsuarioSemilla[] = [
-  { nombre: 'Admin', rol: 'ADMIN', pin: '0000' },
+  // Admin usa PIN de 6 dígitos (ver src/core/pin.ts, modoPinParaRol) — antes '0000'.
+  { nombre: 'Admin', rol: 'ADMIN', pin: '000000' },
   { nombre: 'Cristian', rol: 'PROMOTOR', pin: '8509' },
   { nombre: 'Bodega', rol: 'BODEGA', pin: '1234' },
 ];

@@ -1,7 +1,7 @@
-import type Ionicons from '@expo/vector-icons/Ionicons';
+import IonIcon from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { calcularRangoHoyBogota } from '@/core/analitica';
@@ -12,119 +12,12 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { contarPromotoresConPuntoVigente } from '@/db/eventos';
 import { contarNotificacionesNoLeidas, generarNotificaciones } from '@/db/notificaciones';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { MODULOS_ADMIN } from '@/ui/modulosAdmin';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { TarjetaModulo } from '@/ui/TarjetaModulo';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useSesion } from '@/ui/SesionContext';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
-
-type NombreIcono = keyof typeof Ionicons.glyphMap;
-
-const MODULOS: {
-  ruta: string;
-  titulo: string;
-  descripcion: string;
-  icono: NombreIcono;
-  badge?: string;
-  destacada?: boolean;
-  soloPantallaAncha?: boolean;
-}[] = [
-  {
-    ruta: '/admin/calendario',
-    titulo: 'Calendario de eventos',
-    descripcion: 'Planear qué promotor va a cada empresa y punto, día a día.',
-    icono: 'calendar-outline',
-  },
-  {
-    ruta: '/admin/cargue',
-    titulo: 'Cargue a promotor',
-    descripcion: 'Asignar productos del stock de bodega a un promotor.',
-    icono: 'swap-horizontal-outline',
-  },
-  {
-    ruta: '/admin/turnos',
-    titulo: 'Turnos',
-    descripcion: 'Selfie, hora y ubicación de inicio/fin de turno de cada promotor.',
-    icono: 'time-outline',
-  },
-  {
-    ruta: '/admin/ventas',
-    titulo: 'Ventas',
-    descripcion: 'Ver las ventas registradas por los promotores.',
-    icono: 'checkmark-done-outline',
-  },
-  {
-    ruta: '/admin/conteos',
-    titulo: 'Conteos de cierre',
-    descripcion: 'Ver los conteos de cierre de los promotores y sus descuadres.',
-    icono: 'clipboard-outline',
-    badge: 'Auditoría',
-  },
-  {
-    ruta: '/admin/inventario',
-    titulo: 'Inventario',
-    descripcion: 'Ver el stock de bodega e ingresar pedidos.',
-    icono: 'cube-outline',
-  },
-  {
-    ruta: '/admin/catalogo',
-    titulo: 'Catálogo de productos',
-    descripcion: 'Agregar, editar y eliminar productos y precios.',
-    icono: 'pricetags-outline',
-  },
-  {
-    ruta: '/admin/empresas',
-    titulo: 'Empresas y puntos',
-    descripcion: 'Clientes y sus sedes (ej. Falabella Norte, Falabella Sur).',
-    icono: 'business-outline',
-  },
-  {
-    ruta: '/admin/clientes',
-    titulo: 'Clientes',
-    descripcion: 'Clientes finales registrados por los promotores en campo.',
-    icono: 'people-outline',
-  },
-  {
-    ruta: '/admin/descuentos',
-    titulo: 'Descuentos',
-    descripcion: 'Crear y ver descuentos por producto y/o punto, con vigencia.',
-    icono: 'pricetag-outline',
-  },
-  {
-    ruta: '/admin/dashboard',
-    titulo: 'Dashboard',
-    descripcion: 'Ventas, productos top y saldo de bodega.',
-    icono: 'bar-chart-outline',
-    badge: 'Métricas clave',
-    destacada: true,
-    soloPantallaAncha: true,
-  },
-  {
-    ruta: '/admin/analisis',
-    titulo: 'Análisis',
-    descripcion: 'Qué se repite por punto, cómo rinde cada promotor, y qué cruces valen la pena.',
-    icono: 'analytics-outline',
-    soloPantallaAncha: true,
-  },
-  {
-    ruta: '/admin/notificaciones',
-    titulo: 'Notificaciones',
-    descripcion: 'Stock bajo, lotes por vencer y otras alertas del negocio.',
-    icono: 'notifications-outline',
-  },
-  {
-    ruta: '/admin/intentos-pin',
-    titulo: 'Seguridad de acceso',
-    descripcion: 'Dispositivos bloqueados e intentos fallidos de PIN.',
-    icono: 'lock-closed-outline',
-  },
-  {
-    ruta: '/admin/promotores',
-    titulo: 'Gestionar promotores',
-    descripcion: 'Contratar, editar y dar de baja promotores del sistema.',
-    icono: 'person-add-outline',
-  },
-];
 
 interface Indicadores {
   promotoresConPunto: number;
@@ -165,7 +58,15 @@ export default function HomeAdmin() {
     }, [cargarIndicadores])
   );
 
-  if (!usuario) return null;
+  // En pantalla ancha el Dashboard es la home real de admin — este portal
+  // de tarjetas ya no se muestra ahí, se navega por SidebarAdmin. En
+  // celular (sin sidebar, Dashboard sigue "soloPantallaAncha") el portal
+  // sigue siendo la única forma de llegar a los módulos.
+  useEffect(() => {
+    if (anchaPantalla) router.replace('/admin/dashboard');
+  }, [anchaPantalla]);
+
+  if (!usuario || anchaPantalla) return null;
 
   function salir() {
     cerrarSesion();
@@ -179,7 +80,11 @@ export default function HomeAdmin() {
           <View style={styles.encabezadoFila}>
             <View style={styles.marca}>
               <View style={styles.logo}>
-                <Text style={styles.logoTexto}>TL</Text>
+                <Image
+                  source={require('@/assets/images/logo-tu-lonchera.png')}
+                  style={styles.logoImagen}
+                  resizeMode="contain"
+                />
               </View>
               <View>
                 <View style={styles.marcaEtiquetaFila}>
@@ -189,11 +94,8 @@ export default function HomeAdmin() {
               </View>
             </View>
             <View style={styles.encabezadoAcciones}>
-              <View style={styles.indicadorLocal}>
-                <View style={styles.puntoLocal} />
-                <Text style={styles.indicadorLocalTexto}>Datos en este dispositivo</Text>
-              </View>
-              <Pressable onPress={salir}>
+              <Pressable style={styles.botonCerrarSesion} onPress={salir}>
+                <IonIcon name="log-out-outline" size={15} color="#FFFFFF" />
                 <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
               </Pressable>
             </View>
@@ -245,7 +147,7 @@ export default function HomeAdmin() {
           </View>
 
           <View style={[styles.grilla, anchaPantalla && styles.grillaAncha]}>
-            {MODULOS.filter((modulo) => !modulo.soloPantallaAncha || anchaPantalla).map(
+            {MODULOS_ADMIN.filter((modulo) => !modulo.soloPantallaAncha || anchaPantalla).map(
               (modulo) => {
                 const badge =
                   modulo.ruta === '/admin/notificaciones' && indicadores && indicadores.notificacionesNoLeidas > 0
@@ -295,17 +197,17 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logo: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 10,
-    backgroundColor: COLORES_ADMIN.dorado,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 4,
   },
-  logoTexto: {
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    fontSize: 15,
-    color: COLORES_ADMIN.vino,
+  logoImagen: {
+    width: '100%',
+    height: '100%',
   },
   marcaEtiquetaFila: {
     flexDirection: 'row',
@@ -328,31 +230,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
   },
-  indicadorLocal: {
+  botonCerrarSesion: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  puntoLocal: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: COLORES_ADMIN.positivo,
-  },
-  indicadorLocalTexto: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: '#FFE9E2',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   cerrarSesion: {
     fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: '#FFFFFF',
-    textDecorationLine: 'underline',
   },
   scroll: {
     paddingBottom: 40,

@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Cliente } from '@/core/tipos';
@@ -8,6 +8,8 @@ import { getDb } from '@/db/client';
 import { eliminarCliente, obtenerCliente } from '@/db/clientes';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(iso: string): string {
@@ -20,7 +22,9 @@ export default function DetalleCliente() {
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [cargando, setCargando] = useState(true);
   const [eliminando, setEliminando] = useState(false);
+  const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     if (!id) return;
@@ -41,39 +45,36 @@ export default function DetalleCliente() {
 
   if (!usuario) return null;
 
-  function confirmarEliminar() {
+  async function confirmarEliminar() {
     if (!cliente) return;
-    Alert.alert(
-      'Eliminar cliente',
-      `¿Seguro que quieres eliminar a "${cliente.nombreCompleto}"? Esta acción no se puede deshacer. Las ventas que tenía asignadas quedarán sin cliente.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            setEliminando(true);
-            try {
-              const db = await getDb();
-              await eliminarCliente(db, cliente.id);
-              router.back();
-            } finally {
-              setEliminando(false);
-            }
-          },
-        },
-      ]
-    );
+    setEliminando(true);
+    try {
+      const db = await getDb();
+      await eliminarCliente(db, cliente.id);
+      setModalEliminarVisible(false);
+      router.back();
+    } finally {
+      setEliminando(false);
+    }
   }
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.volver}>‹ Clientes</Text>
-          </Pressable>
-          <Text style={styles.titulo}>{cliente?.nombreCompleto ?? 'Cliente'}</Text>
+          {!anchaPantalla && (
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Clientes</Text>
+            </Pressable>
+          )}
+          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>
+            {cliente?.nombreCompleto ?? 'Cliente'}
+          </Text>
         </ContenedorAncho>
       </View>
 
@@ -100,7 +101,7 @@ export default function DetalleCliente() {
 
             <Pressable
               style={[styles.botonEliminar, eliminando && styles.botonDeshabilitado]}
-              onPress={confirmarEliminar}
+              onPress={() => setModalEliminarVisible(true)}
               disabled={eliminando}
             >
               {eliminando ? (
@@ -111,6 +112,19 @@ export default function DetalleCliente() {
             </Pressable>
           </ScrollView>
         </ContenedorAncho>
+      )}
+
+      {cliente && (
+        <ModalConfirmacion
+          visible={modalEliminarVisible}
+          titulo="Eliminar cliente"
+          mensaje={`¿Seguro que quieres eliminar a "${cliente.nombreCompleto}"? Esta acción no se puede deshacer. Las ventas que tenía asignadas quedarán sin cliente.`}
+          textoConfirmar="Eliminar"
+          destructivo
+          cargando={eliminando}
+          onConfirmar={confirmarEliminar}
+          onCancelar={() => setModalEliminarVisible(false)}
+        />
       )}
     </View>
   );
@@ -135,6 +149,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoContenido: {
     gap: 8,
   },
@@ -146,6 +165,11 @@ const styles = StyleSheet.create({
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '700',
+  },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
     fontWeight: '700',
   },
   centrado: {

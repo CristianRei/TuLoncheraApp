@@ -54,14 +54,17 @@ export interface UsuarioSesion {
 }
 
 /**
- * Promotor gestionado desde admin (contratar/editar/dar de baja) — ver
- * app/admin/promotores/ y migración 0022. `pin` se deriva de `cedula`
- * (últimos 4 dígitos, ver src/db/promotores.ts) y queda `null` cuando el
- * promotor está desactivado, liberando ese PIN para reuso futuro.
+ * Persona gestionada desde admin (contratar/editar/dar de baja/cambiar rol)
+ * — ver app/admin/personal/ y migración 0022. `pin` se deriva de `cedula`
+ * para roles PROMOTOR/CONDUCTOR/BODEGA (últimos 4 dígitos, ver
+ * src/core/pin.ts), o es un PIN de 6 dígitos elegido a mano para ADMIN.
+ * Queda `null` cuando la persona está desactivada, liberando ese PIN para
+ * reuso futuro.
  */
-export interface Promotor {
+export interface Persona {
   id: string;
   nombre: string;
+  rol: Rol;
   cedula: string | null;
   celular: string | null;
   direccion: string | null;

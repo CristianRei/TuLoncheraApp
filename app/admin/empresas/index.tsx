@@ -18,6 +18,7 @@ import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function Empresas() {
@@ -29,6 +30,7 @@ export default function Empresas() {
   const [direccion, setDireccion] = useState('');
   const [guardando, setGuardando] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -70,15 +72,22 @@ export default function Empresas() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.encabezadoFila}>
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Admin</Text>
-            </Pressable>
-            <Text style={styles.titulo}>Empresas y puntos</Text>
+            {!anchaPantalla && (
+              <Pressable onPress={() => router.back()}>
+                <Text style={styles.volver}>‹ Admin</Text>
+              </Pressable>
+            )}
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Empresas y puntos</Text>
             <Pressable onPress={() => setModalVisible(true)}>
-              <Text style={styles.agregar}>+ Nueva</Text>
+              <Text style={anchaPantalla ? styles.agregarAncho : styles.agregar}>+ Nueva</Text>
             </Pressable>
           </View>
         </ContenedorAncho>
@@ -177,6 +186,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -192,8 +206,19 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
+    fontWeight: '700',
+  },
   agregar: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  agregarAncho: {
+    color: COLORES.oscuro,
     fontSize: 14,
     fontWeight: '700',
     textDecorationLine: 'underline',

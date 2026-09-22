@@ -1,9 +1,10 @@
 import { type ReactNode, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { pinDesdeCedula } from '@/db/promotores';
+import { modoPinParaRol, pinDesdeCedula, pinManualValido } from '@/core/pin';
+import type { Rol } from '@/core/tipos';
 
-export interface ValoresPromotor {
+export interface ValoresPersona {
   nombre: string;
   cedula: string;
   celular: string | null;
@@ -11,23 +12,28 @@ export interface ValoresPromotor {
 }
 
 interface Props {
-  valorInicial: ValoresPromotor;
-  /** Solo en modo edición — el PIN que tiene hoy, antes de cualquier cambio de cédula. */
+  /** Determina el modo de PIN a mostrar (src/core/pin.ts) — fijo, no se elige aquí. */
+  rol: Rol;
+  valorInicial: ValoresPersona;
+  /** Solo en modo edición — el PIN que tiene hoy, antes de cualquier cambio. */
   pinVigente?: string | null;
   colorAcento: string;
   guardando: boolean;
   /**
-   * Distinto de null cuando el padre intentó guardar y `crearPromotor`/
-   * `actualizarPromotor` lanzó PinDuplicadoError — revela el campo de PIN
-   * manual para que el admin resuelva el choque sin perder lo ya escrito.
+   * Distinto de null cuando el padre intentó guardar y `crearPersona`/
+   * `actualizarPersona` lanzó PinDuplicadoError — revela el campo de PIN
+   * manual (roles DESDE_CEDULA) para que el admin resuelva el choque sin
+   * perder lo ya escrito. Para ADMIN el campo de PIN ya está siempre
+   * visible, así que este error solo cambia el mensaje mostrado.
    */
   errorPin: string | null;
-  onGuardar: (valores: ValoresPromotor, pinManual: string | null) => void;
+  onGuardar: (valores: ValoresPersona, pinManual: string | null) => void;
   textoBoton?: string;
   extra?: ReactNode;
 }
 
-export function FormularioPromotor({
+export function FormularioPersona({
+  rol,
   valorInicial,
   pinVigente,
   colorAcento,
@@ -37,6 +43,7 @@ export function FormularioPromotor({
   textoBoton = 'Guardar',
   extra,
 }: Props) {
+  const modo = modoPinParaRol(rol);
   const [nombre, setNombre] = useState(valorInicial.nombre);
   const [cedula, setCedula] = useState(valorInicial.cedula);
   const [celular, setCelular] = useState(valorInicial.celular ?? '');
@@ -46,14 +53,23 @@ export function FormularioPromotor({
   const pinCalculado = pinDesdeCedula(cedula);
   const cedulaValida = pinCalculado.length === 4;
   const cambioCedula = cedula.trim() !== valorInicial.cedula.trim();
-  const necesitaPinManual = errorPin !== null;
+  const necesitaPinManualColision = modo === 'DESDE_CEDULA' && errorPin !== null;
+
   const puedeGuardar =
     nombre.trim().length > 0 &&
-    cedulaValida &&
     !guardando &&
-    (!necesitaPinManual || pinDesdeCedula(pinManual).length === 4 || pinManual.trim().length === 4);
+    (modo === 'DESDE_CEDULA'
+      ? cedulaValida &&
+        (!necesitaPinManualColision || pinDesdeCedula(pinManual).length === 4 || pinManual.trim().length === 4)
+      : pinManualValido(pinManual) || (pinVigente !== undefined && pinVigente !== null && pinManual.trim() === ''));
 
   function guardar() {
+    const pinAEnviar =
+      modo === 'MANUAL_6_DIGITOS'
+        ? pinManual.trim() || null
+        : necesitaPinManualColision
+          ? pinManual.trim()
+          : null;
     onGuardar(
       {
         nombre: nombre.trim(),
@@ -61,7 +77,7 @@ export function FormularioPromotor({
         celular: celular.trim() || null,
         direccion: direccion.trim() || null,
       },
-      necesitaPinManual ? pinManual.trim() : null
+      pinAEnviar
     );
   }
 
@@ -80,7 +96,7 @@ export function FormularioPromotor({
       </View>
 
       <View style={styles.campo}>
-        <Text style={styles.etiqueta}>Cédula</Text>
+        <Text style={styles.etiqueta}>Cédula{modo === 'MANUAL_6_DIGITOS' ? ' (opcional)' : ''}</Text>
         <TextInput
           style={styles.input}
           value={cedula}
@@ -90,22 +106,23 @@ export function FormularioPromotor({
           keyboardType="number-pad"
           editable={!guardando}
         />
-        {pinVigente && !cambioCedula ? (
-          <Text style={styles.pinAviso}>PIN actual: {pinVigente}</Text>
-        ) : cedulaValida ? (
-          <Text style={styles.pinAviso}>
-            {pinVigente ? 'El PIN va a cambiar a: ' : 'PIN que le va a quedar: '}
-            <Text style={styles.pinValor}>{pinCalculado}</Text>
-          </Text>
-        ) : (
-          <Text style={styles.pinAvisoTenue}>Escribe la cédula completa para ver el PIN.</Text>
-        )}
+        {modo === 'DESDE_CEDULA' &&
+          (pinVigente && !cambioCedula ? (
+            <Text style={styles.pinAviso}>PIN actual: {pinVigente}</Text>
+          ) : cedulaValida ? (
+            <Text style={styles.pinAviso}>
+              {pinVigente ? 'El PIN va a cambiar a: ' : 'PIN que le va a quedar: '}
+              <Text style={styles.pinValor}>{pinCalculado}</Text>
+            </Text>
+          ) : (
+            <Text style={styles.pinAvisoTenue}>Escribe la cédula completa para ver el PIN.</Text>
+          ))}
       </View>
 
-      {necesitaPinManual && (
+      {modo === 'DESDE_CEDULA' && necesitaPinManualColision && (
         <View style={styles.campo}>
           <Text style={styles.etiquetaError}>
-            El PIN {errorPin} ya lo tiene otra persona. Escribe uno distinto (4 dígitos) para este promotor:
+            El PIN {errorPin} ya lo tiene otra persona. Escribe uno distinto (4 dígitos) para esta persona:
           </Text>
           <TextInput
             style={[styles.input, styles.inputError]}
@@ -117,6 +134,25 @@ export function FormularioPromotor({
             maxLength={4}
             editable={!guardando}
           />
+        </View>
+      )}
+
+      {modo === 'MANUAL_6_DIGITOS' && (
+        <View style={styles.campo}>
+          <Text style={styles.etiqueta}>PIN de acceso (6 dígitos)</Text>
+          <TextInput
+            style={[styles.input, errorPin && styles.inputError]}
+            value={pinManual}
+            onChangeText={setPinManual}
+            placeholder={pinVigente ? `PIN actual: ${pinVigente} (deja vacío para no cambiarlo)` : 'Ej. 482913'}
+            placeholderTextColor="#999"
+            keyboardType="number-pad"
+            maxLength={6}
+            editable={!guardando}
+          />
+          {errorPin && (
+            <Text style={styles.etiquetaError}>El PIN {errorPin} ya lo tiene otra persona. Elige otro.</Text>
+          )}
         </View>
       )}
 

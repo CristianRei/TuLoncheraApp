@@ -5,22 +5,31 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { PantallaIngresarPedido } from '@/ui/PantallaIngresarPedido';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function IngresarPedido() {
   const usuario = useRequiereSesion(['ADMIN']);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   if (!usuario) return null;
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={640} style={styles.encabezadoContenido}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.volver}>‹ Inventario</Text>
-          </Pressable>
-          <Text style={styles.titulo}>Ingresar pedido</Text>
+          {!anchaPantalla && (
+            <Pressable onPress={() => router.back()}>
+              <Text style={styles.volver}>‹ Inventario</Text>
+            </Pressable>
+          )}
+          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Ingresar pedido</Text>
         </ContenedorAncho>
       </View>
       <ContenedorAncho anchoMaximo={640} llenarAlto>
@@ -40,6 +49,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoContenido: {
     gap: 4,
   },
@@ -51,6 +65,11 @@ const styles = StyleSheet.create({
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '700',
+  },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
     fontWeight: '700',
   },
 });

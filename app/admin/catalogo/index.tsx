@@ -126,13 +126,20 @@ export default function CatalogoProductos() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={960}>
           <View style={styles.encabezadoFila}>
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Admin</Text>
-            </Pressable>
-            <Text style={styles.titulo}>Catálogo de productos</Text>
+            {!anchaPantalla && (
+              <Pressable onPress={() => router.back()}>
+                <Text style={styles.volver}>‹ Admin</Text>
+              </Pressable>
+            )}
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Catálogo de productos</Text>
             <Pressable
               style={styles.botonNuevo}
               onPress={() => router.push('/admin/catalogo/nuevo')}
@@ -142,12 +149,14 @@ export default function CatalogoProductos() {
           </View>
           <View style={styles.encabezadoAcciones}>
             <Pressable onPress={() => router.push('/admin/catalogo/categorias')}>
-              <Text style={styles.enlaceEncabezado}>Gestionar categorías</Text>
+              <Text style={anchaPantalla ? styles.enlaceEncabezadoAncho : styles.enlaceEncabezado}>
+                Gestionar categorías
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => (modoSeleccion ? salirDeSeleccion() : setModoSeleccion(true))}
             >
-              <Text style={styles.enlaceEncabezado}>
+              <Text style={anchaPantalla ? styles.enlaceEncabezadoAncho : styles.enlaceEncabezado}>
                 {modoSeleccion ? 'Cancelar selección' : 'Etiquetar en bloque'}
               </Text>
             </Pressable>
@@ -358,6 +367,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoAcciones: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -365,6 +379,12 @@ const styles = StyleSheet.create({
   },
   enlaceEncabezado: {
     color: '#FFE9E2',
+    fontSize: 12.5,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  enlaceEncabezadoAncho: {
+    color: COLORES.oscuro,
     fontSize: 12.5,
     fontWeight: '600',
     textDecorationLine: 'underline',
@@ -382,6 +402,11 @@ const styles = StyleSheet.create({
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '700',
+  },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
     fontWeight: '700',
   },
   botonNuevo: {

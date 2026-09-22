@@ -3,28 +3,52 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Promotor } from '@/core/tipos';
+import type { Persona, Rol } from '@/core/tipos';
 import { getDb } from '@/db/client';
-import { listarPromotoresCompletos } from '@/db/promotores';
+import { listarPersonalCompleto } from '@/db/personal';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'ACTIVOS' | 'INACTIVOS';
+type FiltroRol = 'TODOS' | Rol;
 
-export default function Promotores() {
+const ETIQUETA_ROL: Record<Rol, string> = {
+  PROMOTOR: 'Promotor',
+  CONDUCTOR: 'Conductor',
+  BODEGA: 'Bodega',
+  ADMIN: 'Administrador',
+};
+
+const OPCIONES_ROL: { valor: FiltroRol; etiqueta: string }[] = [
+  { valor: 'TODOS', etiqueta: 'Todos' },
+  { valor: 'PROMOTOR', etiqueta: 'Promotores' },
+  { valor: 'CONDUCTOR', etiqueta: 'Conductores' },
+  { valor: 'BODEGA', etiqueta: 'Bodega' },
+  { valor: 'ADMIN', etiqueta: 'Admins' },
+];
+
+export default function Personal() {
   const usuario = useRequiereSesion(['ADMIN']);
-  const [promotores, setPromotores] = useState<Promotor[]>([]);
+  const [personal, setPersonal] = useState<Persona[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('ACTIVOS');
+  const [filtroRol, setFiltroRol] = useState<FiltroRol>('TODOS');
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
-  const cargar = useCallback(async (filtroActual: Filtro) => {
+  const cargar = useCallback(async (filtroActual: Filtro, rolActual: FiltroRol) => {
     setCargando(true);
     try {
       const db = await getDb();
-      setPromotores(await listarPromotoresCompletos(db, { incluirInactivos: filtroActual === 'INACTIVOS' }));
+      setPersonal(
+        await listarPersonalCompleto(db, {
+          incluirInactivos: filtroActual === 'INACTIVOS',
+          rol: rolActual === 'TODOS' ? undefined : rolActual,
+        })
+      );
     } finally {
       setCargando(false);
     }
@@ -32,13 +56,13 @@ export default function Promotores() {
 
   useFocusEffect(
     useCallback(() => {
-      cargar(filtro);
-    }, [cargar, filtro])
+      cargar(filtro, filtroRol);
+    }, [cargar, filtro, filtroRol])
   );
 
   if (!usuario) return null;
 
-  const filtrados = promotores.filter((p) => {
+  const filtrados = personal.filter((p) => {
     const termino = busqueda.trim().toLowerCase();
     if (!termino) return true;
     return p.nombre.toLowerCase().includes(termino) || (p.cedula ?? '').includes(termino);
@@ -46,14 +70,21 @@ export default function Promotores() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.encabezadoFila}>
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Admin</Text>
-            </Pressable>
-            <Text style={styles.titulo}>Promotores</Text>
-            <Pressable style={styles.botonNuevo} onPress={() => router.push('/admin/promotores/nuevo')}>
+            {!anchaPantalla && (
+              <Pressable onPress={() => router.back()}>
+                <Text style={styles.volver}>‹ Admin</Text>
+              </Pressable>
+            )}
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Personal</Text>
+            <Pressable style={styles.botonNuevo} onPress={() => router.push('/admin/personal/nuevo')}>
               <Text style={styles.botonNuevoTexto}>+</Text>
             </Pressable>
           </View>
@@ -83,6 +114,19 @@ export default function Promotores() {
               <Text style={[styles.tabTexto, filtro === 'INACTIVOS' && styles.tabTextoActivo]}>Inactivos</Text>
             </Pressable>
           </View>
+          <View style={styles.tabsRol}>
+            {OPCIONES_ROL.map((opcion) => (
+              <Pressable
+                key={opcion.valor}
+                style={[styles.chipRol, filtroRol === opcion.valor && styles.chipRolActivo]}
+                onPress={() => setFiltroRol(opcion.valor)}
+              >
+                <Text style={[styles.chipRolTexto, filtroRol === opcion.valor && styles.chipRolTextoActivo]}>
+                  {opcion.etiqueta}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </ContenedorAncho>
 
@@ -94,10 +138,10 @@ export default function Promotores() {
         <View style={styles.centrado}>
           <Text style={styles.vacio}>
             {busqueda
-              ? 'Ningún promotor coincide con la búsqueda.'
+              ? 'Nadie coincide con la búsqueda.'
               : filtro === 'ACTIVOS'
-                ? 'Todavía no hay promotores registrados.'
-                : 'No hay promotores dados de baja.'}
+                ? 'Todavía no hay personal registrado.'
+                : 'No hay nadie dado de baja.'}
           </Text>
         </View>
       ) : (
@@ -107,9 +151,14 @@ export default function Promotores() {
             keyExtractor={(p) => p.id}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
-              <Pressable style={styles.fila} onPress={() => router.push(`/admin/promotores/${item.id}`)}>
+              <Pressable style={styles.fila} onPress={() => router.push(`/admin/personal/${item.id}`)}>
                 <View style={styles.filaTexto}>
-                  <Text style={styles.filaNombre}>{item.nombre}</Text>
+                  <View style={styles.filaNombreFila}>
+                    <Text style={styles.filaNombre}>{item.nombre}</Text>
+                    <View style={styles.badgeRol}>
+                      <Text style={styles.badgeRolTexto}>{ETIQUETA_ROL[item.rol]}</Text>
+                    </View>
+                  </View>
                   <Text style={styles.filaDetalle}>
                     {[item.cedula, item.celular].filter(Boolean).join(' · ') || 'Sin datos adicionales'}
                   </Text>
@@ -134,6 +183,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
   encabezadoFila: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -147,6 +201,11 @@ const styles = StyleSheet.create({
   titulo: {
     color: '#FFFFFF',
     fontSize: 17,
+    fontWeight: '700',
+  },
+  tituloAncho: {
+    color: COLORES.oscuro,
+    fontSize: 20,
     fontWeight: '700',
   },
   botonNuevo: {
@@ -201,6 +260,31 @@ const styles = StyleSheet.create({
   tabTextoActivo: {
     color: '#FFFFFF',
   },
+  tabsRol: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  chipRol: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EBD3D3',
+  },
+  chipRolActivo: {
+    backgroundColor: COLORES.primario,
+    borderColor: COLORES.primario,
+  },
+  chipRolTexto: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#666',
+  },
+  chipRolTextoActivo: {
+    color: '#3A2400',
+  },
   centrado: {
     flex: 1,
     alignItems: 'center',
@@ -233,10 +317,28 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
+  filaNombreFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
   filaNombre: {
     fontSize: 15,
     fontWeight: '700',
     color: '#333',
+  },
+  badgeRol: {
+    backgroundColor: '#FBEDED',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeRolTexto: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORES.oscuro,
+    textTransform: 'uppercase',
   },
   filaDetalle: {
     fontSize: 12,

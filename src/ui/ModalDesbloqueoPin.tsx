@@ -9,7 +9,8 @@ import { buscarUsuarioPorPin } from '@/db/usuarios';
 import { CampoPin } from './CampoPin';
 import { COLORES } from './colores';
 
-const LARGO_PIN = 4;
+// Este modal siempre pide el PIN de un ADMIN (6 dígitos, ver src/core/pin.ts).
+const LARGO_PIN = 6;
 
 interface Props {
   visible: boolean;
@@ -92,6 +93,7 @@ export function ModalDesbloqueoPin({
 
           <CampoPin
             pin={pin}
+            largo={LARGO_PIN}
             deshabilitado={verificando}
             colorAcento={COLORES.oscuro}
             intentoFallido={intentoFallido}

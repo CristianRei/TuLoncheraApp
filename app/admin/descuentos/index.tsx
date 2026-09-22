@@ -1,14 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Descuento } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { desactivarDescuento, listarDescuentos } from '@/db/descuentos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'VIGENTES' | 'VENCIDOS';
@@ -32,7 +34,10 @@ export default function Descuentos() {
   const [descuentos, setDescuentos] = useState<Descuento[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('VIGENTES');
   const [cargando, setCargando] = useState(true);
+  const [idParaDesactivar, setIdParaDesactivar] = useState<string | null>(null);
+  const [desactivando, setDesactivando] = useState(false);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -58,31 +63,36 @@ export default function Descuentos() {
     return filtro === 'VIGENTES' ? vigente : !vigente;
   });
 
-  async function desactivar(id: string) {
-    Alert.alert('Desactivar descuento', 'Este descuento dejará de aplicarse de inmediato.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Desactivar',
-        style: 'destructive',
-        onPress: async () => {
-          const db = await getDb();
-          await desactivarDescuento(db, id);
-          await cargar();
-        },
-      },
-    ]);
+  async function confirmarDesactivar() {
+    if (!idParaDesactivar) return;
+    setDesactivando(true);
+    try {
+      const db = await getDb();
+      await desactivarDescuento(db, idParaDesactivar);
+      setIdParaDesactivar(null);
+      await cargar();
+    } finally {
+      setDesactivando(false);
+    }
   }
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
+      <View
+        style={[
+          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
+          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
+        ]}
+      >
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.encabezadoFila}>
-            <Pressable style={styles.volverBoton} onPress={() => router.back()}>
-              <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
-              <Text style={styles.volverTexto}>Admin</Text>
-            </Pressable>
-            <Text style={styles.titulo}>Descuentos</Text>
+            {!anchaPantalla && (
+              <Pressable style={styles.volverBoton} onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
+                <Text style={styles.volverTexto}>Admin</Text>
+              </Pressable>
+            )}
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Descuentos</Text>
             <Pressable style={styles.agregarBoton} onPress={() => router.push('/admin/descuentos/nuevo')}>
               <Ionicons name="add" size={16} color={COLORES_ADMIN.vino} />
               <Text style={styles.agregarTexto}>Nuevo</Text>
@@ -151,7 +161,7 @@ export default function Descuentos() {
                   </Text>
                 </View>
                 {filtro === 'VIGENTES' && (
-                  <Pressable style={styles.botonDesactivar} onPress={() => desactivar(item.id)}>
+                  <Pressable style={styles.botonDesactivar} onPress={() => setIdParaDesactivar(item.id)}>
                     <Text style={styles.botonDesactivarTexto}>Desactivar</Text>
                   </Pressable>
                 )}
@@ -160,6 +170,17 @@ export default function Descuentos() {
           />
         </ContenedorAncho>
       )}
+
+      <ModalConfirmacion
+        visible={idParaDesactivar !== null}
+        titulo="Desactivar descuento"
+        mensaje="Este descuento dejará de aplicarse de inmediato."
+        textoConfirmar="Desactivar"
+        destructivo
+        cargando={desactivando}
+        onConfirmar={confirmarDesactivar}
+        onCancelar={() => setIdParaDesactivar(null)}
+      />
     </View>
   );
 }
@@ -171,6 +192,11 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES_ADMIN.vino,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  encabezadoAncho: {
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -197,6 +223,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: '#FFFFFF',
+  },
+  tituloAncho: {
+    fontSize: 20,
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    color: COLORES_ADMIN.vino,
   },
   agregarBoton: {
     flexDirection: 'row',
