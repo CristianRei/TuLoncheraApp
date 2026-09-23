@@ -18,10 +18,20 @@ del inventario segmentada por promotor.
 Reemplaza a: Loyverse (POS + inventario) y hojas de Excel administrativas.
 
 **Estado actual: app local-first, con un servidor parcial.** SQLite en el
-dispositivo sigue siendo la fuente de verdad para todo — solo turnos y
-comprobantes de transferencia sincronizan a Supabase en background (ver
-ADR 0006). El resto del inventario/ventas sigue 100% local; el diseño ya
-anticipaba esto (ver R6) antes de construirse.
+dispositivo sigue siendo la fuente de verdad para todo, pero casi todo ya
+sincroniza a Supabase en background: turnos, comprobantes de transferencia,
+mensajes/notificaciones push, y el motor completo de inventario/ventas
+(ventas, movimientos, lotes, cargues, conteos, arqueos de caja — ver ADR 0006
+y sección 10). Eso es todo en dirección de SUBIDA (celular → Supabase). La
+dirección contraria (BAJADA, Supabase → celular) ya cubre personal/PINs,
+catálogo (productos/categorías) y los datos OPERATIVOS: el admin ve las
+ventas de los promotores, bodega ve los cargues que admin planea, y una
+RECARGA hecha en bodega llega al inventario del promotor — con Realtime, casi
+al instante (ver sección 10 y 11). Empresas/puntos, eventos (calendario,
+meta diaria) y descuentos siguen sin bajar todavía. Todo esto está probado
+con SQLite y Postgres reales de laboratorio (`npm run test:db`, `npm run
+test:sql`) pero NO con un Supabase real ni con celulares reales: hay que
+correr `supabase/migraciones/0009_sincronizacion_completa.sql` (sección 11).
 
 ---
 
@@ -39,13 +49,14 @@ Términos del negocio. Úsalos tal cual en código, tablas, variables y UI.
 | **Conteo de cierre** | Recuento físico que hace el promotor al terminar el evento. |
 | **Teórico** | Saldo que el sistema calcula. Se compara contra lo contado. |
 | **Descuadre** | Diferencia entre teórico y contado. |
+| **Arqueo de caja** | Conteo manual de efectivo que el promotor hace al cerrar turno, comparado contra el efectivo que el sistema calcula que debería tener (solo ventas en EFECTIVO del turno). Es sobre dinero, no sobre inventario — no genera ningún movimiento ni bloquea nada; cuadre o no, queda solo como registro para que admin lo revise. |
 | **Recibo** | Comprobante **interno** de una venta. Existe para que el promotor no sume a mano y para dejar registro. No tiene valor fiscal ni se reporta a ninguna entidad. |
 | **Promotor** | Persona que vende en el evento. |
 | **Conductor** | Transporta producto y promotores. Hay 2 camiones. |
 | **Bodega** | Rol operativo que alista recargas y recibe devoluciones. |
 | **Cliente** | Persona natural que un promotor registra en campo (nombre, teléfono, dirección, ciudad, empresa, nota). No es un actor del sistema, no inicia sesión — solo se le puede asignar la factura de una venta. |
 | **Categoría** | Clasificación de producto (ej. Galletas, Lácteos). Lista cerrada y administrable por admin, nunca texto libre — para que el filtro del dashboard no se rompa en variantes ("Galleta" vs "galleta"). |
-| **Meta** | Objetivo de venta mensual que un admin le asigna a un promotor o a un punto, comparado contra las ventas reales de ese mes calendario. |
+| **Meta** | Objetivo de venta que un admin le asigna a un promotor o a un punto. Hay dos escalas independientes: **meta diaria** (por promotor, en cada evento/jornada — ej. $1.800.000 o $2.500.000 para hoy) y **meta mensual** (por promotor o por punto, contra el mes calendario). Ambas se comparan contra las ventas reales del período correspondiente, nunca contra un número inventado. |
 
 ---
 
@@ -145,7 +156,8 @@ pasa por una única función**, nunca `if (rol === 'admin')` disperso por la UI.
 | Móvil | React Native + Expo, TypeScript, `expo-router` |
 | Escáner | `expo-camera` (`CameraView` + `onBarcodeScanned`) |
 | Datos | `expo-sqlite` (fuente de verdad local, siempre) |
-| Backend | **Supabase, parcial** (solo turnos + comprobantes de transferencia sincronizan — ver ADR 0006). El resto del inventario/ventas sigue 100% local; no asumir que hay backend para nada más. |
+| Backend | **Supabase, parcial** — de celular a Supabase (subida) sincronizan turnos, comprobantes de transferencia, mensajes/push (sección 10 "Mensajes") y el motor completo de inventario/ventas (ventas, movimientos, lotes, cargues, conteos, arqueos de caja). De Supabase a celular (bajada) sincronizan personal/PINs y catálogo (productos/categorías, sin fotos — sección 11) y los datos operativos (ventas → admin; cargues → bodega y admin; movimientos de inventario → bodega, admin y el promotor dueño), orquestado por `src/sync/bajada.ts`, con **Realtime** de Supabase (`src/sync/realtime.ts`) para que el cambio llegue al instante. Empresas/puntos, eventos y descuentos no sincronizan en ninguna dirección todavía. |
+| Notificaciones push | `expo-notifications` + `expo-device`, llamando directo al servicio de Expo Push desde el dispositivo del admin (`src/sync/push.ts`) — sin servidor propio. Ver sección 10 "Mensajes" para el porqué y el modelo de datos. |
 | Panel admin | **No existe todavía.** Por ahora, pantallas de admin dentro de la misma app móvil. |
 | Build/distribución | EAS Build (`eas.json`) — perfil `preview` genera un `.apk` Android de distribución interna (compartir directo, sin Play Store); `production` genera el `.aab` para Play Store. Requiere cuenta de Expo (`npx eas-cli login`), proyecto vinculado en `@ooojulians-team/tulonchera`. Publicar en Play Store exige además cuenta de Google Play Developer (~$25 USD pago único); iOS no está configurado en `eas.json` todavía — para probar en iPhone sin pagar, usar Expo Go con el dev server (`npx expo start`), igual que en Android. |
 
@@ -169,6 +181,13 @@ build si se agrega un módulo nativo fuera del SDK (por ejemplo impresora térmi
 Bluetooth o lector láser Bluetooth). Probar siempre en dispositivo físico: los
 emuladores no tienen cámara real.
 
+**Excepción importante: push notifications remotas NO funcionan en Expo Go**
+desde el SDK 53 de Expo (limitación de Expo Go, no del código) — hace falta el
+`.apk` de `eas build --profile preview` (o un development build) para
+probarlas de verdad. Notificaciones locales seguirían funcionando en Expo Go,
+pero remotas no. Ver sección 10 "Mensajes" antes de dar por rota esta
+funcionalidad si la prueba fue en Expo Go.
+
 ---
 
 ## 6. Estructura del proyecto
@@ -187,17 +206,20 @@ tulonchera/
     03-decisiones/            ← ADRs numerados, índice en README.md (también sección 10 aquí)
     comercial/propuesta/     ← propuesta técnico-comercial (negocio, no arquitectura)
   app/
-    index.tsx                  ← login: un solo PIN, sin contraseña
+    index.tsx                  ← login: un solo PIN, sin contraseña (Admin: 6 dígitos manual; resto: 4 de la cédula)
     promotor/
       _layout.tsx                 ← envuelve la pila de promotor en VentaEnCursoProvider (qué cliente factura la venta en curso)
-      index.tsx                  ← venta + check-in de turno + menú (calendario, ventas del turno, clientes, conteo, finalizar turno)
+      index.tsx                  ← venta + check-in de turno + menú (calendario, ventas del turno, clientes, conteo, notificaciones, cierre de jornada)
       calendario.tsx               ← calendario propio: qué empresa/punto le toca cada día
       conteo-cierre.tsx             ← conteo de cierre: teórico vs. contado por producto
-      ventas-turno/                  ← listado + detalle de las ventas del turno abierto (con cliente asignado)
-      clientes/                       ← alta y listado de clientes finales; también funciona en "modo selección" (?paraVentaId=) para asignar cliente a una venta ya cerrada
+      cierre-jornada.tsx             ← resumen del día + meta diaria + arqueo de caja; el botón "Cerrar turno" vive aquí, se puede abrir/cerrar en cualquier momento
+      notificaciones.tsx             ← mensajes que el admin le envió como notificación push (solo lectura, marca leído al abrir)
+      ventas-turno/                    ← listado + detalle de las ventas del turno abierto (con cliente asignado)
+      clientes/                         ← alta y listado de clientes finales; también funciona en "modo selección" (?paraVentaId=) para asignar cliente a una venta ya cerrada
     admin/
-      index.tsx                  ← menú de módulos (orden sigue el flujo operativo del día; "Gestionar promotores" siempre al final)
-      calendario/                 ← admin planea eventos: empresa + punto + fecha + promotor(es)
+      _layout.tsx                 ← en pantalla ancha monta BarraSuperiorAdmin + SidebarAdmin fijo; en celular no monta nada (cada pantalla sigue con su propio encabezado)
+      index.tsx                  ← menú de módulos (orden sigue el flujo operativo del día; "Mensajes" siempre al final)
+      calendario/                 ← admin planea eventos: empresa + punto + fecha + promotor(es) + meta de venta diaria por promotor
       cargue/                      ← admin planea cargue (sin tocar inventario); [id] para reducir/quitar líneas
       turnos/                       ← selfie/hora/ubicación de check-in de cada promotor
       ventas/                        ← listado (Activas/Anuladas + filtro Todos los días/Hoy/fecha específica) + detalle de ventas
@@ -209,15 +231,18 @@ tulonchera/
       descuentos/                          ← crear / ver descuentos por producto y/o punto
       dashboard/                            ← KPIs, gráfico circular, ranking de productos, exportar informe, metas del mes + proyección
       analisis/                              ← repetibilidad por punto, rendimiento por promotor, cruces punto×promotor×producto
-      notificaciones/                        ← stock bajo, lote por vencer, cargue a revisar
+      notificaciones/                        ← alertas de negocio: stock bajo, lote por vencer, cargue a revisar (NO son los mensajes push — ver "mensajes/" abajo)
       intentos-pin/                           ← dispositivos bloqueados e intentos fallidos de PIN
-      promotores/                              ← admin contrata (PIN autogenerado de la cédula), edita y da de baja/elimina promotores
-      sync/                                     ← diagnóstico de la cola de sincronización (sin entrada en el menú)
+      personal/                                ← admin contrata (rol + PIN autogenerado o manual para Admin), edita, cambia de rol y da de baja/elimina personal (los 4 roles)
+      mensajes/                                 ← admin envía notificaciones push a Promotor/Bodega (manual o "progreso de meta del día"); ver sección 10 "Mensajes"
+      sync/                                      ← diagnóstico de la cola de sincronización (sin entrada en el menú)
     bodega/
-      index.tsx                  ← menú: ingresar pedido, entregar cargues
+      _layout.tsx                ← mantiene la base local al día con Supabase mientras hay sesión de bodega (cargues, movimientos) — ver src/ui/useSincronizacionEnVivo.ts
+      index.tsx                  ← menú: ingresar pedido, entregar cargues, notificaciones
       pedido.tsx                  ← ingresar pedido (mismo componente que antes vivía en index)
       cargues/                     ← lista de cargues planeados + [id] para ejecutar línea por línea
-    _layout.tsx                 ← migra la DB al arrancar, arranca el motor de sync, envuelve en SesionProvider
+      notificaciones.tsx            ← mensajes que el admin le envió como notificación push (mismo concepto que promotor/notificaciones.tsx)
+    _layout.tsx                 ← migra la DB al arrancar, arranca el motor de sync, configura el manejador de notificaciones push, envuelve en SesionProvider
   src/
     core/                       ← lógica de dominio, SIN dependencias de React ni Expo
       auth/                       ← modo de login (promotor/admin/bodega) → roles permitidos
@@ -226,12 +251,16 @@ tulonchera/
       calendario/                    ← TEMPORADAS_2026 (Navidad, Semana Santa, vacaciones, fechas especiales)
       descuentos/                   ← aplicarDescuento + su test
       dinero/                        ← formatearPesos / parsearPesos
+      errores/                        ← mensajeDeError: extrae un mensaje legible de un Error de JS o de un PostgrestError de supabase-js (objeto plano, no `instanceof Error`)
       eventos/                        ← calcularOcurrencias (series recurrentes del calendario) + property test
       inventario/                      ← calcularSaldosPorProducto + su property test
-      seguridadPin/                     ← backoff/bloqueo de PIN
-      tipos/                              ← tipos de dominio compartidos
+      pin/                              ← modoPinParaRol (Admin: manual 6 dígitos; resto: derivado de cédula), pinDesdeCedula, pinManualValido — única fuente de verdad de la regla de PIN por rol
+      seguridadPin/                      ← backoff/bloqueo de PIN
+      tipos/                                ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0022, versionadas, nunca se editan una vez aplicadas
+      migraciones/                ← 0001 a 0026, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`)
+      arqueos.ts                   ← registra y lee el arqueo de caja de un turno (una fila por turno)
+      arqueosRemotos.ts             ← lectura desde Supabase, para cuando el turno no se abrió en este dispositivo
       cargues.ts                   ← planear/reducir/entregar cargue (cabecera + líneas)
       cargue.ts                     ← RECARGA real bodega→promotor, usado por cargues.ts
       analisis.ts                    ← trae líneas de venta con contexto, envuelve core/analisis
@@ -240,27 +269,44 @@ tulonchera/
       conteos.ts                        ← conteo de cierre
       descuentos.ts                      ← reglas de descuento + resolución del vigente
       empresas.ts / puntos.ts             ← empresas cliente y sus puntos
-      eventos.ts                           ← calendario de eventos + punto vigente del promotor (por fecha)
-      metas.ts                              ← metas de venta mensuales por promotor/punto + progreso real
-      promotores.ts                          ← alta/edición/baja (activo=0)/eliminación real (protegida por FK) de promotores
-      turnos.ts                               ← check-in/check-out, evento del día del promotor
-      exportarCierreTurno.ts                   ← PDF de cierre de turno (expo-print)
-      turnosRemotos.ts / comprobantesRemotos.ts ← lecturas desde Supabase para admin
-      syncCola.ts                                ← encola tareas para el motor de sync
+      eventos.ts                           ← calendario de eventos + punto vigente del promotor (por fecha) + meta diaria por (evento, promotor)
+      mensajes.ts                           ← enviarMensajes/descargarMensajesNuevos/listarMensajesRecibidos/marcarMensajeLeido — mensajes push, ver sección 10 "Mensajes"
+      metas.ts                               ← metas de venta MENSUALES por promotor/punto + progreso real
+      metasDiarias.ts                         ← progreso de la meta DIARIA por promotor con evento asignado (distinta escala que metas.ts)
+      personal.ts                              ← alta/edición/cambio de rol/baja (activo=0)/eliminación real (protegida por FK) de personal (los 4 roles)
+      turnos.ts                                 ← check-in/check-out, evento del día del promotor
+      exportarCierreTurno.ts                     ← PDF de cierre de turno (expo-print)
+      turnosRemotos.ts / comprobantesRemotos.ts   ← lecturas desde Supabase para admin
+      syncCola.ts                                  ← encola tareas para el motor de sync y pide una subida inmediata (~700 ms) tras cada una
+      syncEstado.ts                                 ← cursores de descarga (`_sync_estado`): último `subido_ts` ya bajado por tipo de dato
+      bajadaOperativa.ts                             ← descarga ventas / movimientos / cargues desde Supabase a la base local (cursor + traducción de ids)
+      mapeoRemoto.ts                                  ← traduce ids entre dispositivos por clave natural: producto por sku, persona por id/nombre, ubicación por (tipo, responsable)
     sync/                       ← cliente Supabase, motor de sync en background (ver ADR 0006); credenciales se validan perezosamente (`requerirCredenciales`), nunca al importar el módulo
+      push.ts                     ← registrarPushToken (permiso + token de Expo Push, tras login) y enviarNotificacionesPush (POST directo al servicio de Expo)
+      bajada.ts                   ← `descargarDatosDeAdmin` (personal → categorías → productos, en el orden que exigen las FK locales; solo Promotor/Bodega, nunca admin) y `sincronizarDatosRemotos` (una vuelta completa según el rol: además los datos operativos, sin solaparse, y avisa a las pantallas)
+      realtime.ts                 ← `suscribirCambiosRemotos`: canal Realtime de Supabase (postgres_changes) que solo AVISA que una tabla cambió
+      eventosDatos.ts             ← bus interno "llegaron datos nuevos a la base local" (sin React; el hook está en src/ui/useVersionDatos.ts)
     ui/                         ← componentes y hooks compartidos (sí usan React/Expo)
       ContenedorAncho.tsx         ← centra contenido con ancho máximo en tablet/pantalla ancha
       useEsPantallaAncha.ts        ← breakpoint 768px, lo usan Admin y Bodega
-      tema.ts                       ← paleta + tipografía del rediseño (Stitch) de menú admin/dashboard
+      tema.ts                       ← paleta + tipografía del rediseño (Stitch) de menú admin/dashboard/calendario
       colores.ts                     ← paleta + tipografía propia de promotor (COLORES, TIPOGRAFIA_PROMOTOR)
       TarjetaModulo.tsx               ← tarjeta de módulo del menú admin, usa tema.ts
-      CalendarioRango.tsx              ← calendario de mes, reusado para "Rango personalizado" (dashboard), fecha específica (Ventas) y un solo día
-      calendarioGrilla.ts               ← grilla de mes compartida por CalendarioRango/calendario de eventos
-      FormularioProducto.tsx             ← nombre/precio/código + selector de categoría ("+ Nueva" inline) + marca con autocompletado
-      FormularioPromotor.tsx              ← nombre/cédula (PIN en vivo)/celular/dirección, revela PIN manual si hay choque
-      VentaEnCursoContext.tsx              ← qué cliente factura el carrito que el promotor está armando ahora mismo
-      graficas/                              ← GraficoLinea/GraficoBarrasHorizontales/GraficoDispersion/GraficoCircular/MapaCalor (react-native-svg, sin librería de charts), usados en Análisis y Dashboard
+      BarraSuperiorAdmin.tsx           ← barra fija superior de admin en pantalla ancha (logo + cerrar sesión)
+      SidebarAdmin.tsx                  ← sidebar fijo de admin en pantalla ancha, generado desde modulosAdmin.ts
+      modulosAdmin.ts                    ← los módulos reales de administración — única fuente de verdad, usada por el menú principal y por SidebarAdmin
+      useSincronizacionEnVivo.ts           ← hook de layout: descarga al entrar, al recibir un aviso Realtime, y cada 45 s de respaldo
+      useVersionDatos.ts                    ← `useRecargarConDatosNuevos(fn)`: una pantalla se recarga sola cuando llegan datos nuevos de Supabase
+      ModalConfirmacion.tsx               ← reemplaza Alert.alert para confirmaciones de 2 botones (Alert.alert no tiene UI en React Native Web)
+      CalendarioRango.tsx                  ← calendario de mes, reusado para "Rango personalizado" (dashboard), fecha específica (Ventas) y un solo día
+      calendarioGrilla.ts                   ← grilla de mes compartida por CalendarioRango/calendario de eventos
+      FormularioProducto.tsx                 ← nombre/precio/código + selector de categoría ("+ Nueva" inline) + marca con autocompletado
+      FormularioPersona.tsx                   ← nombre/rol/cédula (PIN en vivo según el rol)/celular/dirección, revela PIN manual si hay choque
+      VentaEnCursoContext.tsx                  ← qué cliente factura el carrito que el promotor está armando ahora mismo
+      graficas/                                  ← GraficoLinea/GraficoBarrasHorizontales/GraficoDispersion/GraficoCircular/MapaCalor (react-native-svg, sin librería de charts), usados en Análisis y Dashboard
   supabase/                    ← SQL de Supabase (tablas, RLS, Storage) — se aplica a mano, ver supabase/README.md
+  scripts/prueba-db/           ← `npm run test:db`: migraciones + flujos de src/db contra SQLite real y un Supabase falso, incluido el escenario de 3 dispositivos admin/bodega/promotor (ver sección 9, punto 7)
+  scripts/prueba-sql/          ← `npm run test:sql`: corre supabase/migraciones/0001 y 0009 contra un Postgres real en memoria (PGlite) — nuevo y con 0003-0008 ya aplicadas; comprueba idempotencia, triggers, RLS y Realtime
   assets/
   eas.json                    ← perfiles de EAS Build: "preview" (.apk interno), "production" (.aab)
   eslint.config.js            ← eslint-config-expo, `npm run lint`
@@ -286,17 +332,42 @@ allá con el mismo nivel de detalle).
 usuarios          (id, nombre, rol, activo, pin, cedula[opcional],
                    celular[opcional], direccion[opcional])
                   ← cedula/celular/direccion desde la 0022, gestión en
-                    app/admin/promotores/. El PIN de un promotor se deriva
-                    de los últimos 4 dígitos de su cedula (nunca se pide a
-                    mano, salvo choque con otro PIN ya en uso — el índice
-                    único de PIN, migración 0003, es global entre todos los
-                    roles). "Dar de baja" = activo=0 + pin=NULL (libera el
-                    PIN). Solo un promotor sin ninguna venta/turno/cargue/
+                    app/admin/personal/ para los 4 roles (Promotor, Conductor,
+                    Bodega, Admin). El PIN sigue una regla POR ROL
+                    (src/core/pin/index.ts, `modoPinParaRol`): Promotor/
+                    Conductor/Bodega derivan el PIN de los últimos 4 dígitos
+                    de su cédula (nunca se pide a mano, salvo choque con otro
+                    PIN ya en uso); Admin usa un PIN manual de 6 dígitos, sin
+                    relación con la cédula. El índice único de PIN (migración
+                    0003) es global entre todos los roles, sin importar el
+                    modo. "Dar de baja" = activo=0 + pin=NULL (libera el
+                    PIN). Solo una persona sin ninguna venta/turno/cargue/
                     conteo/evento asociado admite además un DELETE real
                     ("Eliminar definitivamente"), protegido de verdad por
                     PRAGMA foreign_keys=ON (src/db/client.ts) — nunca asumir
                     que ese mismo DELETE es seguro para otra tabla sin la
-                    misma protección real.
+                    misma protección real. Nota: Conductor todavía NO tiene
+                    ninguna pantalla propia en la app (`ModoLogin` solo
+                    admite PROMOTOR/ADMIN/BODEGA, src/core/auth/) — se puede
+                    contratar y asignarle rol, pero no puede iniciar sesión
+                    todavía; eso es un hueco pendiente, no un bug de esta
+                    sesión. Sincroniza en las DOS direcciones desde la
+                    migración de Supabase 0006 (única tabla de esta lista con
+                    bajada construida, ver sección 11): cada alta/edición/
+                    cambio de rol/baja en app/admin/personal/ sube a Supabase
+                    (src/db/personal.ts, encolarSync), y Promotor/Bodega
+                    descargan ese personal al fallar un login o al abrir su
+                    pantalla de inicio (src/db/usuarios.ts,
+                    `descargarUsuariosNuevos`) — nunca el dispositivo de
+                    admin, que ya es la fuente de verdad local de esta tabla.
+                    El PIN casi nunca viaja por la red: para roles
+                    DESDE_CEDULA se recalcula en cada dispositivo a partir de
+                    `cedula` (`src/core/pin`, `pinParaSincronizar`/
+                    `pinDesdeDescarga`) — solo viaja de verdad para ADMIN o
+                    un override manual por colisión, riesgo aceptado y
+                    documentado ahí mismo. "Eliminar definitivamente" hace
+                    también un DELETE remoto best-effort (fuera de la cola de
+                    sync, ver `eliminarPersonaPermanente`).
 ubicaciones       (id, tipo[BODEGA|CAMION|PROMOTOR], nombre, responsable_id)
                   ← BODEGA es una sola fila (singleton); cada promotor tiene
                     la suya. Ambas se crean perezosamente, no por migración.
@@ -337,9 +408,15 @@ eventos           (id, empresa_id, punto_id, fecha, estado[PLANEADO|EN_CURSO|
                     corregido por la 0014). El punto vigente del promotor se
                     resuelve por fecha (evento de hoy), no por estado manual.
                     Calendario: app/admin/calendario/, app/promotor/calendario.tsx.
-evento_promotores (evento_id, promotor_id)                    ← N-a-N, en uso desde la 0014.
-                  Reemplaza la columna promotor_id directa — un evento puede
-                  tener varios promotores (lo usual es uno solo).
+evento_promotores (evento_id, promotor_id, meta_diaria[opcional])  ← N-a-N, en uso
+                  desde la 0014. Reemplaza la columna promotor_id directa — un
+                  evento puede tener varios promotores (lo usual es uno solo).
+                  `meta_diaria` (Pesos, desde la 0023) es la meta de venta de
+                  ESE día para ESE promotor en ESE evento — ver glosario
+                  "Meta" y app/admin/mensajes/. Independiente de la meta
+                  MENSUAL (tabla `metas`, más abajo): un promotor puede tener
+                  las dos al mismo tiempo, un promotor puede cumplir la del
+                  día y no la del mes o viceversa.
 series_recurrencia (id, frecuencia[DIAS|SEMANAS|MESES|ANIOS], intervalo,
                    fecha_desde, fecha_hasta, ts_cliente, dispositivo_id)
                   ← en uso desde la 0014. Solo trazabilidad de una serie
@@ -353,6 +430,20 @@ turnos            (id UUID PK, promotor_id, selfie_uri, latitud[opcional],
                     abierto hoy, el promotor no puede vender ni bodega puede
                     entregarle cargue (ver ADR 0008). Sincroniza a Supabase
                     (ADR 0006) — el trigger remoto solo permite tocar hora_fin.
+arqueos_caja      (id UUID PK, turno_id[único], promotor_id, efectivo_teorico,
+                   efectivo_contado, diferencia, total_transferencia,
+                   total_libranza, ts_cliente, dispositivo_id)
+                  ← en uso desde la 0024. Una sola fila por turno (índice
+                    único en turno_id) — se crea junto con `finalizarTurno`,
+                    ver app/promotor/cierre-jornada.tsx. `diferencia` es
+                    `efectivo_contado - efectivo_teorico`, calculada al
+                    guardar, nunca recibida del cliente. Es sobre dinero, no
+                    inventario — R1/R2 no aplican, no genera ningún
+                    `movimiento`. Sincroniza a Supabase (subida, mismo motor
+                    que ventas/movimientos — ver sección "Sincronización del
+                    motor de inventario/ventas" más abajo) para que admin lo
+                    vea desde `app/admin/turnos/[id].tsx` sin importar en qué
+                    dispositivo se cerró el turno.
 movimientos       (id UUID PK, tipo, producto_id, lote_id, cantidad,
                    ubicacion_origen_id, ubicacion_destino_id, evento_id[opcional],
                    usuario_id, motivo, ts_cliente, dispositivo_id)
@@ -426,24 +517,44 @@ cargue_lineas     (id UUID PK, cargue_id, producto_id, cantidad_planeada,
                     línea por línea — ahí nace el RECARGA real. REVISAR si la
                     cantidad física no alcanza lo planeado, con motivo
                     obligatorio, sin bloquear las demás líneas del cargue.
-_sync_pendiente   (id UUID PK, tabla[turnos|comprobantes_venta], entidad_id,
-                   tipo_tarea[FILA|FOTO], intentos, ultimo_error[opcional],
-                   creado_ts, completado_ts[opcional])
+_sync_pendiente   (id UUID PK, tabla[turnos|comprobantes_venta|ventas|
+                   movimientos|lotes|cargues|conteos|arqueos_caja|usuarios|
+                   productos|categorias], entidad_id, tipo_tarea[FILA|FOTO], intentos,
+                   ultimo_error[opcional], creado_ts, completado_ts[opcional])
                   ← en uso desde la 0016 (ver ADR 0006). Cola de subida a
                     Supabase, drenada en background por src/sync/motor.ts —
                     nunca bloquea ninguna pantalla. completado_ts IS NULL es
                     lo pendiente real; una tarea completada nunca se borra.
 metas             (id UUID PK, tipo[PROMOTOR|PUNTO], entidad_id, mes["AAAA-MM"],
                    monto_objetivo, creado_por, ts_cliente, dispositivo_id)
-                  ← en uso desde la 0021. Meta de venta mensual por promotor o
-                    por punto, ver app/admin/dashboard/ ("Metas del mes").
-                    Una sola fila por (tipo, entidad_id, mes) — índice único;
+                  ← en uso desde la 0021. Meta de venta MENSUAL por promotor o
+                    por punto, ver app/admin/dashboard/ ("Metas del mes") —
+                    distinta de la meta DIARIA (`evento_promotores.meta_diaria`,
+                    más arriba, ver también src/db/metasDiarias.ts). Una sola
+                    fila por (tipo, entidad_id, mes) — índice único;
                     `establecerMeta` es upsert, "editar una meta" es volver a
                     guardarla. `entidad_id` es polimórfico (usuarios o
                     puntos según tipo), por eso NO tiene FK — al eliminar un
                     promotor de verdad, sus metas se borran a mano primero
                     (si no, quedarían huérfanas sin que ninguna restricción
                     lo evite).
+mensajes_recibidos (id UUID PK, destinatario_id, cuerpo, tipo[MANUAL|META_PROGRESO],
+                   remitente_nombre, ts_cliente, leida)
+                  ← en uso desde la 0023. Espejo LOCAL de solo lectura de los
+                    mensajes push que un admin envió (ver app/admin/mensajes/,
+                    src/db/mensajes.ts) — el mensaje real vive en Supabase
+                    (`mensajes` + `mensaje_destinatarios`, tiene que viajar
+                    entre dispositivos, R5/R6 no alcanzan) y se descarga acá
+                    para que la pantalla de Notificaciones de Promotor/Bodega
+                    funcione sin conexión después del primer sync.
+                    `destinatario_id` existe también en local (no solo en
+                    Supabase) porque en `__DEV__` varios roles pueden
+                    convivir en la misma base de un solo dispositivo.
+_sync_estado      (clave PK, valor)
+                  ← en uso desde la 0026. Cursores de la bajada de datos
+                    operativos: `ventas`, `cargues`, `movimientos:BODEGA`,
+                    `movimientos:PROMOTOR:<id>` → último `subido_ts` (hora del
+                    servidor, la fija un trigger en Supabase) ya descargado.
 niveles_objetivo  (promotor_id, producto_id, cantidad, actualizado_ts)        ← sin usar todavía
 intentos_pin_fallidos (id UUID PK, dispositivo_id, modo, ts_cliente)          ← en uso
 desbloqueos_pin       (id UUID PK, dispositivo_id, modo, admin_id, ts_cliente) ← en uso
@@ -490,8 +601,8 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 - **"Eliminar" casi siempre es `activo=0`, nunca DELETE.** Productos y
   categorías siguen ese patrón porque pueden estar en uso en filas ya
   guardadas. Las únicas dos excepciones son clientes (no son parte del libro
-  de inventario, R1/R2 no aplican) y un promotor **sin ningún historial
-  real** (ver sección 10, "Gestionar promotores") — en ese segundo caso la
+  de inventario, R1/R2 no aplican) y una persona de personal **sin ningún
+  historial real** (ver sección 10, "Gestionar personal") — en ese segundo caso la
   seguridad la da `PRAGMA foreign_keys = ON` (activado en `src/db/client.ts`,
   real de verdad, no solo documentación): el DELETE falla solo si todavía
   hay una fila que lo referencia. No asumas esa misma protección para una
@@ -517,12 +628,24 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
    primero y revisar `git log` por commits que no reconozcas antes de asumir
    que el estado local es el actual — puede haber cambiado por fuera de esta
    sesión.
-7. **Antes de dar una tarea por terminada**, corre las cuatro verificaciones:
+7. **Antes de dar una tarea por terminada**, corre las verificaciones:
    `npx tsc --noEmit`, `npm test` (property tests de `src/core`, `node --test`),
    `npm run lint` (ESLint, `eslint-config-expo` — configurado desde
-   `86957cf`), y `npx expo export --platform android` como smoke test de
-   bundling (no hay emulador con cámara real, así que esto no reemplaza
-   probar en dispositivo físico, pero sí detecta errores de compilación).
+   `86957cf`), `npx expo export --platform android` como smoke test de
+   bundling, y — si tocaste `src/db/`, migraciones o la cola de sync —
+   **`npm run test:db`** (`scripts/prueba-db/`): corre las migraciones y los
+   flujos de negocio (vender, contar, cargar, arqueo, bajada del catálogo y
+   personal) contra SQLite REAL (`node:sqlite`, Node ≥ 22.5) con un Supabase
+   falso, y compara lo que se sube contra las columnas de
+   `supabase/migraciones/*.sql`; y — si tocaste `supabase/migraciones/` —
+   **`npm run test:sql`** (el SQL contra un Postgres real en memoria).
+   `tsc`/lint/bundle NO detectan errores de
+   esquema: un `CHECK` viejo en `_sync_pendiente` (0016) hizo fallar toda
+   venta en el celular sin que ninguna de las otras verificaciones avisara —
+   corregido en la migración 0025. Al agregar una tabla a la cola, una
+   restricción o una función de `src/db`, agrega el caso a
+   `scripts/prueba-db/prueba.mjs`. Nada de esto reemplaza probar en
+   dispositivo físico contra un Supabase real.
 8. **`git push` requiere pedir confirmación cada vez**, aunque se haya
    aprobado antes en la misma conversación — no es un permiso permanente.
 
@@ -530,25 +653,34 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 
 ## 10. Roadmap
 
-**Estado: Fase 2-4 en curso (Fase 1 completa), Fase 5 con primera rebanada
-construida (solo turnos/comprobantes), Fase 6 bastante avanzada (dashboard,
-análisis, categorías, metas de venta).**
+**Estado: Fase 1 y 3 completas, Fase 2 y 4 en curso (Fase 2 bloqueada solo
+por R7, ver sección 11), Fase 5 con tres rebanadas de SUBIDA construidas
+(turnos/comprobantes, mensajes push, y el motor de inventario/ventas
+completo) y la BAJADA ya construida para personal/PINs, catálogo y datos
+operativos (ventas, cargues, movimientos) con Realtime — ver más abajo;
+faltan empresas/puntos, eventos y descuentos —, Fase 6 bastante avanzada
+(dashboard, análisis, categorías, metas de venta diaria y mensual).**
 
 | Fase | Alcance | Estado |
 |---|---|---|
 | 1 | Base local: SQLite, migraciones, catálogo de productos, usuarios y roles, escáner funcionando | ✅ |
 | 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | ✅ Recarga, saldos y conteo de cierre listos. Falta solo la aprobación de descuadres de R7 (bloqueada por el umbral sin definir, ver sección 11) |
-| 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | 🔄 Venta, recibo interno, comprobante de transferencia, clientes finales y asignación de factura a cliente listos; falta arqueo |
+| 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | ✅ Venta, recibo interno, comprobante de transferencia, clientes finales, asignación de factura a cliente, y arqueo de caja al cerrar turno — completa |
 | 4 | Bodega: cargue por escáner en dos pasos, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega, entrada de inventario, y cargue en dos pasos (admin planea/bodega entrega por escáner) listos; falta niveles objetivo y alertas de vencimiento por producto próximo a vencer (sí existe notificación de cargue a revisar) |
-| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 Primera rebanada: turnos y comprobantes de transferencia sincronizan a Supabase (ADR 0006). El resto del motor de inventario/ventas sigue 100% local — cada dispositivo tiene sus propias ventas, y eso es a propósito, no un bug (ver nota de "Datos de demo" abajo). Sin panel web todavía |
-| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido (filtros, puntos, descuentos, categorías, gráfico circular, ranking de productos, exportar informe, metas de venta con proyección de cierre) y sección Análisis (repetibilidad/rendimiento/cruces) listos; recomendador de recarga sigue sin construir |
+| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 SUBIDA (celular → Supabase) completa para turnos, comprobantes de transferencia, mensajes push y todo el motor de inventario/ventas (ventas/venta_items/movimientos/lotes/cargues/conteos/arqueos_caja). BAJADA (Supabase → celular) construida para personal/PINs, catálogo (productos/categorías, sin fotos) y datos operativos (ventas → admin, cargues → bodega/admin, movimientos → bodega/admin/promotor) — falta empresas/puntos, eventos (con meta diaria), descuentos y conteos hacia admin. **Realtime** construido (ventas, cargues, movimientos): el admin ve una venta nueva sin refrescar, bodega ve un cargue apenas se planea. Sin panel web todavía. Nada probado contra un Supabase real ni dispositivos reales |
+| 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido (filtros, puntos, descuentos, categorías, gráfico circular, ranking de productos, exportar informe, metas de venta mensual con proyección de cierre) + meta de venta DIARIA por evento, y sección Análisis (repetibilidad/rendimiento/cruces) listos; recomendador de recarga sigue sin construir |
 
 ### Qué existe hoy, concretamente
 
-- **Login** (`app/index.tsx`): un PIN de 4 dígitos, sin contraseña en ningún
-  rol; modo promotor por defecto, botones para entrar como administrador o
-  bodega. Usuarios de prueba solo en `__DEV__` (`src/db/seed.ts`): Admin
-  `0000`, Cristian/promotor `8509`, Bodega `1234`.
+- **Login** (`app/index.tsx`): un PIN sin contraseña en ningún rol — 4 dígitos
+  para Promotor/Bodega, 6 para Admin (`LARGO_PIN`, ver `src/core/pin/`); modo
+  promotor por defecto, botones para entrar como administrador o bodega.
+  Usuarios de prueba solo en `__DEV__` (`src/db/seed.ts`): Admin `000000`,
+  Cristian/promotor `8509`, Bodega `1234`. El arranque de la app
+  (`app/_layout.tsx`) busca al admin de prueba por ese mismo PIN para decidir
+  si siembra los datos de demo (empresas, ventas) — si ese PIN queda
+  desactualizado ahí, la demo deja de aparecer sin ningún error visible; ya
+  pasó una vez (quedó en `'0000'` tras el cambio a 6 dígitos) y se corrigió.
 - **Seguridad de PIN** (`src/core/seguridadPin/`, `src/db/intentosPin.ts`):
   backoff progresivo (3, 8, 20, 45, 90s) tras 3 fallos consecutivos y bloqueo
   duro a los 8, por dispositivo+modo. Un admin desbloquea tecleando su propio
@@ -561,12 +693,11 @@ análisis, categorías, metas de venta).**
   por punto, por categoría, ventas por hora del día en Bogotá (offset fijo
   UTC-5) y top de productos. Filtra por hoy / 7 días / 30 días / rango
   personalizado, y por promotor, punto, categoría, marca, producto y método
-  de pago (combinables). **Ya no se refresca solo** (corrección a una
-  versión anterior de esta nota: hubo un auto-refresh cada 15s, se quitó)
-  — el admin decide cuándo actualizar con el botón "Actualizar", y un
-  contador "hace cuántos minutos" dentro del filtro deja claro que los
-  datos pueden estar desactualizados. Nunca hay sincronización con otros
-  dispositivos (eso es Fase 5, sin construir; ver ADR 0005). Enlace directo
+  de pago (combinables). **No tiene temporizador de refresco** (hubo uno
+  cada 15 s, se quitó) pero **sí se actualiza solo cuando llega una venta
+  nueva de otro dispositivo** (Realtime, `useRecargarConDatosNuevos`) — pedido
+  explícito del usuario: las ventas deben verse "de forma instantánea". El
+  botón "Actualizar" y el contador "hace cuántos minutos" siguen. Enlace directo
   a Ventas para ver recibos. Solo pantalla ancha,
   como el resto de Admin. El valor estimado de bodega solo cuenta productos
   con `costo` capturado — la UI muestra la cobertura (ej. "12 de 123
@@ -717,11 +848,30 @@ análisis, categorías, metas de venta).**
   `app/admin/turnos/`, `src/db/turnos.ts`, migración 0015): antes de poder
   vender, el promotor hace check-in diario (selfie + ubicación GPS,
   ambas obligatorias, con timeout de 15s si el GPS no resuelve) — sin
-  turno abierto hoy, la grilla de venta no se muestra. Botón "Finalizar
-  turno" en el menú del promotor, con aviso (no bloqueo) si no hizo
-  conteo de cierre ese día. El turno se cruza informativamente con el
-  evento del calendario del día (chip visible, nunca bloquea). Ver ADR
-  0006 (sincronización) y 0008 (conexión con calendario/cargue/conteo).
+  turno abierto hoy, la grilla de venta no se muestra. Botón "Cierre de
+  jornada" en el menú del promotor abre esa pantalla (ver bullet de
+  Arqueo de caja abajo) — ahí, no en un Alert, vive el cierre real del
+  turno. El turno se cruza informativamente con el evento del calendario
+  del día (chip visible, nunca bloquea). Ver ADR 0006 (sincronización) y
+  0008 (conexión con calendario/cargue/conteo).
+- **Arqueo de caja** (`app/promotor/cierre-jornada.tsx`, `src/db/arqueos.ts`,
+  `src/db/arqueosRemotos.ts`, migración 0024): pantalla que el promotor
+  puede abrir y cerrar en cualquier momento del día (no solo al terminar)
+  — muestra el resumen del turno (total en transferencia, en libranza, y
+  el efectivo que el sistema calcula que debería tener, reutilizando
+  `obtenerResumenVentas`), el progreso de la meta DIARIA de hoy si tiene
+  una asignada (`obtenerProgresoMetasDiarias`, ver "Meta de venta diaria y
+  Mensajes" más abajo), y un campo para que el promotor escriba el
+  efectivo que contó a mano. El botón "Cerrar turno" al final de la
+  pantalla queda deshabilitado hasta que ese campo tenga un valor —
+  cuadre o no contra el teórico, `diferencia` es solo informativa, nunca
+  bloquea (no es inventario, R1/R2 no aplican). Al cerrar, guarda el
+  arqueo (una sola vez por turno, índice único) y sigue ofreciendo el PDF
+  de cierre como antes. Sincroniza a Supabase (misma cola que ventas/
+  movimientos) para que admin lo vea en `app/admin/turnos/[id].tsx` sin
+  importar en qué dispositivo se cerró el turno — con fallback a lectura
+  remota si el turno no es de ese dispositivo, mismo patrón que ya usaba
+  esa pantalla para el turno mismo.
 - **Comprobante de transferencia** (`src/ui/CobrarModal.tsx`,
   `src/db/ventas.ts`, migración 0015): al cobrar por transferencia, la
   app pide foto del comprobante antes de registrar la venta —
@@ -729,14 +879,51 @@ análisis, categorías, metas de venta).**
   cada venta.
 - **Sincronización con Supabase** (`src/sync/`, `src/db/turnosRemotos.ts`,
   `src/db/comprobantesRemotos.ts`, migración 0016, ADR 0006): primera
-  rebanada de Fase 5 — solo turnos y comprobantes de transferencia (no el
-  motor de inventario/ventas todavía). Cola local (`_sync_pendiente`) que
-  sube en background cada ~2 min o al recuperar red, nunca bloquea la UI.
-  Auth anónima por dispositivo, RLS en Supabase (solo INSERT + el único
-  UPDATE permitido es `hora_fin` de turno). Credenciales en `.env.local`
-  (nunca commiteado, ver `.env.example`); esquema y políticas de Supabase
-  documentados en `supabase/README.md` y `supabase/migraciones/` (se
-  aplican a mano en el dashboard, no hay CLI de Supabase en el repo).
+  rebanada de Fase 5 — turnos y comprobantes de transferencia. Cola local
+  (`_sync_pendiente`) que sube en background cada ~2 min o al recuperar red,
+  nunca bloquea la UI. Auth anónima por dispositivo, RLS en Supabase (solo
+  INSERT + el único UPDATE permitido es `hora_fin` de turno). Credenciales
+  en `.env.local` (nunca commiteado, ver `.env.example`); esquema y
+  políticas de Supabase documentados en `supabase/README.md` y
+  `supabase/migraciones/` (se aplican a mano en el dashboard, no hay CLI de
+  Supabase en el repo).
+- **Sincronización del motor de inventario/ventas** (`src/sync/motor.ts`,
+  `src/db/syncCola.ts`, `src/db/movimientos.ts` — `obtenerMovimientoParaSync`
+  —, `src/db/lotes.ts` — `obtenerLoteParaSync` —, `supabase/migraciones/
+  0004_ventas_movimientos_cargues_conteos.sql`): segunda rebanada de Fase 5,
+  mismo motor y misma cola que turnos/comprobantes (`_sync_pendiente`,
+  `TablaSync` ahora también admite `'ventas' | 'movimientos' | 'lotes' |
+  'cargues' | 'conteos' | 'arqueos_caja'`). Cada venta, movimiento de inventario (incluye
+  `COMPRA_PROVEEDOR` cuando bodega ingresa un pedido, `RECARGA`,
+  `AJUSTE_CONTEO`, `ANULACION_VENTA`), lote con vencimiento, cargue (con sus
+  líneas) y conteo de cierre (con sus líneas) sube a Supabase al crearse o
+  al cambiar de estado — el admin ya no depende de que las ventas/
+  movimientos de otro dispositivo lleguen algún día a SU base local, puede
+  consultarlas directo en Supabase. **Solo dirección de subida** (celular →
+  Supabase, igual que antes): la dirección contraria — que el celular del
+  promotor/bodega reciba lo que el admin crea (usuarios/PINs, catálogo,
+  categorías, empresas/puntos, eventos, descuentos) — sigue sin construir,
+  ver sección 11 "Preguntas abiertas" y la nota en la tabla de Fase 5 más
+  arriba; es un mecanismo distinto (bajada, no subida) y ya hay un primer
+  ejemplo de cómo se vería (`descargarMensajesNuevos`, `src/db/mensajes.ts`).
+  `ubicaciones` tampoco sincroniza (`usuarios`, `productos` y `categorias`
+  sí, en la dirección de bajada — ver el bullet de "Sincronización de
+  bajada" más abajo; las tablas remotas de ventas/movimientos NO se
+  reescribieron para hacer JOIN contra ellas), así que las tablas
+  remotas (`ventas`, `movimientos`, etc.) siguen desnormalizando los
+  nombres legibles (`producto_nombre`, `promotor_nombre`,
+  `ubicacion_origen_tipo`/`nombre`, etc.) en vez de depender de un JOIN que
+  del otro lado no se puede hacer — mismo criterio que ya usaban
+  `turnos`/`comprobantes_venta`. `venta_items` y `conteo_lineas` no tienen
+  tarea propia en la cola: suben junto con su cabecera (`ventas`/`conteos`)
+  en la misma llamada, porque siempre se crean todos a la vez. Para no subir
+  datos falsos, `registrarMovimiento` (el punto común de todo el libro
+  contable) NO encola nada por sí solo — lo hace cada llamador real
+  (`ventas.ts`, `entradasBodega.ts`, `cargue.ts`, `conteos.ts`); los seeds de
+  `__DEV__` (`seedDemo.ts`, `seedInventario.ts`) llaman las mismas funciones
+  pero nunca encolan, así que sus datos de prueba nunca ensucian Supabase.
+  Diagnóstico (qué está pendiente, qué falló y por qué) en `app/admin/sync/`,
+  ya existente, ahora con etiquetas para las tablas nuevas.
 - **Descuentos** (`app/admin/descuentos/`, `src/db/descuentos.ts`,
   `src/core/descuentos/`, migración 0012): admin crea reglas de descuento
   (porcentaje o monto fijo) por producto y/o punto, con vigencia. Se
@@ -862,26 +1049,75 @@ análisis, categorías, metas de venta).**
   coincidían: el calendario iba hasta medianoche del día siguiente sin
   importar la hora real, así que un dato con hora más tardía en el día
   podía aparecer en uno y no en el otro).
-- **Gestionar promotores** (`app/admin/promotores/`, `src/db/promotores.ts`,
-  migración 0022): último módulo del menú de admin. Contratar = llenar
-  nombre completo, cédula, celular y dirección — el PIN se deriva solo de
-  los últimos 4 dígitos de la cédula (`pinDesdeCedula`), nunca se pide a
-  mano, salvo que ese PIN ya esté en uso por otra persona (el índice único
-  de PIN, migración 0003, es global entre todos los roles) — ahí el
-  formulario revela un campo de PIN manual. Editar cédula recalcula el PIN
-  junto con ella (nunca por separado). "Dar de baja" es el mismo patrón
-  `activo=0` de productos (dispara el mismo filtro que ya usa el login y
-  los selectores de cargue/calendario) y además libera el PIN (`pin =
-  NULL`) para que un futuro empleado con la misma cédula no choque con el
-  índice único. Solo una vez dado de baja aparece "Eliminar
-  definitivamente" (DELETE real) — protegido de verdad por `PRAGMA
-  foreign_keys = ON` (activado en `src/db/client.ts`): si el promotor
-  tiene cualquier venta, turno, cargue, conteo o evento asociado, el
-  DELETE falla solo por la restricción de llave foránea y se traduce a un
-  mensaje claro (`PromotorConHistorialError`) — nunca deja datos huérfanos.
-  Solo sirve para un registro de prueba o un error de captura que nunca
-  tuvo actividad real; para cualquiera que ya trabajó, dar de baja es la
-  única opción, y así debe seguir siendo.
+- **Gestionar personal** (`app/admin/personal/`, `src/db/personal.ts`,
+  `src/core/pin/`, migración 0022): contrata, edita, cambia de rol y da de
+  baja/elimina a los 4 roles (Promotor, Conductor, Bodega, Admin) — ya no es
+  solo "promotores", el módulo se generalizó. Contratar = elegir rol +
+  llenar nombre completo, cédula, celular y dirección. El PIN sigue la regla
+  de `modoPinParaRol` (`src/core/pin/index.ts`): Promotor/Conductor/Bodega
+  derivan el PIN de los últimos 4 dígitos de la cédula (`pinDesdeCedula`),
+  nunca se pide a mano salvo choque con otro PIN ya en uso (el índice único
+  de PIN, migración 0003, es global entre todos los roles); Admin usa un PIN
+  manual de 6 dígitos, sin relación con la cédula. Editar cédula recalcula
+  el PIN junto con ella (solo en roles derivados de cédula). Cambiar de rol
+  recalcula el PIN según la regla del rol nuevo (`cambiarRolPersona`) — pasar
+  a un rol derivado de cédula sin tener cédula guardada pide capturarla
+  primero (`CedulaRequeridaError`). "Dar de baja" es el mismo patrón
+  `activo=0` de productos y además libera el PIN (`pin = NULL`) para que una
+  futura persona con la misma cédula no choque con el índice único. Solo una
+  vez dado de baja aparece "Eliminar definitivamente" (DELETE real) —
+  protegido de verdad por `PRAGMA foreign_keys = ON` (`src/db/client.ts`):
+  si la persona tiene cualquier venta, turno, cargue, conteo o evento
+  asociado, el DELETE falla solo por la restricción de llave foránea y se
+  traduce a un mensaje claro (`PersonaConHistorialError`) — nunca deja datos
+  huérfanos. Solo sirve para un registro de prueba o un error de captura que
+  nunca tuvo actividad real; para cualquiera que ya trabajó, dar de baja es
+  la única opción. **Nota:** aunque se le puede asignar el rol Conductor a
+  alguien aquí, Conductor todavía no tiene ninguna pantalla propia en la app
+  (`src/core/auth/`, `ModoLogin` solo admite PROMOTOR/ADMIN/BODEGA) — no
+  puede iniciar sesión ni recibir mensajes push todavía.
+- **Rediseño de Calendario de eventos y sidebar fijo de admin**
+  (`app/admin/_layout.tsx`, `src/ui/SidebarAdmin.tsx`,
+  `src/ui/BarraSuperiorAdmin.tsx`, `src/ui/modulosAdmin.ts`,
+  `app/admin/calendario/`, `app/promotor/calendario.tsx`): en pantalla ancha,
+  admin ahora tiene una barra superior fija (logo + cerrar sesión) y un
+  sidebar fijo a la izquierda con los módulos (`modulosAdmin.ts`, única
+  fuente de verdad compartida con el menú principal) — en celular no cambia
+  nada, cada pantalla sigue con su propio encabezado. El Dashboard pasó a
+  ser la pantalla de entrada de admin en pantalla ancha. Calendario (admin y
+  promotor) se rediseñó y bloquea la edición de eventos en fechas pasadas.
+  `Alert.alert` no tiene UI en React Native Web (limitación conocida, ver
+  sección 5) — Personal, Descuentos y Clientes reemplazaron sus
+  confirmaciones de 2 botones por `src/ui/ModalConfirmacion.tsx`, que sí se
+  puede probar en el navegador.
+- **Meta de venta diaria y Mensajes/notificaciones push**
+  (`app/admin/calendario/`, `app/admin/mensajes/`, `app/promotor/notificaciones.tsx`,
+  `app/bodega/notificaciones.tsx`, `src/db/eventos.ts`, `src/db/metasDiarias.ts`,
+  `src/db/mensajes.ts`, `src/sync/push.ts`, `src/core/errores/`, migración
+  0023, `supabase/migraciones/0003_mensajes.sql`): al planear o editar un
+  evento en el Calendario, admin puede fijar una meta de venta DIARIA por
+  promotor asignado (`evento_promotores.meta_diaria`) — distinta de la meta
+  MENSUAL (`metas`, más arriba). Nuevo módulo admin "Mensajes": envía una
+  notificación push a Promotor o Bodega (texto libre, selección individual
+  dentro del rol) o, con un botón, el progreso de la meta del día de cada
+  promotor que tenga una asignada hoy (`"Ánimo, vas en un X% de tu meta de
+  hoy..."`, `src/db/metasDiarias.ts`). El envío llama DIRECTO al servicio de
+  Expo Push desde el dispositivo del admin (`src/sync/push.ts`) — sin
+  servidor propio, mismo espíritu que el resto de la sincronización (ADR
+  0006). El mensaje se guarda en Supabase (`mensajes` + `mensaje_destinatarios`,
+  fan-out uno por destinatario) porque tiene que viajar entre dispositivos;
+  cada destinatario descarga un espejo local (`mensajes_recibidos`) para
+  poder revisar sus notificaciones sin conexión, en una pantalla nueva
+  "Notificaciones" agregada al menú de Promotor y Bodega. **Conductor queda
+  fuera por ahora** (no tiene pantalla propia, ver nota de "Gestionar
+  personal" arriba). **Limitación importante de plataforma:** las push
+  notifications remotas NO funcionan en Expo Go desde el SDK 53 de Expo —
+  hace falta el `.apk` de `eas build --profile preview` (o un development
+  build) para probarlas de verdad; ver sección 5. Antes de que esto sirva de
+  verdad hay que correr `supabase/migraciones/0003_mensajes.sql` a mano en
+  el dashboard de Supabase (igual que 0001) — sin eso, el envío falla con un
+  error visible ("no se encontró la tabla…") pero no rompe el resto de la
+  app.
 - **Validación de credenciales de Supabase, perezosa en vez de al
   arrancar** (`src/sync/config.ts`, `src/sync/supabaseClient.ts`): antes,
   si faltaba `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY` en
@@ -891,10 +1127,113 @@ análisis, categorías, metas de venta).**
   del intento de sincronizar), así que la app entera funciona sin
   `.env.local` — la sincronización de turnos/comprobantes simplemente
   queda pendiente, visible en `app/admin/sync/` (diagnóstico ya existente).
+- **Sincronización de bajada — personal/PINs** (`src/db/personal.ts`,
+  `src/db/usuarios.ts` — `descargarUsuariosNuevos` —, `src/core/pin`,
+  `app/index.tsx`, `app/promotor/index.tsx`, `app/bodega/index.tsx`,
+  `supabase/migraciones/0006_usuarios.sql`): primera rebanada de la
+  dirección de BAJADA (Supabase → celular, ver sección 11) — hasta ahora todo
+  lo sincronizado subía nada más. Cada alta/edición/cambio de rol/baja de
+  personal (`app/admin/personal/`) sube a Supabase igual que las demás
+  tablas (misma cola `_sync_pendiente`); el DELETE real de "eliminar
+  definitivamente" no pasa por la cola (esa asume que la fila local sigue
+  ahí) — hace un DELETE remoto best-effort aparte. Promotor y Bodega
+  descargan ese personal: si un PIN no se encuentra al loguear, se intenta
+  una descarga fresca antes de rendirse (resuelve el caso "lo contraté hoy y
+  no puede entrar"), y también cada vez que abren su pantalla de inicio (para
+  que una baja o un cambio de rol les llegue sin tener que fallar un login
+  primero). El dispositivo de admin NUNCA descarga esta tabla — su base local
+  ya es la fuente de verdad, descargarla ahí podría pisar una edición propia
+  recién hecha que todavía no subió; por eso mismo esta rebanada no necesita
+  resolver conflictos de escritura concurrente. El PIN real casi nunca viaja
+  por la red: para Promotor/Conductor/Bodega (PIN derivado de cédula) cada
+  dispositivo lo recalcula localmente a partir de `cedula` en vez de leerlo
+  de Supabase — importante porque la anon key es pública dentro del `.apk`,
+  así que sin esto cualquiera que la extrajera podría leer el PIN de cada
+  empleado sin tocar ningún celular. Solo viaja de verdad para ADMIN (PIN
+  manual, no derivable) o un override manual por colisión — riesgo aceptado,
+  ver `pinParaSincronizar`/`pinDesdeDescarga` en `src/core/pin`.
+- **Sincronización de bajada — catálogo** (`src/db/productos.ts`,
+  `src/db/categorias.ts`, `src/sync/bajada.ts`,
+  `supabase/migraciones/0007_catalogo.sql`): segunda rebanada de bajada,
+  mismo patrón que personal/PINs. Cada alta/edición/baja/restauración de un
+  producto y cada alta/desactivación de una categoría sube a Supabase (misma
+  cola `_sync_pendiente`, dentro de la misma transacción que el cambio
+  local, incluido "etiquetar en bloque"). Promotor y Bodega descargan
+  categorías y luego productos con `descargarDatosDeAdmin`
+  (`src/sync/bajada.ts`) — orquestador único, también descarga personal; el
+  orden importa porque `productos.categoria_id` es una FK local real
+  (PRAGMA foreign_keys=ON) y un producto que llegara antes que su categoría
+  fallaría al insertarse. Se dispara en los mismos tres puntos que
+  personal: login fallido (solo modo no-admin), pantalla de inicio de
+  Promotor y de Bodega. **Las fotos de producto (`foto_uri`) NO viajan**: es
+  una URI local del dispositivo que la tomó, sin sentido en otro — un
+  producto descargado llega sin foto, igual que uno al que nunca se la
+  tomaron. Cómo/dónde almacenarlas (bucket de Storage, como selfies y
+  comprobantes) se decidió tratar aparte, en detalle. Sin FK remota entre
+  `productos.categoria_id` y `categorias.id` a propósito (cada una tiene su
+  propia tarea en la cola y una FK real bloquearía un producto si la tarea de
+  su categoría falla un momento) — la integridad real la garantiza SQLite
+  local del lado de admin, que es el único que escribe. **Los ids de los 123
+  productos y 7 categorías iniciales son DISTINTOS en cada dispositivo**
+  (migraciones 0005 y 0020 usan `randomUUID()` por dispositivo, con `sku` y
+  `nombre_normalizado` UNIQUE): por eso la bajada NO hace upsert por id sino
+  que reconcilia por clave natural — productos por `sku`, categorías por
+  `nombre_normalizado` (`aplicarProductosRemotos`/`aplicarCategoriasRemotas`)
+  — conservando siempre el id LOCAL (ya lo referencian movimientos,
+  venta_items, etc. con FK real) y traduciendo el `categoria_id` del admin al
+  de cada dispositivo. Consecuencia conocida: `producto_id` en las tablas
+  remotas `ventas`/`movimientos`/etc. es el id local del dispositivo que
+  vendió, no el del admin, para esos 123 productos (los remotos siempre
+  llevan también `producto_nombre`). La solución de fondo sería ids
+  deterministas para los datos iniciales — migración riesgosa sobre
+  dispositivos que ya tienen ventas, no se hizo. Solo se sube un producto/
+  categoría cuando el admin lo crea o edita (los iniciales no se encolan;
+  subir un producto sube antes su categoría). Cada fila se aplica en su
+  propio try/catch: un `sku`/`codigo_barras`/PIN repetido no frena el resto.
+  El login espera como máximo 8 s a esta descarga (R5).
 
-Lo que falta de cada fase (conteo de cierre, arqueo, alistamiento por
-escáner, niveles objetivo, gestión de empresas/eventos, sincronización,
-reportes) sigue sin construirse — no asumir que existe.
+- **Sincronización de bajada — datos operativos y Realtime**
+  (`src/db/bajadaOperativa.ts`, `src/db/mapeoRemoto.ts`, `src/db/syncEstado.ts`,
+  `src/sync/bajada.ts`, `src/sync/realtime.ts`, `src/sync/eventosDatos.ts`,
+  `src/ui/useSincronizacionEnVivo.ts`, `src/ui/useVersionDatos.ts`,
+  `app/admin/_layout.tsx`, `app/bodega/_layout.tsx`, `app/promotor/_layout.tsx`,
+  `supabase/migraciones/0009_sincronizacion_completa.sql`, migraciones
+  locales 0025 y 0026). Antes cada dispositivo solo veía SU propia base:
+  una venta del celular nunca aparecía en el admin del computador, un cargue
+  planeado por admin nunca llegaba a bodega, y una RECARGA hecha en bodega
+  nunca llegaba al inventario del promotor. Ahora, además de subir, cada
+  rol DESCARGA lo que le corresponde: **admin** ventas (con sus ítems),
+  cargues y movimientos de bodega; **bodega** cargues y movimientos de
+  bodega; **promotor** los movimientos de SU ubicación (lo que le entregan).
+  Cursor por `subido_ts` (hora del SERVIDOR, lo fija un trigger; 5 s de
+  solape, todo idempotente) en `_sync_estado`. **Traducción de ids por clave
+  natural** (`mapeoRemoto.ts`) porque los ids de productos iniciales, categorías
+  y ubicaciones difieren por dispositivo: producto por `sku` (las filas
+  remotas ahora llevan `producto_sku`; las viejas sin sku se resuelven por
+  nombre), persona por id y si no por (rol, nombre) y si no un usuario
+  "fantasma" inactivo sin PIN, ubicación por (tipo, responsable). Los
+  movimientos solo se INSERTAN (R2, `INSERT OR IGNORE`), sin lote todavía. Un
+  cargue con cambios propios aún sin subir NO se pisa con la copia remota, y
+  una línea ENTREGADA nunca retrocede (también lo impide un trigger en
+  Supabase). Una anulación de venta nunca se deshace al descargar. **Realtime**
+  (`suscribirCambiosRemotos`, canal `postgres_changes` sobre ventas/cargues/
+  movimientos): solo avisa; la descarga agrupa avisos seguidos (400 ms) y
+  hay una vuelta de respaldo cada 45 s por si Realtime se cae. Al llegar algo,
+  `notificarDatosActualizados` hace que las pantallas abiertas (ventas y
+  dashboard del admin, cargues y stock, cargues de bodega, inventario del
+  promotor) se recarguen solas (`useRecargarConDatosNuevos`). **Subida
+  inmediata:** `encolarSync` pide un drenado ~700 ms después (agrupando
+  tareas), ya no se espera hasta 2 minutos; el temporizador queda de respaldo.
+  Para entregar un cargue, bodega verifica el turno del promotor en Supabase
+  (`hayTurnoAbiertoHoyRemoto`) porque el turno vive en el celular del
+  promotor; sin conexión no puede confirmar. **Antes de que sirva hay que
+  correr `supabase/migraciones/0009_sincronizacion_completa.sql`** (ver
+  sección 11) — script único e idempotente que además crea las tablas de
+  mensajes (su ausencia daba "Could not find the table 'public.mensajes'").
+
+Lo que falta de cada fase (aprobación de descuadres R7, niveles objetivo,
+alertas de vencimiento, bajada de empresas/puntos/eventos/descuentos, panel
+web, recomendador de recarga) sigue sin construirse — no asumir que existe.
 
 ### Decisiones registradas (`docs/03-decisiones/`, [índice completo](docs/03-decisiones/README.md))
 
@@ -938,6 +1277,49 @@ semanas de operación en paralelo. Si la app falla en un evento, ese día no se 
 
 No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 
+- [x] ~~Falta la sincronización en dirección de BAJADA para personal/PINs~~
+      — **resuelta el 2026-09-23**: contratar a alguien en "Gestionar
+      personal" y que pueda iniciar sesión en su propio celular ya funciona
+      en producción (ver sección 10, bullet "Sincronización de bajada —
+      personal/PINs", y `supabase/migraciones/0006_usuarios.sql`).
+- [x] ~~BAJADA del catálogo (productos/categorías)~~ — **construida el
+      2026-09-23** (sección 10, bullet "Sincronización de bajada —
+      catálogo", `supabase/migraciones/0007_catalogo.sql`), sin fotos.
+- [x] ~~Realtime y bajada de datos operativos (ventas → admin, cargues →
+      bodega, movimientos → promotor/bodega/admin)~~ — **construidos el
+      2026-09-23** tras probar el usuario con celular + computador (sección
+      10, bullet "Sincronización de bajada — datos operativos y Realtime").
+- [ ] **Sigue faltando la BAJADA para el resto de lo que crea admin**:
+      empresas/puntos, eventos del calendario (incluida la meta diaria) y
+      descuentos — un punto nuevo o un evento planeado por admin no le llega
+      al celular del promotor. Sin eventos, el promotor no ve su calendario
+      ni se resuelve su punto vigente (y por tanto tampoco descuentos ni meta
+      diaria) desde SU celular; y una venta llega al admin SIN punto (el
+      punto no existe allá). Mismo patrón: se agrega cada tabla a
+      `descargarDatosDeAdmin` (`src/sync/bajada.ts`) en orden de dependencia
+      (empresas → puntos → eventos/descuentos). También pendiente: conteos
+      de cierre hacia admin (hoy el admin no ve los conteos hechos en el
+      celular; las líneas ya suben con `producto_sku`), lotes en movimientos,
+      y fotos de comprobante/selfie de ventas descargadas.
+- [ ] **Fotos de producto**: qué se almacena y dónde (probablemente un bucket
+      privado de Storage, como `selfies-turnos`/`comprobantes-venta`), cómo
+      se suben desde admin y cómo las descargan Promotor/Bodega. El usuario
+      pidió tratarlo aparte, en detalle, después de terminar la bajada de
+      las tablas — hoy `foto_uri` es local y no viaja.
+- [ ] **Correr `supabase/migraciones/0009_sincronizacion_completa.sql`** en
+      el SQL Editor de Supabase (después de 0001 y 0002, una sola vez; es
+      idempotente, se puede repetir). Reúne 0003-0008 y agrega columnas de
+      clave natural, triggers de `subido_ts`, protección de cargues y
+      Realtime. Sin esto: "Could not find the table 'public.mensajes'", las
+      ventas no suben y Realtime no avisa.
+- [ ] **Nada de la sincronización se ha probado contra un Supabase real con
+      dos dispositivos.** Todo verificado hasta ahora es `tsc`/tests/lint/
+      bundle (y lectura del código). Antes de darla por buena: correr en
+      `0009` en el SQL editor, y probar a mano el flujo completo (admin
+      crea → otro dispositivo lo recibe).
+      Sí está probado con SQLite real (`npm run test:db`): migraciones,
+      flujos de negocio, y que cada fila subida coincida con las columnas de
+      los `.sql` — lo que NO cubre es Supabase real, RLS, ni red.
 - [ ] ¿Cuál es el umbral en pesos para aprobación de descuadres? El conteo
       de cierre (sección 10) ya calcula y registra el descuadre por
       producto en cada conteo — falta esto para poder bloquear la siguiente
@@ -961,8 +1343,12 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
       puede calcular margen (sección 4: "ver costos y márgenes"). Ver ADR 0003.
 - [ ] ¿El promotor debería poder ver/editar sus propios datos de contacto
       (celular, dirección), o eso queda exclusivamente en manos de admin
-      como está hoy (`app/admin/promotores/`)? Hoy el promotor no tiene
+      como está hoy (`app/admin/personal/`)? Hoy el promotor no tiene
       ninguna pantalla para verse a sí mismo en el sistema.
+- [ ] ¿Cuándo se le construye a Conductor su propia pantalla/login? Ya se le
+      puede asignar el rol y contratarlo desde "Gestionar personal", pero
+      `ModoLogin` (`src/core/auth/`) todavía no lo admite — no puede iniciar
+      sesión, ni recibir mensajes push (sección 10, "Mensajes").
 **Resuelto:** Bodega ya tiene función propia — "ingresar pedido" (escanear
 + teclear cantidad). Ver `src/ui/PantallaIngresarPedido.tsx`.
 
@@ -985,9 +1371,15 @@ etiqueta no funciona.
 
 - No escribir columnas de stock. Ver R1.
 - No usar `AUTOINCREMENT` como clave primaria de tablas de dominio. Ver R3.
-- No asumir que el inventario/ventas ya sincronizan — solo turnos y
-  comprobantes de transferencia lo hacen (ver ADR 0006). No extender la
-  sincronización a otras tablas sin decidirlo explícitamente primero.
+- No asumir que TODO sincroniza: empresas/puntos, eventos, descuentos y
+  `ubicaciones` siguen 100% locales, y las fotos de producto tampoco viajan
+  (ver sección 10 y 11 para qué sí sincroniza y en qué dirección). No
+  extender la sincronización a otras tablas sin decidirlo explícitamente
+  primero. Nunca correr la bajada de personal/catálogo
+  (`descargarDatosDeAdmin`, `src/sync/bajada.ts`) en el dispositivo de admin
+  — pisaría ediciones propias que todavía no subieron. Los datos operativos
+  (ventas, cargues, movimientos) SÍ bajan al admin: no los crea él, y donde
+  hay escritura compartida (cargues) no se pisan cambios propios pendientes.
 - No usar `AsyncStorage` para datos de inventario. Va en SQLite.
 - No dispersar checks de permisos por la UI. Ver sección 4.
 - No instalar `expo-barcode-scanner`. Está deprecado.
