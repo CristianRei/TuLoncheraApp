@@ -5,7 +5,9 @@ import type { Cargue, CargueLinea } from '@/core/tipos';
 
 import { registrarCargue, StockInsuficienteError } from './cargue';
 import { obtenerSaldosBodega } from './inventario';
+import { encolarSync } from './syncCola';
 import { obtenerTurnoAbiertoHoy } from './turnos';
+import { hayTurnoAbiertoHoyRemoto } from './turnosRemotos';
 
 export { StockInsuficienteError };
 
@@ -92,6 +94,8 @@ export async function crearCargue(
         [Crypto.randomUUID(), id, item.productoId, item.cantidad, ahora, dispositivoId]
       );
     }
+
+    await encolarSync(db, { tabla: 'cargues', entidadId: id, tipoTarea: 'FILA' });
   });
 
   const creado = await obtenerCargue(db, id);
@@ -170,8 +174,8 @@ export async function reducirLineaCargue(
   db: SQLiteDatabase,
   datos: { lineaId: string; nuevaCantidad: number }
 ): Promise<void> {
-  const fila = await db.getFirstAsync<{ estado: CargueLinea['estado'] }>(
-    'SELECT estado FROM cargue_lineas WHERE id = ?',
+  const fila = await db.getFirstAsync<{ estado: CargueLinea['estado']; cargue_id: string }>(
+    'SELECT estado, cargue_id FROM cargue_lineas WHERE id = ?',
     [datos.lineaId]
   );
   if (!fila) throw new Error('Esta línea de cargue ya no existe.');
@@ -181,12 +185,13 @@ export async function reducirLineaCargue(
 
   if (datos.nuevaCantidad <= 0) {
     await db.runAsync('DELETE FROM cargue_lineas WHERE id = ?', [datos.lineaId]);
-    return;
+  } else {
+    await db.runAsync('UPDATE cargue_lineas SET cantidad_planeada = ? WHERE id = ?', [
+      datos.nuevaCantidad,
+      datos.lineaId,
+    ]);
   }
-  await db.runAsync('UPDATE cargue_lineas SET cantidad_planeada = ? WHERE id = ?', [
-    datos.nuevaCantidad,
-    datos.lineaId,
-  ]);
+  await encolarSync(db, { tabla: 'cargues', entidadId: fila.cargue_id, tipoTarea: 'FILA' });
 }
 
 async function actualizarEstadoCargueSiCompleto(db: SQLiteDatabase, cargueId: string): Promise<void> {
@@ -241,7 +246,19 @@ export async function confirmarLineaCargue(
   if (!cargue) throw new Error('El cargue de esta línea ya no existe.');
 
   const turnoAbierto = await obtenerTurnoAbiertoHoy(db, cargue.promotor_id);
-  if (!turnoAbierto) throw new SinTurnoParaCargueError();
+  if (!turnoAbierto) {
+    // El turno vive en el celular del promotor: bodega no lo tiene en su base
+    // local, así que se le pregunta a Supabase.
+    let hayTurnoRemoto = false;
+    try {
+      hayTurnoRemoto = await hayTurnoAbiertoHoyRemoto(cargue.promotor_id);
+    } catch {
+      throw new Error(
+        'No se pudo verificar si el promotor inició turno hoy (sin conexión). Inténtalo de nuevo cuando tengas señal.'
+      );
+    }
+    if (!hayTurnoRemoto) throw new SinTurnoParaCargueError();
+  }
 
   if (entregada > 0) {
     await registrarCargue(
@@ -262,6 +279,7 @@ export async function confirmarLineaCargue(
   );
 
   await actualizarEstadoCargueSiCompleto(db, linea.cargue_id);
+  await encolarSync(db, { tabla: 'cargues', entidadId: linea.cargue_id, tipoTarea: 'FILA' });
 }
 
 /** Admin resuelve una línea REVISAR (ej. apareció el producto) generando el RECARGA restante. */
@@ -316,4 +334,5 @@ export async function resolverLineaEnRevision(
   );
 
   await actualizarEstadoCargueSiCompleto(db, linea.cargue_id);
+  await encolarSync(db, { tabla: 'cargues', entidadId: linea.cargue_id, tipoTarea: 'FILA' });
 }

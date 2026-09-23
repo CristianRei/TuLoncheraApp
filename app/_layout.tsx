@@ -21,9 +21,17 @@ import { aplicarMigracionesPendientes } from '@/db/migraciones';
 import { sembrarUsuariosDePrueba } from '@/db/seed';
 import { sembrarDatosDemo } from '@/db/seedDemo';
 import { reforzarStockBodega, sembrarInventarioDePrueba } from '@/db/seedInventario';
+import { registrarDisparadorSync } from '@/db/syncCola';
 import { buscarUsuarioPorPin } from '@/db/usuarios';
 import { drenarColaSync } from '@/sync/motor';
+import { configurarManejoNotificaciones } from '@/sync/push';
 import { SesionProvider } from '@/ui/SesionContext';
+
+// Para que una notificación push muestre banner + sonido incluso con la app
+// abierta en primer plano (el comportamiento por defecto la muestra solo en
+// segundo plano/cerrada) — ver src/sync/push.ts. Se registra una sola vez,
+// antes de montar cualquier pantalla.
+configurarManejoNotificaciones();
 
 // Sync periódica, no tiempo real (decisión ya tomada) — cada 2 minutos
 // mientras la app está en foreground basta para "el admin ve datos con
@@ -56,7 +64,7 @@ export default function RootLayout() {
         const dispositivoId = await getDispositivoId(db);
         if (__DEV__) {
           await sembrarUsuariosDePrueba(db, dispositivoId);
-          const admin = await buscarUsuarioPorPin(db, '0000', ['ADMIN']);
+          const admin = await buscarUsuarioPorPin(db, '000000', ['ADMIN']);
           const promotor = await buscarUsuarioPorPin(db, '8509', ['PROMOTOR']);
           if (admin && promotor) {
             await sembrarInventarioDePrueba(db, admin.id, promotor.id, promotor.nombre, dispositivoId);
@@ -90,6 +98,9 @@ export default function RootLayout() {
     if (!estado.listo) return;
 
     drenarColaSync();
+    // Cada `encolarSync` pide una subida enseguida (unos cientos de ms) en vez
+    // de esperar al intervalo — así una venta llega al admin casi al instante.
+    registrarDisparadorSync(drenarColaSync);
     const cancelarNetInfo = NetInfo.addEventListener((red) => {
       if (red.isConnected && red.isInternetReachable !== false) {
         drenarColaSync();
@@ -98,6 +109,7 @@ export default function RootLayout() {
     const intervalo = setInterval(drenarColaSync, INTERVALO_SYNC_MS);
 
     return () => {
+      registrarDisparadorSync(null);
       cancelarNetInfo();
       clearInterval(intervalo);
     };

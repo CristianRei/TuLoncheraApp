@@ -15,6 +15,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 const ETIQUETAS_ESTADO: Record<Cargue['estado'], string> = {
   PLANEADO: 'Planeado',
@@ -61,6 +62,7 @@ export default function PantallaCargue() {
       cargarBase();
     }, [cargarBase])
   );
+  useRecargarConDatosNuevos(cargarBase);
 
   if (!usuario) return null;
   const usuarioActual = usuario;

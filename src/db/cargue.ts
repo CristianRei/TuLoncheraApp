@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { obtenerSaldosBodega } from './inventario';
 import { registrarMovimiento } from './movimientos';
+import { encolarSync } from './syncCola';
 import { obtenerOCrearUbicacionBodega, obtenerOCrearUbicacionPromotor } from './ubicaciones';
 
 interface ItemCargue {
@@ -55,7 +56,7 @@ export async function registrarCargue(
     );
 
     for (const item of itemsConCantidad) {
-      await registrarMovimiento(
+      const movimientoId = await registrarMovimiento(
         db,
         {
           tipo: 'RECARGA',
@@ -67,6 +68,7 @@ export async function registrarCargue(
         },
         dispositivoId
       );
+      await encolarSync(db, { tabla: 'movimientos', entidadId: movimientoId, tipoTarea: 'FILA' });
     }
   });
 }

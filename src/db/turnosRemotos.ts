@@ -1,3 +1,4 @@
+import { fechaHoyBogota } from '@/core/analitica';
 import type { Turno } from '@/core/tipos';
 import { getSupabaseClient } from '@/sync/supabaseClient';
 
@@ -13,6 +14,27 @@ interface FilaTurnoRemoto {
 }
 
 const DURACION_URL_FIRMADA_SEGUNDOS = 60 * 60; // 1 hora — coherente con "sync periódica, no tiempo real"
+
+/**
+ * ¿Ese promotor tiene un turno abierto hoy, en CUALQUIER dispositivo? El turno
+ * vive en el celular del promotor — el de bodega nunca lo tiene localmente,
+ * así que para entregarle un cargue hay que preguntarle a Supabase. Lanza si
+ * no hay conexión (el llamador decide qué hacer).
+ */
+export async function hayTurnoAbiertoHoyRemoto(promotorId: string): Promise<boolean> {
+  const supabase = await getSupabaseClient();
+  const desde = new Date(`${fechaHoyBogota()}T00:00:00-05:00`).toISOString();
+  const { data, error } = await supabase
+    .from('turnos')
+    .select('id')
+    .eq('promotor_id', promotorId)
+    .is('hora_fin', null)
+    .gte('hora_inicio', desde)
+    .limit(1)
+    .returns<{ id: string }[]>();
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
 
 /**
  * Turnos subidos desde CUALQUIER dispositivo (incluido este). Resuelve la

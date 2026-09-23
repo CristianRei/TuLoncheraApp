@@ -70,6 +70,7 @@ export interface Persona {
   direccion: string | null;
   pin: string | null;
   activo: boolean;
+  tsCliente: string;
 }
 
 export interface Ubicacion {
@@ -94,6 +95,7 @@ export interface Producto {
   unidadEmpaque: number;
   fotoUri: string | null;
   activo: boolean;
+  tsCliente: string;
 }
 
 /** Categoría de producto, administrable por los admins — ver migración 0020. */
@@ -101,6 +103,7 @@ export interface Categoria {
   id: string;
   nombre: string;
   activo: boolean;
+  tsCliente: string;
 }
 
 export interface Empresa {
@@ -129,6 +132,13 @@ export interface Evento {
   fecha: string;
   promotorIds: string[];
   promotorNombres: string[];
+  /**
+   * Meta de venta del día para ese promotor en ese evento (ej. $1.800.000),
+   * distinta de la meta mensual (ver `Meta` más abajo) — un promotor puede
+   * tener las dos a la vez. `null` = sin meta diaria asignada. Indexado por
+   * promotorId, igual orden/cantidad que `promotorIds`.
+   */
+  metaDiariaPorPromotor: Record<string, number | null>;
   estado: EstadoEvento;
   motivoCancelacion: string | null;
   serieId: string | null;
@@ -151,6 +161,27 @@ export interface Turno {
   longitud: number | null;
   horaInicio: string;
   horaFin: string | null;
+}
+
+/**
+ * Arqueo de caja al cerrar turno — ver app/promotor/cierre-jornada.tsx y
+ * migración 0024. Una sola fila por turno (índice único en `turno_id`).
+ * `diferencia` (contado - teórico) es solo informativa: cuadre o no, no
+ * bloquea ni genera ningún movimiento de inventario — el efectivo no es
+ * parte del libro de `movimientos` (R1/R2 no aplican, mismo criterio que
+ * clientes).
+ */
+export interface ArqueoCaja {
+  id: string;
+  turnoId: string;
+  promotorId: string;
+  promotorNombre: string;
+  efectivoTeorico: Pesos;
+  efectivoContado: Pesos;
+  diferencia: Pesos;
+  totalTransferencia: Pesos;
+  totalLibranza: Pesos;
+  tsCliente: string;
 }
 
 export type TipoDescuento = 'PORCENTAJE' | 'MONTO_FIJO';
@@ -282,6 +313,25 @@ export interface Notificacion {
   loteId: string | null;
   leida: boolean;
   tsCliente: string;
+}
+
+/**
+ * Mensaje que un admin envía como notificación push a Promotor/Bodega — ver
+ * app/admin/mensajes/. Nada que ver con `Notificacion` de arriba (esas son
+ * alertas internas del negocio: stock bajo, lotes por vencer). `MANUAL` es
+ * texto libre elegido por el admin; `META_PROGRESO` es el mensaje
+ * autogenerado del botón "Enviar progreso de meta" (ver src/db/metasDiarias.ts).
+ */
+export type TipoMensaje = 'MANUAL' | 'META_PROGRESO';
+
+/** Mensaje recibido, tal como lo ve Promotor/Bodega en su pantalla de Notificaciones. */
+export interface MensajeRecibido {
+  id: string;
+  cuerpo: string;
+  tipo: TipoMensaje;
+  remitenteNombre: string;
+  tsCliente: string;
+  leida: boolean;
 }
 
 /**

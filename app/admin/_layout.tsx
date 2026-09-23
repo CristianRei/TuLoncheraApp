@@ -3,8 +3,10 @@ import { View, StyleSheet } from 'react-native';
 
 import { BarraSuperiorAdmin } from '@/ui/BarraSuperiorAdmin';
 import { SidebarAdmin } from '@/ui/SidebarAdmin';
+import { useSesion } from '@/ui/SesionContext';
 import { COLORES_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { useSincronizacionEnVivo } from '@/ui/useSincronizacionEnVivo';
 
 /**
  * Envuelve toda la sección /admin. En pantalla ancha (tablet/desktop,
@@ -16,6 +18,16 @@ import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
  */
 export default function AdminLayout() {
   const pantallaAncha = useEsPantallaAncha();
+  const { usuario } = useSesion();
+  const esAdmin = usuario?.rol === 'ADMIN';
+
+  // Ventas de los promotores, cargues que bodega entrega y movimientos de la
+  // bodega llegan solos (Realtime) — ver src/ui/useSincronizacionEnVivo.ts.
+  useSincronizacionEnVivo(esAdmin ? usuario.id : null, esAdmin ? 'ADMIN' : null, usuario?.nombre ?? '', [
+    'ventas',
+    'cargues',
+    'movimientos',
+  ]);
 
   if (!pantallaAncha) {
     return <Stack screenOptions={{ headerShown: false }} />;

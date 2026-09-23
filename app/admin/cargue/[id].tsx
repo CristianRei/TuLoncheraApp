@@ -21,6 +21,7 @@ import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 function formatearFecha(tsCliente: string): string {
   return new Date(tsCliente).toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short' });
@@ -52,6 +53,7 @@ export default function DetalleCargue() {
       await cargar();
     })();
   }, [cargar]);
+  useRecargarConDatosNuevos(cargar);
 
   if (!usuario) return null;
   const usuarioActual = usuario;

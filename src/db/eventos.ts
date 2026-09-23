@@ -20,16 +20,27 @@ interface FilaEvento {
 const COLUMNAS_EVENTO = `ev.id, ev.empresa_id, e.nombre as empresa_nombre, ev.punto_id, p.nombre as punto_nombre,
    ev.fecha, ev.estado, ev.motivo_cancelacion, ev.serie_id`;
 
+interface PromotoresDeEvento {
+  ids: string[];
+  nombres: string[];
+  metas: Record<string, number | null>;
+}
+
 async function resolverPromotores(
   db: SQLiteDatabase,
   eventoIds: string[]
-): Promise<Map<string, { ids: string[]; nombres: string[] }>> {
-  const mapa = new Map<string, { ids: string[]; nombres: string[] }>();
+): Promise<Map<string, PromotoresDeEvento>> {
+  const mapa = new Map<string, PromotoresDeEvento>();
   if (eventoIds.length === 0) return mapa;
 
   const marcadores = eventoIds.map(() => '?').join(', ');
-  const filas = await db.getAllAsync<{ evento_id: string; promotor_id: string; promotor_nombre: string }>(
-    `SELECT ep.evento_id, ep.promotor_id, u.nombre as promotor_nombre
+  const filas = await db.getAllAsync<{
+    evento_id: string;
+    promotor_id: string;
+    promotor_nombre: string;
+    meta_diaria: number | null;
+  }>(
+    `SELECT ep.evento_id, ep.promotor_id, u.nombre as promotor_nombre, ep.meta_diaria
      FROM evento_promotores ep
      JOIN usuarios u ON u.id = ep.promotor_id
      WHERE ep.evento_id IN (${marcadores})
@@ -37,17 +48,22 @@ async function resolverPromotores(
     eventoIds
   );
   for (const fila of filas) {
-    const actual = mapa.get(fila.evento_id) ?? { ids: [], nombres: [] };
+    const actual = mapa.get(fila.evento_id) ?? { ids: [], nombres: [], metas: {} };
     actual.ids.push(fila.promotor_id);
     actual.nombres.push(fila.promotor_nombre);
+    actual.metas[fila.promotor_id] = fila.meta_diaria;
     mapa.set(fila.evento_id, actual);
   }
   return mapa;
 }
 
+function vacioPromotoresDeEvento(): PromotoresDeEvento {
+  return { ids: [], nombres: [], metas: {} };
+}
+
 async function aEvento(db: SQLiteDatabase, fila: FilaEvento): Promise<Evento> {
   const promotores = await resolverPromotores(db, [fila.id]);
-  const propios = promotores.get(fila.id) ?? { ids: [], nombres: [] };
+  const propios = promotores.get(fila.id) ?? vacioPromotoresDeEvento();
   return {
     id: fila.id,
     empresaId: fila.empresa_id,
@@ -57,6 +73,7 @@ async function aEvento(db: SQLiteDatabase, fila: FilaEvento): Promise<Evento> {
     fecha: fila.fecha,
     promotorIds: propios.ids,
     promotorNombres: propios.nombres,
+    metaDiariaPorPromotor: propios.metas,
     estado: fila.estado,
     motivoCancelacion: fila.motivo_cancelacion,
     serieId: fila.serie_id,
@@ -69,7 +86,7 @@ async function aEventos(db: SQLiteDatabase, filas: FilaEvento[]): Promise<Evento
     filas.map((f) => f.id)
   );
   return filas.map((fila) => {
-    const propios = promotores.get(fila.id) ?? { ids: [], nombres: [] };
+    const propios = promotores.get(fila.id) ?? vacioPromotoresDeEvento();
     return {
       id: fila.id,
       empresaId: fila.empresa_id,
@@ -79,6 +96,7 @@ async function aEventos(db: SQLiteDatabase, filas: FilaEvento[]): Promise<Evento
       fecha: fila.fecha,
       promotorIds: propios.ids,
       promotorNombres: propios.nombres,
+      metaDiariaPorPromotor: propios.metas,
       estado: fila.estado,
       motivoCancelacion: fila.motivo_cancelacion,
       serieId: fila.serie_id,
@@ -323,6 +341,23 @@ export async function obtenerPuntoVigentePromotor(
     [hoy, promotorId]
   );
   return fila ? aEvento(db, fila) : null;
+}
+
+/**
+ * Fija (o borra, con `null`) la meta de venta del día para un promotor en un
+ * evento puntual — independiente de la meta mensual (src/db/metas.ts).
+ * "Editar" es volver a llamar esto, no hay historial de cambios (mismo
+ * criterio que `establecerMeta`).
+ */
+export async function establecerMetaDiaria(
+  db: SQLiteDatabase,
+  datos: { eventoId: string; promotorId: string; montoObjetivo: number | null }
+): Promise<void> {
+  await db.runAsync('UPDATE evento_promotores SET meta_diaria = ? WHERE evento_id = ? AND promotor_id = ?', [
+    datos.montoObjetivo,
+    datos.eventoId,
+    datos.promotorId,
+  ]);
 }
 
 /** Cuántos promotores distintos tienen un evento de hoy asignado. */

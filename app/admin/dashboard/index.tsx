@@ -61,6 +61,7 @@ import { ModalDetalleSeccion, type SeccionDetalle } from '@/ui/ModalDetalleSecci
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 /** Paleta cíclica para gráficas circulares con más de 3 segmentos (categorías, etc.) — más allá de vino/dorado no hay más colores de marca definidos. */
 const PALETA_CIRCULAR = [
@@ -389,10 +390,18 @@ export default function Dashboard() {
       cargarMetas();
     }, [cargar, cargarDatosFiltro, cargarMetas])
   );
+  // Cuando llega una venta nueva de otro dispositivo (Realtime, ver
+  // src/ui/useSincronizacionEnVivo.ts) los números se actualizan solos, sin
+  // tocar nada — pedido explícito: las ventas deben verse "de forma
+  // instantánea".
+  useRecargarConDatosNuevos(() => {
+    cargar();
+    cargarMetas();
+  });
 
-  // El dashboard ya no se refresca solo — el admin decide cuándo actualizar
-  // (botón de refrescar). Solo se mantiene un contador de "hace cuántos
-  // minutos" para que sea evidente que los datos pueden estar desactualizados.
+  // Ya no hay refresco por temporizador (se quitó el de 15 s) — solo se
+  // actualiza al llegar datos nuevos o cuando el admin toca el botón de
+  // refrescar. Se mantiene el contador de "hace cuántos minutos".
   useEffect(() => {
     const intervaloContador = setInterval(() => {
       setMinutosDesdeActualizacion(Math.floor((Date.now() - ultimaActualizacion.current) / 60000));

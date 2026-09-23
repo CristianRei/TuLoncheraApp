@@ -23,6 +23,7 @@ import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { EscanerCodigoBarras } from '@/ui/EscanerCodigoBarras';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 export default function EntregarCargue() {
   const usuario = useRequiereSesion(['BODEGA']);
@@ -54,6 +55,7 @@ export default function EntregarCargue() {
       cargar();
     }, [cargar])
   );
+  useRecargarConDatosNuevos(cargar);
 
   if (!usuario) return null;
   const usuarioActual = usuario;

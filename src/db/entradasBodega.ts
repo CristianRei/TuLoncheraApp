@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { crearLote } from './lotes';
 import { registrarMovimiento } from './movimientos';
+import { encolarSync } from './syncCola';
 import { obtenerOCrearUbicacionBodega } from './ubicaciones';
 
 interface ItemEntrada {
@@ -29,11 +30,13 @@ export async function registrarEntradaBodega(
     const ubicacionBodega = await obtenerOCrearUbicacionBodega(db, dispositivoId);
 
     for (const item of itemsConCantidad) {
-      const loteId = item.fechaVencimiento
-        ? await crearLote(db, item.productoId, item.fechaVencimiento, dispositivoId)
-        : null;
+      let loteId: string | null = null;
+      if (item.fechaVencimiento) {
+        loteId = await crearLote(db, item.productoId, item.fechaVencimiento, dispositivoId);
+        await encolarSync(db, { tabla: 'lotes', entidadId: loteId, tipoTarea: 'FILA' });
+      }
 
-      await registrarMovimiento(
+      const movimientoId = await registrarMovimiento(
         db,
         {
           tipo: 'COMPRA_PROVEEDOR',
@@ -46,6 +49,7 @@ export async function registrarEntradaBodega(
         },
         dispositivoId
       );
+      await encolarSync(db, { tabla: 'movimientos', entidadId: movimientoId, tipoTarea: 'FILA' });
     }
   });
 }

@@ -68,6 +68,12 @@
       "expo-sharing",
       "expo-audio",
       [
+        "expo-notifications",
+        {
+          "color": "#541212"
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "Tu Lonchera usa tu ubicación para registrar dónde inicias tu turno."

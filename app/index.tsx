@@ -15,7 +15,10 @@ import {
   registrarIntentoFallido,
   registrarLoginExitoso,
 } from '@/db/intentosPin';
+import { encolarPersonalSinSubir } from '@/db/personal';
 import { buscarUsuarioPorPin } from '@/db/usuarios';
+import { descargarDatosDeAdminConLimite } from '@/sync/bajada';
+import { registrarPushToken } from '@/sync/push';
 import { CampoPin } from '@/ui/CampoPin';
 import { FondoFlotante, HaloResplandor } from '@/ui/FondoAnimado';
 import { ModalDesbloqueoPin } from '@/ui/ModalDesbloqueoPin';
@@ -138,8 +141,20 @@ export default function Login() {
       setError(null);
       try {
         const db = await getDb();
-        const usuario = await buscarUsuarioPorPin(db, pin, rolesPermitidosPara(modo));
+        let usuario = await buscarUsuarioPorPin(db, pin, rolesPermitidosPara(modo));
         if (cancelado) return;
+
+        // Si no se encontró y no es modo admin, puede ser personal contratado
+        // después de instalar la app en este celular (ver CLAUDE.md sección
+        // 11) — se intenta una descarga fresca del personal antes de rendirse.
+        // El dispositivo de admin nunca hace esto: su base local ya es la
+        // fuente de verdad de `usuarios`, no la de otro dispositivo.
+        if (!usuario && modo !== 'ADMIN') {
+          await descargarDatosDeAdminConLimite(db, 8000);
+          if (cancelado) return;
+          usuario = await buscarUsuarioPorPin(db, pin, rolesPermitidosPara(modo));
+          if (cancelado) return;
+        }
 
         if (!usuario) {
           await registrarIntentoFallido(db, dispositivoId, modo);
@@ -154,6 +169,18 @@ export default function Login() {
 
         await registrarLoginExitoso(db, dispositivoId, modo);
         iniciarSesion(usuario);
+        // Personal contratado antes de que `usuarios` sincronizara nunca se
+        // encoló — se sube ahora, una sola vez. Nunca en `__DEV__` (los
+        // usuarios de prueba no deben llegar a Supabase).
+        if (!__DEV__ && usuario.rol === 'ADMIN') {
+          encolarPersonalSinSubir(db).catch((errorEncolado) =>
+            console.log('[personal] no se pudo encolar personal existente:', errorEncolado)
+          );
+        }
+        // Nunca bloquea el login (R5): si falla (sin red, permiso negado,
+        // Expo Go sin soporte de push remoto) la persona simplemente no
+        // recibe notificaciones hasta el próximo login — ver src/sync/push.ts.
+        registrarPushToken(usuario, dispositivoId);
         irAHome(usuario.rol);
       } finally {
         if (!cancelado) setVerificando(false);

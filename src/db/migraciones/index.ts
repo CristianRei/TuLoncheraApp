@@ -22,6 +22,10 @@ import { migracion0019Clientes } from './0019_clientes';
 import { migracion0020Categorias } from './0020_categorias';
 import { migracion0021Metas } from './0021_metas';
 import { migracion0022DatosPromotor } from './0022_datos_promotor';
+import { migracion0023MetaDiariaYMensajes } from './0023_meta_diaria_y_mensajes';
+import { migracion0024ArqueosCaja } from './0024_arqueos_caja';
+import { migracion0025ColaSyncTodasLasTablas } from './0025_cola_sync_todas_las_tablas';
+import { migracion0026SyncEstado } from './0026_sync_estado';
 
 export interface Migracion {
   version: number;
@@ -55,6 +59,10 @@ const migraciones: Migracion[] = [
   migracion0020Categorias,
   migracion0021Metas,
   migracion0022DatosPromotor,
+  migracion0023MetaDiariaYMensajes,
+  migracion0024ArqueosCaja,
+  migracion0025ColaSyncTodasLasTablas,
+  migracion0026SyncEstado,
 ];
 
 /**

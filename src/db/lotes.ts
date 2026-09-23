@@ -22,6 +22,39 @@ export async function crearLote(
   return id;
 }
 
+export interface LoteParaSync {
+  id: string;
+  productoId: string;
+  productoNombre: string;
+  fechaVencimiento: string;
+  tsCliente: string;
+}
+
+/** Un lote con el nombre de producto ya resuelto, para subir a Supabase (ver movimientos.ts, mismo motivo). */
+export async function obtenerLoteParaSync(db: SQLiteDatabase, id: string): Promise<LoteParaSync | null> {
+  const fila = await db.getFirstAsync<{
+    id: string;
+    producto_id: string;
+    producto_nombre: string;
+    fecha_vencimiento: string;
+    ts_cliente: string;
+  }>(
+    `SELECT l.id, l.producto_id, p.nombre as producto_nombre, l.fecha_vencimiento, l.ts_cliente
+     FROM lotes l
+     JOIN productos p ON p.id = l.producto_id
+     WHERE l.id = ?`,
+    [id]
+  );
+  if (!fila) return null;
+  return {
+    id: fila.id,
+    productoId: fila.producto_id,
+    productoNombre: fila.producto_nombre,
+    fechaVencimiento: fila.fecha_vencimiento,
+    tsCliente: fila.ts_cliente,
+  };
+}
+
 export interface LoteConVencimiento {
   id: string;
   productoId: string;

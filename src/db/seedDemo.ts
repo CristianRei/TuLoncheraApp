@@ -135,7 +135,7 @@ export async function sembrarDatosDemo(
     if (!producto) continue;
     let categoriaId = categoriaIdPorNombre.get(categoria);
     if (!categoriaId) {
-      categoriaId = (await crearCategoria(db, categoria, dispositivoId)).id;
+      categoriaId = (await crearCategoria(db, categoria, dispositivoId, { sincronizar: false })).id;
       categoriaIdPorNombre.set(categoria, categoriaId);
     }
     await db.runAsync('UPDATE productos SET categoria_id = ?, marca = ? WHERE id = ?', [

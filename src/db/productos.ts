@@ -1,7 +1,10 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { mensajeDeError } from '@/core/errores';
 import type { Pesos, Producto } from '@/core/tipos';
+import { encolarSync } from '@/db/syncCola';
+import { getSupabaseClient } from '@/sync/supabaseClient';
 
 interface FilaProducto {
   id: string;
@@ -18,6 +21,7 @@ interface FilaProducto {
   unidad_empaque: number;
   foto_uri: string | null;
   activo: number;
+  ts_cliente: string;
 }
 
 function aProducto(fila: FilaProducto): Producto {
@@ -36,11 +40,12 @@ function aProducto(fila: FilaProducto): Producto {
     unidadEmpaque: fila.unidad_empaque,
     fotoUri: fila.foto_uri,
     activo: fila.activo === 1,
+    tsCliente: fila.ts_cliente,
   };
 }
 
 const COLUMNAS = `p.id, p.sku, p.codigo_barras, p.nombre, p.categoria_id, c.nombre as categoria_nombre, p.marca,
-   p.es_licor, p.es_perecedero, p.precio, p.costo, p.unidad_empaque, p.foto_uri, p.activo`;
+   p.es_licor, p.es_perecedero, p.precio, p.costo, p.unidad_empaque, p.foto_uri, p.activo, p.ts_cliente`;
 const JOIN_PRODUCTO = 'FROM productos p LEFT JOIN categorias c ON c.id = p.categoria_id';
 
 export async function listarProductos(
@@ -105,22 +110,25 @@ export async function crearProducto(
   // antes de que exista la fila, así que necesitamos poder fijarlo.
   const id = idPredefinido ?? Crypto.randomUUID();
   const ahora = new Date().toISOString();
-  await db.runAsync(
-    `INSERT INTO productos (id, sku, nombre, precio, foto_uri, codigo_barras, marca, categoria_id, activo, ts_cliente, dispositivo_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-    [
-      id,
-      generarSku(),
-      datos.nombre,
-      datos.precio,
-      datos.fotoUri ?? null,
-      datos.codigoBarras ?? null,
-      datos.marca ?? null,
-      datos.categoriaId ?? null,
-      ahora,
-      dispositivoId,
-    ]
-  );
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO productos (id, sku, nombre, precio, foto_uri, codigo_barras, marca, categoria_id, activo, ts_cliente, dispositivo_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      [
+        id,
+        generarSku(),
+        datos.nombre,
+        datos.precio,
+        datos.fotoUri ?? null,
+        datos.codigoBarras ?? null,
+        datos.marca ?? null,
+        datos.categoriaId ?? null,
+        ahora,
+        dispositivoId,
+      ]
+    );
+    await encolarSync(db, { tabla: 'productos', entidadId: id, tipoTarea: 'FILA' });
+  });
   const creado = await obtenerProducto(db, id);
   if (!creado) throw new Error('No se pudo crear el producto');
   return creado;
@@ -167,7 +175,10 @@ export async function actualizarProducto(
   }
   if (columnas.length === 0) return;
 
-  await db.runAsync(`UPDATE productos SET ${columnas.join(', ')} WHERE id = ?`, [...valores, id]);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(`UPDATE productos SET ${columnas.join(', ')} WHERE id = ?`, [...valores, id]);
+    await encolarSync(db, { tabla: 'productos', entidadId: id, tipoTarea: 'FILA' });
+  });
 }
 
 /** Asigna una categoría a varios productos de una vez — para etiquetar en bloque el catálogo ya existente. */
@@ -180,6 +191,7 @@ export async function asignarCategoriaAProductos(
   await db.withTransactionAsync(async () => {
     for (const id of productoIds) {
       await db.runAsync('UPDATE productos SET categoria_id = ? WHERE id = ?', [categoriaId, id]);
+      await encolarSync(db, { tabla: 'productos', entidadId: id, tipoTarea: 'FILA' });
     }
   });
 }
@@ -200,9 +212,143 @@ export async function buscarProductoPorCodigoBarras(
 }
 
 export async function eliminarProducto(db: SQLiteDatabase, id: string): Promise<void> {
-  await db.runAsync('UPDATE productos SET activo = 0 WHERE id = ?', [id]);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE productos SET activo = 0 WHERE id = ?', [id]);
+    await encolarSync(db, { tabla: 'productos', entidadId: id, tipoTarea: 'FILA' });
+  });
 }
 
 export async function restaurarProducto(db: SQLiteDatabase, id: string): Promise<void> {
-  await db.runAsync('UPDATE productos SET activo = 1 WHERE id = ?', [id]);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE productos SET activo = 1 WHERE id = ?', [id]);
+    await encolarSync(db, { tabla: 'productos', entidadId: id, tipoTarea: 'FILA' });
+  });
+}
+
+export interface FilaProductoRemoto {
+  id: string;
+  sku: string;
+  codigo_barras: string | null;
+  nombre: string;
+  categoria_id: string | null;
+  marca: string | null;
+  es_licor: boolean;
+  es_perecedero: boolean;
+  precio: number;
+  costo: number | null;
+  unidad_empaque: number;
+  activo: boolean;
+  ts_cliente: string;
+  dispositivo_id: string;
+}
+
+/**
+ * Aplica a la base local los productos descargados de Supabase.
+ * `idLocalPorIdRemotoDeCategoria` viene de `aplicarCategoriasRemotas`
+ * (src/db/categorias.ts) — traduce el `categoria_id` del admin al id de esa
+ * misma categoría en ESTE dispositivo.
+ *
+ * Se reconcilia por id y, si no hay, por `sku`: los 123 productos iniciales
+ * los crea la migración 0005 con `randomUUID()` distinto en cada
+ * dispositivo (mismo `sku`, ids distintos), y `sku` es UNIQUE — insertar la
+ * fila remota tal cual chocaría. Cuando el match es por `sku` se conserva el
+ * id LOCAL (ya lo referencian movimientos, venta_items, etc. con FK real, no
+ * se puede reescribir). Nunca se toca `foto_uri` (no viaja) ni `sku`. Cada
+ * fila va en su propio try/catch (ej. un `codigo_barras` ya usado por otro
+ * producto local no debe impedir aplicar el resto del catálogo).
+ */
+export async function aplicarProductosRemotos(
+  db: SQLiteDatabase,
+  filas: FilaProductoRemoto[],
+  idLocalPorIdRemotoDeCategoria: Map<string, string>
+): Promise<void> {
+  for (const fila of filas) {
+    try {
+      // Categoría que el admin le puso pero que este dispositivo no conoce
+      // (no llegó en la descarga de categorías): se deja la local como está
+      // en vez de borrarla.
+      const categoriaConocida = fila.categoria_id === null || idLocalPorIdRemotoDeCategoria.has(fila.categoria_id);
+      const categoriaLocal = fila.categoria_id === null ? null : (idLocalPorIdRemotoDeCategoria.get(fila.categoria_id) ?? null);
+
+      const local =
+        (await db.getFirstAsync<{ id: string }>('SELECT id FROM productos WHERE id = ?', [fila.id])) ??
+        (await db.getFirstAsync<{ id: string }>('SELECT id FROM productos WHERE sku = ?', [fila.sku]));
+
+      if (local) {
+        await db.runAsync(
+          `UPDATE productos SET
+             codigo_barras = ?, nombre = ?, marca = ?, es_licor = ?, es_perecedero = ?,
+             precio = ?, costo = ?, unidad_empaque = ?, activo = ?,
+             categoria_id = CASE WHEN ? = 1 THEN ? ELSE categoria_id END
+           WHERE id = ?`,
+          [
+            fila.codigo_barras,
+            fila.nombre,
+            fila.marca,
+            fila.es_licor ? 1 : 0,
+            fila.es_perecedero ? 1 : 0,
+            fila.precio,
+            fila.costo,
+            fila.unidad_empaque,
+            fila.activo ? 1 : 0,
+            categoriaConocida ? 1 : 0,
+            categoriaLocal,
+            local.id,
+          ]
+        );
+      } else {
+        await db.runAsync(
+          `INSERT INTO productos (id, sku, codigo_barras, nombre, categoria_id, marca, es_licor, es_perecedero, precio, costo, unidad_empaque, activo, ts_cliente, dispositivo_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            fila.id,
+            fila.sku,
+            fila.codigo_barras,
+            fila.nombre,
+            categoriaLocal,
+            fila.marca,
+            fila.es_licor ? 1 : 0,
+            fila.es_perecedero ? 1 : 0,
+            fila.precio,
+            fila.costo,
+            fila.unidad_empaque,
+            fila.activo ? 1 : 0,
+            fila.ts_cliente,
+            fila.dispositivo_id,
+          ]
+        );
+      }
+    } catch (error) {
+      console.log(`[productos] no se pudo aplicar "${fila.nombre}" (${fila.sku}):`, mensajeDeError(error));
+    }
+  }
+}
+
+/**
+ * Trae de Supabase el catálogo que el admin haya creado/editado — ver
+ * CLAUDE.md sección 11. Necesita el mapa de categorías de
+ * `descargarCategoriasNuevas` (src/db/categorias.ts), que por eso debe
+ * correr antes (ver `descargarDatosDeAdmin`, src/sync/bajada.ts). No
+ * sincroniza `foto_uri` todavía (queda fuera de esta rebanada): un producto
+ * descargado simplemente no trae foto, igual que uno al que nunca se le tomó
+ * una. Nunca se llama desde el dispositivo de admin, mismo motivo que el
+ * resto de esta dirección.
+ */
+export async function descargarProductosNuevos(
+  db: SQLiteDatabase,
+  idLocalPorIdRemotoDeCategoria: Map<string, string>
+): Promise<void> {
+  try {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .from('productos')
+      .select(
+        'id, sku, codigo_barras, nombre, categoria_id, marca, es_licor, es_perecedero, precio, costo, unidad_empaque, activo, ts_cliente, dispositivo_id'
+      )
+      .returns<FilaProductoRemoto[]>();
+    if (error) throw error;
+    await aplicarProductosRemotos(db, data, idLocalPorIdRemotoDeCategoria);
+  } catch (error) {
+    console.log('[productos] no se pudo descargar el catálogo nuevo:', mensajeDeError(error));
+  }
 }

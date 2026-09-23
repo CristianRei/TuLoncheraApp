@@ -14,19 +14,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import type { SQLiteDatabase } from 'expo-sqlite';
-
 import { formatearPesos } from '@/core/dinero';
 import type { Evento, MetodoPago, Turno } from '@/core/tipos';
-import { obtenerResumenVentas } from '@/db/analitica';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { existeConteoHoy } from '@/db/conteos';
-import { generarPdfCierreTurno } from '@/db/exportarCierreTurno';
 import { guardarFotoComprobante } from '@/db/fotos';
 import { obtenerSaldoProducto, listarInventarioPromotor, type ItemInventario } from '@/db/inventario';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
-import { finalizarTurno, obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
+import { obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { registrarVenta, SinTurnoAbiertoError } from '@/db/ventas';
 import { CobrarModal } from '@/ui/CobrarModal';
 import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
@@ -38,6 +33,7 @@ import { TicketModal } from '@/ui/TicketModal';
 import { useCarrito } from '@/ui/useCarrito';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useVentaEnCurso } from '@/ui/VentaEnCursoContext';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 export default function HomePromotor() {
   const usuario = useRequiereSesion(['PROMOTOR']);
@@ -83,6 +79,11 @@ export default function HomePromotor() {
       }
     }, [usuario, cargarTurno, cargarInventario])
   );
+  // Se recarga sola cuando llega algo nuevo de Supabase (ej. bodega le
+  // entregó un cargue) — ver src/ui/useVersionDatos.ts.
+  useRecargarConDatosNuevos(() => {
+    if (usuario) cargarInventario(usuario.id);
+  });
 
   if (!usuario) return null;
   const usuarioActual = usuario;
@@ -110,62 +111,11 @@ export default function HomePromotor() {
     );
   }
 
-  async function confirmarFinalizarTurno() {
-    if (!turno) return;
-    const db = await getDb();
-    const yaConto = await existeConteoHoy(db, usuarioActual.id);
-
-    Alert.alert(
-      'Finalizar turno',
-      yaConto
-        ? '¿Seguro que quieres terminar tu turno de hoy?'
-        : 'No has hecho tu conteo de cierre hoy. ¿Aun así quieres finalizar turno?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Finalizar',
-          style: 'destructive',
-          onPress: async () => {
-            setTicketVisible(false);
-            setCobrarVisible(false);
-            setEscanerVisible(false);
-            const horaFin = new Date().toISOString();
-            await finalizarTurno(db, { turnoId: turno.id });
-            await cargarTurno(usuarioActual.id);
-            ofrecerDescargarPdf(db, { ...turno, horaFin }, eventoHoy);
-          },
-        },
-      ]
-    );
-  }
-
-  function ofrecerDescargarPdf(db: SQLiteDatabase, turnoCerrado: Turno, evento: Evento | null) {
-    Alert.alert('Turno finalizado', '¿Quieres descargar el comprobante en PDF?', [
-      { text: 'Ahora no', style: 'cancel' },
-      {
-        text: 'Descargar PDF',
-        onPress: async () => {
-          try {
-            const [inventarioFinal, resumenVentas] = await Promise.all([
-              listarInventarioPromotor(db, turnoCerrado.promotorId),
-              obtenerResumenVentas(
-                db,
-                { desde: turnoCerrado.horaInicio, hasta: turnoCerrado.horaFin ?? new Date().toISOString() },
-                { promotorId: turnoCerrado.promotorId }
-              ),
-            ]);
-            await generarPdfCierreTurno({
-              turno: turnoCerrado,
-              eventoHoy: evento,
-              inventario: inventarioFinal,
-              resumenVentas,
-            });
-          } catch {
-            Alert.alert('No se pudo generar el PDF', 'Intenta de nuevo en un momento.');
-          }
-        },
-      },
-    ]);
+  function irACierreDeJornada() {
+    setTicketVisible(false);
+    setCobrarVisible(false);
+    setEscanerVisible(false);
+    router.push('/promotor/cierre-jornada');
   }
 
   function mostrarAvisoEscaner(texto: string) {
@@ -370,11 +320,21 @@ export default function HomePromotor() {
               style={styles.opcionMenu}
               onPress={() => {
                 setMenuVisible(false);
-                confirmarFinalizarTurno();
+                router.push('/promotor/notificaciones');
+              }}
+            >
+              <Ionicons name="notifications-outline" size={20} color={COLORES.oscuro} />
+              <Text style={styles.opcionMenuTexto}>Notificaciones</Text>
+            </Pressable>
+            <Pressable
+              style={styles.opcionMenu}
+              onPress={() => {
+                setMenuVisible(false);
+                irACierreDeJornada();
               }}
             >
               <Ionicons name="exit-outline" size={20} color={COLORES.oscuro} />
-              <Text style={styles.opcionMenuTexto}>Finalizar turno</Text>
+              <Text style={styles.opcionMenuTexto}>Cierre de jornada</Text>
             </Pressable>
             <View style={styles.separadorMenu} />
             <Pressable

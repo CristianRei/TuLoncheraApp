@@ -11,6 +11,7 @@ import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 export default function Inventario() {
   const usuario = useRequiereSesion(['ADMIN']);
@@ -20,19 +21,24 @@ export default function Inventario() {
   const insets = useSafeAreaInsets();
   const anchaPantalla = useEsPantallaAncha();
 
+  const cargarInventario = useCallback(async () => {
+    setCargando(true);
+    try {
+      const db = await getDb();
+      setItems(await listarInventarioBodega(db));
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      (async () => {
-        setCargando(true);
-        try {
-          const db = await getDb();
-          setItems(await listarInventarioBodega(db));
-        } finally {
-          setCargando(false);
-        }
-      })();
-    }, [])
+      cargarInventario();
+    }, [cargarInventario])
   );
+  // El stock de bodega se actualiza solo cuando bodega ingresa un pedido o
+  // entrega un cargue desde otro dispositivo.
+  useRecargarConDatosNuevos(cargarInventario);
 
   async function exportarInventario() {
     setExportando('inventario');

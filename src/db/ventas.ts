@@ -176,7 +176,7 @@ export async function registrarVenta(
          VALUES (?, ?, ?, ?, ?, ?)`,
         [id, item.productoId, item.cantidad, item.precioUnitario, ahora, dispositivoId]
       );
-      await registrarMovimiento(
+      const movimientoId = await registrarMovimiento(
         db,
         {
           tipo: 'VENTA',
@@ -188,7 +188,10 @@ export async function registrarVenta(
         },
         dispositivoId
       );
+      await encolarSync(db, { tabla: 'movimientos', entidadId: movimientoId, tipoTarea: 'FILA' });
     }
+
+    await encolarSync(db, { tabla: 'ventas', entidadId: id, tipoTarea: 'FILA' });
   });
 
   const creada = await obtenerVenta(db, id);
@@ -304,7 +307,7 @@ export async function anularVenta(
     );
 
     for (const item of encontrada.items) {
-      await registrarMovimiento(
+      const movimientoId = await registrarMovimiento(
         db,
         {
           tipo: 'ANULACION_VENTA',
@@ -317,7 +320,11 @@ export async function anularVenta(
         },
         dispositivoId
       );
+      await encolarSync(db, { tabla: 'movimientos', entidadId: movimientoId, tipoTarea: 'FILA' });
     }
+
+    // Re-sube la venta: `anulada`/`motivo_anulacion` cambiaron.
+    await encolarSync(db, { tabla: 'ventas', entidadId: datos.ventaId, tipoTarea: 'FILA' });
   });
 }
 
@@ -333,4 +340,6 @@ export async function asignarClienteAVenta(
   clienteId: string | null
 ): Promise<void> {
   await db.runAsync('UPDATE ventas SET cliente_id = ? WHERE id = ?', [clienteId, ventaId]);
+  // Re-sube la venta: `cliente_nombre` (desnormalizado en Supabase) cambió.
+  await encolarSync(db, { tabla: 'ventas', entidadId: ventaId, tipoTarea: 'FILA' });
 }

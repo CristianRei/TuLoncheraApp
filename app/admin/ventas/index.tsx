@@ -15,6 +15,7 @@ import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 type Filtro = 'ACTIVAS' | 'ANULADAS';
 type FiltroFecha = 'TODOS' | 'HOY' | 'ESPECIFICA';
@@ -88,6 +89,9 @@ export default function Ventas() {
       cargar(filtro, filtroFecha, fechaEspecifica);
     }, [cargar, filtro, filtroFecha, fechaEspecifica])
   );
+  // La lista se actualiza sola cuando llega una venta nueva de otro
+  // dispositivo (Realtime) — ver src/ui/useSincronizacionEnVivo.ts.
+  useRecargarConDatosNuevos(() => cargar(filtro, filtroFecha, fechaEspecifica));
 
   if (!usuario) return null;
 

@@ -9,6 +9,7 @@ import { getDb } from '@/db/client';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 function formatearFecha(ts: string): string {
   return new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
@@ -35,6 +36,7 @@ export default function CarguesPendientesBodega() {
       cargar();
     }, [cargar])
   );
+  useRecargarConDatosNuevos(cargar);
 
   if (!usuario) return null;
 

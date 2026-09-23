@@ -1,8 +1,11 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { mensajeDeError } from '@/core/errores';
 import { modoPinParaRol, pinDesdeCedula, pinManualValido } from '@/core/pin';
 import type { Persona, Rol } from '@/core/tipos';
+import { encolarSync } from '@/db/syncCola';
+import { getSupabaseClient } from '@/sync/supabaseClient';
 
 interface FilaPersona {
   id: string;
@@ -13,9 +16,10 @@ interface FilaPersona {
   direccion: string | null;
   pin: string | null;
   activo: number;
+  ts_cliente: string;
 }
 
-const COLUMNAS = 'id, nombre, rol, cedula, celular, direccion, pin, activo';
+const COLUMNAS = 'id, nombre, rol, cedula, celular, direccion, pin, activo, ts_cliente';
 
 function aPersona(fila: FilaPersona): Persona {
   return {
@@ -27,6 +31,7 @@ function aPersona(fila: FilaPersona): Persona {
     direccion: fila.direccion,
     pin: fila.pin,
     activo: fila.activo === 1,
+    tsCliente: fila.ts_cliente,
   };
 }
 
@@ -74,6 +79,31 @@ function calcularPin(rol: Rol, cedula: string | null, pinManual: string | null |
   return pinDesdeCedula(cedula);
 }
 
+/**
+ * Encola para subir a Supabase al personal que ya existía antes de que
+ * `usuarios` sincronizara (nadie lo encoló nunca — sin esto, alguien contratado
+ * antes no podría iniciar sesión en su propio celular hasta que el admin lo
+ * editara). Idempotente: solo encola a quien no tenga ninguna tarea en la
+ * cola. Excluye ADMIN a propósito: su PIN es manual (no derivable) y viajaría
+ * en claro por la red — solo debe subir cuando el propio admin lo edita
+ * (decisión explícita, ver `pinParaSincronizar`). Se llama solo desde el
+ * dispositivo de admin y solo fuera de `__DEV__` (app/index.tsx): los
+ * usuarios de prueba de `seed.ts` nunca deben llegar a Supabase.
+ */
+export async function encolarPersonalSinSubir(db: SQLiteDatabase): Promise<void> {
+  const pendientes = await db.getAllAsync<{ id: string }>(
+    `SELECT u.id FROM usuarios u
+     WHERE u.rol != 'ADMIN'
+       AND NOT EXISTS (SELECT 1 FROM _sync_pendiente s WHERE s.tabla = 'usuarios' AND s.entidad_id = u.id)`
+  );
+  if (pendientes.length === 0) return;
+  await db.withTransactionAsync(async () => {
+    for (const { id } of pendientes) {
+      await encolarSync(db, { tabla: 'usuarios', entidadId: id, tipoTarea: 'FILA' });
+    }
+  });
+}
+
 export async function listarPersonalCompleto(
   db: SQLiteDatabase,
   opciones: { incluirInactivos?: boolean; rol?: Rol } = {}
@@ -115,21 +145,24 @@ export async function crearPersona(
   if (await pinEnUso(db, pin)) throw new PinDuplicadoError(pin);
 
   const id = Crypto.randomUUID();
-  await db.runAsync(
-    `INSERT INTO usuarios (id, nombre, rol, activo, pin, cedula, celular, direccion, ts_cliente, dispositivo_id)
-     VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
-    [
-      id,
-      datos.nombre,
-      datos.rol,
-      pin,
-      datos.cedula,
-      datos.celular ?? null,
-      datos.direccion ?? null,
-      new Date().toISOString(),
-      dispositivoId,
-    ]
-  );
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO usuarios (id, nombre, rol, activo, pin, cedula, celular, direccion, ts_cliente, dispositivo_id)
+       VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        datos.nombre,
+        datos.rol,
+        pin,
+        datos.cedula,
+        datos.celular ?? null,
+        datos.direccion ?? null,
+        new Date().toISOString(),
+        dispositivoId,
+      ]
+    );
+    await encolarSync(db, { tabla: 'usuarios', entidadId: id, tipoTarea: 'FILA' });
+  });
   const creada = await obtenerPersona(db, id);
   if (!creada) throw new Error('No se pudo crear la persona');
   return creada;
@@ -190,7 +223,10 @@ export async function actualizarPersona(
   }
 
   if (columnas.length === 0) return;
-  await db.runAsync(`UPDATE usuarios SET ${columnas.join(', ')} WHERE id = ?`, [...valores, id]);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(`UPDATE usuarios SET ${columnas.join(', ')} WHERE id = ?`, [...valores, id]);
+    await encolarSync(db, { tabla: 'usuarios', entidadId: id, tipoTarea: 'FILA' });
+  });
 }
 
 /**
@@ -214,12 +250,15 @@ export async function cambiarRolPersona(
   const nuevoPin = calcularPin(nuevoRol, cedula, opciones.nuevoPinManual);
   if (await pinEnUso(db, nuevoPin, id)) throw new PinDuplicadoError(nuevoPin);
 
-  await db.runAsync('UPDATE usuarios SET rol = ?, cedula = ?, pin = ? WHERE id = ?', [
-    nuevoRol,
-    cedula,
-    nuevoPin,
-    id,
-  ]);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE usuarios SET rol = ?, cedula = ?, pin = ? WHERE id = ?', [
+      nuevoRol,
+      cedula,
+      nuevoPin,
+      id,
+    ]);
+    await encolarSync(db, { tabla: 'usuarios', entidadId: id, tipoTarea: 'FILA' });
+  });
   const actualizada = await obtenerPersona(db, id);
   if (!actualizada) throw new Error('Esta persona ya no existe.');
   return actualizada;
@@ -232,7 +271,10 @@ export async function cambiarRolPersona(
  * una futura persona con la misma cédula no choque con el índice único.
  */
 export async function eliminarPersona(db: SQLiteDatabase, id: string): Promise<void> {
-  await db.runAsync('UPDATE usuarios SET activo = 0, pin = NULL WHERE id = ?', [id]);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE usuarios SET activo = 0, pin = NULL WHERE id = ?', [id]);
+    await encolarSync(db, { tabla: 'usuarios', entidadId: id, tipoTarea: 'FILA' });
+  });
 }
 
 export class PersonaConHistorialError extends Error {
@@ -269,5 +311,17 @@ export async function eliminarPersonaPermanente(db: SQLiteDatabase, id: string):
       throw new PersonaConHistorialError();
     }
     throw error;
+  }
+
+  // El DELETE real no pasa por `_sync_pendiente` (esa cola asume que la fila
+  // local todavía existe para poder leerla y subirla) — se intenta borrar en
+  // Supabase directo, best-effort, igual que `marcarMensajeLeido`. Si la fila
+  // nunca llegó a subir (se creó y se borró rápido), el DELETE remoto
+  // simplemente no afecta ninguna fila.
+  try {
+    const supabase = await getSupabaseClient();
+    await supabase.from('usuarios').delete().eq('id', id);
+  } catch (error) {
+    console.log('[personal] no se pudo borrar en remoto:', mensajeDeError(error));
   }
 }

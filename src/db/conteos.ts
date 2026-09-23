@@ -7,6 +7,7 @@ import type { Conteo, ConteoLinea } from '@/core/tipos';
 import { obtenerSaldosPromotor } from './inventario';
 import { registrarMovimiento } from './movimientos';
 import { obtenerProductosPorIds } from './productos';
+import { encolarSync } from './syncCola';
 import { obtenerOCrearUbicacionPromotor } from './ubicaciones';
 
 interface LineaContada {
@@ -108,7 +109,7 @@ export async function registrarConteo(
 
       if (diferencia === 0) continue;
 
-      await registrarMovimiento(
+      const movimientoId = await registrarMovimiento(
         db,
         {
           tipo: 'AJUSTE_CONTEO',
@@ -121,7 +122,10 @@ export async function registrarConteo(
         },
         dispositivoId
       );
+      await encolarSync(db, { tabla: 'movimientos', entidadId: movimientoId, tipoTarea: 'FILA' });
     }
+
+    await encolarSync(db, { tabla: 'conteos', entidadId: id, tipoTarea: 'FILA' });
   });
 
   const creado = await obtenerConteo(db, id);

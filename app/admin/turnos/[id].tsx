@@ -4,7 +4,10 @@ import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
-import type { Evento, Turno } from '@/core/tipos';
+import { formatearPesos } from '@/core/dinero';
+import type { ArqueoCaja, Evento, Turno } from '@/core/tipos';
+import { obtenerArqueoPorTurno } from '@/db/arqueos';
+import { obtenerArqueoRemotoPorTurno } from '@/db/arqueosRemotos';
 import { getDb } from '@/db/client';
 import { obtenerEventoDeHoyPromotor, obtenerTurno } from '@/db/turnos';
 import { listarTurnosRemotos } from '@/db/turnosRemotos';
@@ -36,6 +39,7 @@ export default function DetalleTurno() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [turno, setTurno] = useState<Turno | null>(null);
   const [eventoDelDia, setEventoDelDia] = useState<Evento | null>(null);
+  const [arqueo, setArqueo] = useState<ArqueoCaja | null>(null);
   const [cargando, setCargando] = useState(true);
   const insets = useSafeAreaInsets();
   const anchaPantalla = useEsPantallaAncha();
@@ -60,6 +64,18 @@ export default function DetalleTurno() {
       // función nueva, fuera de alcance de esta rebanada informativa.
       if (encontrado && fechaBogota(encontrado.horaInicio) === fechaHoyBogota()) {
         setEventoDelDia(await obtenerEventoDeHoyPromotor(db, encontrado.promotorId));
+      }
+
+      if (encontrado?.horaFin) {
+        let arqueoEncontrado = await obtenerArqueoPorTurno(db, id);
+        if (!arqueoEncontrado) {
+          try {
+            arqueoEncontrado = await obtenerArqueoRemotoPorTurno(id);
+          } catch {
+            arqueoEncontrado = null;
+          }
+        }
+        setArqueo(arqueoEncontrado);
       }
       setCargando(false);
     })();
@@ -117,6 +133,40 @@ export default function DetalleTurno() {
                 <Text style={styles.chipEventoTexto}>
                   {eventoDelDia.empresaNombre} · {eventoDelDia.puntoNombre}
                 </Text>
+              </View>
+            )}
+
+            {arqueo && (
+              <View style={styles.resumen}>
+                <Text style={styles.resumenPromotor}>Arqueo de caja</Text>
+                <View style={styles.filaArqueo}>
+                  <Text style={styles.resumenDetalle}>Transferencia</Text>
+                  <Text style={styles.filaArqueoValor}>{formatearPesos(arqueo.totalTransferencia)}</Text>
+                </View>
+                <View style={styles.filaArqueo}>
+                  <Text style={styles.resumenDetalle}>Libranza</Text>
+                  <Text style={styles.filaArqueoValor}>{formatearPesos(arqueo.totalLibranza)}</Text>
+                </View>
+                <View style={styles.filaArqueo}>
+                  <Text style={styles.resumenDetalle}>Efectivo esperado</Text>
+                  <Text style={styles.filaArqueoValor}>{formatearPesos(arqueo.efectivoTeorico)}</Text>
+                </View>
+                <View style={styles.filaArqueo}>
+                  <Text style={styles.resumenDetalle}>Efectivo contado</Text>
+                  <Text style={styles.filaArqueoValor}>{formatearPesos(arqueo.efectivoContado)}</Text>
+                </View>
+                <View style={styles.filaArqueo}>
+                  <Text style={[styles.resumenDetalle, styles.filaArqueoEtiquetaDestacada]}>Diferencia</Text>
+                  <Text
+                    style={[
+                      styles.filaArqueoValor,
+                      styles.filaArqueoValorDestacado,
+                      arqueo.diferencia !== 0 && styles.filaArqueoValorDescuadre,
+                    ]}
+                  >
+                    {arqueo.diferencia === 0 ? 'Cuadrado' : formatearPesos(arqueo.diferencia)}
+                  </Text>
+                </View>
               </View>
             )}
           </View>
@@ -199,6 +249,27 @@ const styles = StyleSheet.create({
     color: COLORES.oscuro,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  filaArqueo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  filaArqueoValor: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+  },
+  filaArqueoEtiquetaDestacada: {
+    fontWeight: '700',
+    color: '#333',
+  },
+  filaArqueoValorDestacado: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  filaArqueoValorDescuadre: {
+    color: '#B00020',
   },
   chipEvento: {
     backgroundColor: '#FFFFFF',

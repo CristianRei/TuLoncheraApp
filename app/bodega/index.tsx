@@ -55,6 +55,14 @@ export default function HomeBodega() {
               Entrega a cada promotor lo que admin ya planeó.
             </Text>
           </Pressable>
+
+          <Pressable style={styles.tarjeta} onPress={() => router.push('/bodega/notificaciones')}>
+            <View style={styles.tarjetaIcono}>
+              <Ionicons name="notifications-outline" size={28} color={COLORES.oscuro} />
+            </View>
+            <Text style={styles.tarjetaTitulo}>Notificaciones</Text>
+            <Text style={styles.tarjetaDescripcion}>Mensajes que te envió el administrador.</Text>
+          </Pressable>
         </View>
       </ContenedorAncho>
     </View>

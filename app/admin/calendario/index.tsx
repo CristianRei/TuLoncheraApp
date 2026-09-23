@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { parsearPesos } from '@/core/dinero';
 import { DemasiadasOcurrenciasError } from '@/core/eventos';
 import type { Empresa, Evento, EstadoEvento, Frecuencia, Punto, UsuarioSesion } from '@/core/tipos';
 import { getDb } from '@/db/client';
@@ -24,8 +25,10 @@ import {
   cancelarEvento,
   crearEvento,
   crearSerieRecurrente,
+  establecerMetaDiaria,
   EventoEnFechaPasadaError,
   listarEventosPorRango,
+  obtenerEvento,
   reasignarEvento,
 } from '@/db/eventos';
 import { listarPuntos } from '@/db/puntos';
@@ -104,6 +107,8 @@ export default function CalendarioAdmin() {
   const [modalCancelar, setModalCancelar] = useState(false);
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [metaDiariaTexto, setMetaDiariaTexto] = useState<Record<string, string>>({});
+  const [guardandoMetaDe, setGuardandoMetaDe] = useState<string | null>(null);
 
   const hoyClave = aClaveFecha(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
 
@@ -134,6 +139,34 @@ export default function CalendarioAdmin() {
       setPromotores(listaPromotores);
     })();
   }, []);
+
+  // Abre el detalle y siembra el buffer de texto de "meta del día" una sola
+  // vez, al abrir — las actualizaciones posteriores del mismo evento (ej. al
+  // (des)asignar un promotor) van directo por setDetalleEvento, sin tocar
+  // este buffer, para no perder lo que el admin ya tecleó.
+  function abrirDetalleEvento(evento: Evento) {
+    const inicial: Record<string, string> = {};
+    for (const promotorId of evento.promotorIds) {
+      const meta = evento.metaDiariaPorPromotor[promotorId];
+      inicial[promotorId] = meta ? String(meta) : '';
+    }
+    setMetaDiariaTexto(inicial);
+    setDetalleEvento(evento);
+  }
+
+  async function guardarMetaDiaria(promotorId: string) {
+    if (!detalleEvento) return;
+    const texto = metaDiariaTexto[promotorId] ?? '';
+    const monto = texto.trim() === '' ? null : parsearPesos(texto);
+    setGuardandoMetaDe(promotorId);
+    try {
+      const db = await getDb();
+      await establecerMetaDiaria(db, { eventoId: detalleEvento.id, promotorId, montoObjetivo: monto });
+      setDetalleEvento(await obtenerEvento(db, detalleEvento.id));
+    } finally {
+      setGuardandoMetaDe(null);
+    }
+  }
 
   if (!usuario) return null;
   const usuarioActual = usuario;
@@ -351,7 +384,7 @@ export default function CalendarioAdmin() {
                       <Pressable
                         key={evento.id}
                         style={[styles.tarjetaEvento, { borderLeftColor: colorEstado(evento.estado) }]}
-                        onPress={() => setDetalleEvento(evento)}
+                        onPress={() => abrirDetalleEvento(evento)}
                       >
                         <View style={styles.tarjetaEventoEncabezado}>
                           <View
@@ -430,43 +463,72 @@ export default function CalendarioAdmin() {
               {promotores.map((p) => {
                 const asignado = detalleEvento.promotorIds.includes(p.id);
                 return (
-                  <Pressable
-                    key={p.id}
-                    style={styles.filaCheckbox}
-                    disabled={
-                      guardando ||
-                      detalleEvento.estado === 'CANCELADO' ||
-                      esFechaPasada(detalleEvento.fecha, hoyClave)
-                    }
-                    onPress={async () => {
-                      const nuevos = asignado
-                        ? detalleEvento.promotorIds.filter((id) => id !== p.id)
-                        : [...detalleEvento.promotorIds, p.id];
-                      setGuardando(true);
-                      try {
-                        const db = await getDb();
-                        const actualizado = await reasignarEvento(db, {
-                          eventoId: detalleEvento.id,
-                          promotorIds: nuevos,
-                        });
-                        setDetalleEvento(actualizado);
-                        await recargar();
-                      } catch (error) {
-                        if (error instanceof EventoEnFechaPasadaError) {
-                          Alert.alert('Evento pasado', error.message);
-                        } else {
-                          Alert.alert('No se pudo actualizar', error instanceof Error ? error.message : 'Error inesperado.');
-                        }
-                      } finally {
-                        setGuardando(false);
+                  <View key={p.id}>
+                    <Pressable
+                      style={styles.filaCheckbox}
+                      disabled={
+                        guardando ||
+                        detalleEvento.estado === 'CANCELADO' ||
+                        esFechaPasada(detalleEvento.fecha, hoyClave)
                       }
-                    }}
-                  >
-                    <View style={[styles.checkbox, asignado && styles.checkboxMarcado]}>
-                      {asignado && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
-                    </View>
-                    <Text style={styles.filaCheckboxTexto}>{p.nombre}</Text>
-                  </Pressable>
+                      onPress={async () => {
+                        const nuevos = asignado
+                          ? detalleEvento.promotorIds.filter((id) => id !== p.id)
+                          : [...detalleEvento.promotorIds, p.id];
+                        setGuardando(true);
+                        try {
+                          const db = await getDb();
+                          const actualizado = await reasignarEvento(db, {
+                            eventoId: detalleEvento.id,
+                            promotorIds: nuevos,
+                          });
+                          setDetalleEvento(actualizado);
+                          await recargar();
+                        } catch (error) {
+                          if (error instanceof EventoEnFechaPasadaError) {
+                            Alert.alert('Evento pasado', error.message);
+                          } else {
+                            Alert.alert('No se pudo actualizar', error instanceof Error ? error.message : 'Error inesperado.');
+                          }
+                        } finally {
+                          setGuardando(false);
+                        }
+                      }}
+                    >
+                      <View style={[styles.checkbox, asignado && styles.checkboxMarcado]}>
+                        {asignado && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+                      </View>
+                      <Text style={styles.filaCheckboxTexto}>{p.nombre}</Text>
+                    </Pressable>
+                    {asignado && !esFechaPasada(detalleEvento.fecha, hoyClave) && (
+                      <View style={styles.filaMetaDiaria}>
+                        <Text style={styles.filaMetaDiariaEtiqueta}>Meta del día</Text>
+                        <TextInput
+                          style={styles.inputMetaDiaria}
+                          value={metaDiariaTexto[p.id] ?? ''}
+                          onChangeText={(texto) =>
+                            setMetaDiariaTexto((actual) => ({ ...actual, [p.id]: texto.replace(/\D/g, '') }))
+                          }
+                          onBlur={() => guardarMetaDiaria(p.id)}
+                          keyboardType="number-pad"
+                          placeholder="Sin meta"
+                          placeholderTextColor="#A8988F"
+                          editable={guardandoMetaDe !== p.id}
+                        />
+                        {guardandoMetaDe === p.id ? (
+                          <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
+                        ) : (
+                          <Pressable
+                            style={styles.botonGuardarMeta}
+                            onPress={() => guardarMetaDiaria(p.id)}
+                            accessibilityLabel="Guardar meta del día"
+                          >
+                            <Ionicons name="checkmark" size={16} color={COLORES_ADMIN.vino} />
+                          </Pressable>
+                        )}
+                      </View>
+                    )}
+                  </View>
                 );
               })}
 
@@ -1062,6 +1124,38 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxMarcado: { backgroundColor: COLORES_ADMIN.vino, borderColor: COLORES_ADMIN.vino },
+  filaMetaDiaria: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingLeft: 26,
+    paddingBottom: 8,
+  },
+  filaMetaDiariaEtiqueta: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  inputMetaDiaria: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
+    maxWidth: 120,
+  },
+  botonGuardarMeta: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.vino,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   radio: {
     width: 16,
     height: 16,

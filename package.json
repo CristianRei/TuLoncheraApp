@@ -15,6 +15,7 @@
     "expo-camera": "~57.0.5",
     "expo-constants": "~57.0.18",
     "expo-crypto": "~57.0.3",
+    "expo-device": "~57.0.2",
     "expo-file-system": "~57.0.7",
     "expo-font": "~57.0.4",
     "expo-haptics": "~57.0.3",
@@ -22,6 +23,7 @@
     "expo-linear-gradient": "~57.0.2",
     "expo-linking": "~57.0.10",
     "expo-location": "~57.0.19",
+    "expo-notifications": "~57.0.20",
     "expo-print": "~57.0.2",
     "expo-router": "~57.0.21",
     "expo-sharing": "~57.0.19",
@@ -42,6 +44,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^26.5.1",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
@@ -54,7 +57,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "node --test src/core/**/*.test.ts"
+    "test": "node --test src/core/**/*.test.ts",
+    "test:db": "node --no-warnings --import ./scripts/prueba-db/register.mjs scripts/prueba-db/prueba.mjs",
+    "test:sql": "node scripts/prueba-sql/prueba.mjs"
   },
   "private": true
 }

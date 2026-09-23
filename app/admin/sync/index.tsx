@@ -4,23 +4,38 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getDb } from '@/db/client';
-import { listarColaSync, type TareaSyncVista } from '@/db/syncCola';
+import { listarColaSync, type TablaSync, type TareaSyncVista } from '@/db/syncCola';
 import { obtenerUltimoCiclo, type EstadoUltimoCiclo } from '@/sync/estado';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
+const ETIQUETA_TABLA: Record<TablaSync, string> = {
+  turnos: 'Turno',
+  comprobantes_venta: 'Comprobante',
+  ventas: 'Venta',
+  movimientos: 'Movimiento',
+  lotes: 'Lote',
+  cargues: 'Cargue',
+  conteos: 'Conteo',
+  arqueos_caja: 'Arqueo de caja',
+  usuarios: 'Personal',
+  productos: 'Producto',
+  categorias: 'Categoría',
+};
+
 function formatearHora(ts: string): string {
   return new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'medium' });
 }
 
 /**
- * Diagnóstico de la cola de sincronización (turnos + comprobantes, ver ADR
- * 0006) — muestra qué hay pendiente, qué se completó, y el último error de
- * cada tarea, con un botón para forzar un ciclo ahora mismo. No hay acceso
- * a logs de consola en el celular de un promotor/admin en campo, así que
- * esta pantalla es la única forma práctica de ver por qué algo no subió.
+ * Diagnóstico de la cola de sincronización (ver ADR 0006 y la extensión de
+ * la sección 10 "Sincronización del motor de inventario/ventas" en
+ * CLAUDE.md) — muestra qué hay pendiente, qué se completó, y el último
+ * error de cada tarea, con un botón para forzar un ciclo ahora mismo. No hay
+ * acceso a logs de consola en el celular de un promotor/admin en campo, así
+ * que esta pantalla es la única forma práctica de ver por qué algo no subió.
  */
 export default function DiagnosticoSync() {
   const usuario = useRequiereSesion(['ADMIN']);
@@ -96,7 +111,7 @@ export default function DiagnosticoSync() {
           </View>
         ) : tareas.length === 0 ? (
           <View style={styles.centrado}>
-            <Text style={styles.vacio}>Sin turnos ni comprobantes por sincronizar todavía.</Text>
+            <Text style={styles.vacio}>Nada por sincronizar todavía.</Text>
           </View>
         ) : (
           <FlatList
@@ -107,7 +122,7 @@ export default function DiagnosticoSync() {
               <View style={[styles.fila, item.ultimoError && !item.completadoTs && styles.filaConError]}>
                 <View style={styles.filaEncabezado}>
                   <Text style={styles.filaTitulo}>
-                    {item.tabla === 'turnos' ? 'Turno' : 'Comprobante'} · {item.tipoTarea}
+                    {ETIQUETA_TABLA[item.tabla]} · {item.tipoTarea}
                   </Text>
                   <Text
                     style={[

@@ -13,7 +13,7 @@ export interface ModuloAdmin {
 }
 
 /**
- * Los 14 módulos reales de administración — única fuente de verdad, usada
+ * Los 15 módulos reales de administración — única fuente de verdad, usada
  * por el menú principal (app/admin/index.tsx) y por el sidebar fijo de
  * pantalla ancha (src/ui/SidebarAdmin.tsx). Agregar un módulo nuevo aquí
  * lo agrega automáticamente en ambos lugares.
@@ -113,5 +113,11 @@ export const MODULOS_ADMIN: ModuloAdmin[] = [
     titulo: 'Gestionar personal',
     descripcion: 'Contratar, editar y dar de baja promotores, conductores, bodega y administradores.',
     icono: 'people-outline',
+  },
+  {
+    ruta: '/admin/mensajes',
+    titulo: 'Mensajes',
+    descripcion: 'Enviar una notificación a promotores o bodega, o avisarles el progreso de su meta del día.',
+    icono: 'chatbubbles-outline',
   },
 ];
