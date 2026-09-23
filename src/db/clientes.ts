@@ -2,6 +2,7 @@ import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { Cliente } from '@/core/tipos';
+import { registrarAccionAuditoria } from './auditoria';
 
 interface FilaCliente {
   id: string;
@@ -90,6 +91,11 @@ export async function crearCliente(
       dispositivoId,
     ]
   );
+  await registrarAccionAuditoria(
+    db,
+    { usuarioId: creadoPor, entidad: 'CLIENTE', entidadId: id, accion: 'CREAR', detalles: { nombre: datos.nombreCompleto } },
+    dispositivoId
+  );
   return {
     id,
     nombreCompleto: datos.nombreCompleto,
@@ -108,9 +114,26 @@ export async function crearCliente(
  * borrar, se desvincula de cualquier venta que lo tuviera asignado para no
  * dejar una referencia colgante ni perder esas ventas del historial.
  */
-export async function eliminarCliente(db: SQLiteDatabase, id: string): Promise<void> {
+export async function eliminarCliente(
+  db: SQLiteDatabase,
+  id: string,
+  dispositivoId: string,
+  eliminadoPor: string
+): Promise<void> {
+  const cliente = await obtenerCliente(db, id);
   await db.withTransactionAsync(async () => {
     await db.runAsync('UPDATE ventas SET cliente_id = NULL WHERE cliente_id = ?', [id]);
     await db.runAsync('DELETE FROM clientes WHERE id = ?', [id]);
+    await registrarAccionAuditoria(
+      db,
+      {
+        usuarioId: eliminadoPor,
+        entidad: 'CLIENTE',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        detalles: cliente ? { nombre: cliente.nombreCompleto } : undefined,
+      },
+      dispositivoId
+    );
   });
 }

@@ -9,11 +9,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { modoPinParaRol, pinManualValido } from '@/core/pin';
 import type { Persona, Rol } from '@/core/tipos';
 import { getDb } from '@/db/client';
+import { getDispositivoId } from '@/db/dispositivo';
 import {
   actualizarPersona,
   cambiarRolPersona,
@@ -24,11 +24,12 @@ import {
   PersonaConHistorialError,
   PinDuplicadoError,
 } from '@/db/personal';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { FilterTabs } from '@/ui/FilterTabs';
 import { FormularioPersona, type ValoresPersona } from '@/ui/FormularioPersona';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETA_ROL: Record<Rol, string> = {
@@ -57,8 +58,6 @@ export default function EditarPersona() {
   const [pinCambioRol, setPinCambioRol] = useState('');
   const [errorCambioRol, setErrorCambioRol] = useState<string | null>(null);
   const [cambiandoRol, setCambiandoRol] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   async function recargar() {
     const db = await getDb();
@@ -74,6 +73,7 @@ export default function EditarPersona() {
   }, [id]);
 
   if (!usuario) return null;
+  const usuarioActual = usuario;
 
   function abrirCambioRol(nuevoRol: Rol) {
     if (!promotor || nuevoRol === promotor.rol) return;
@@ -89,10 +89,15 @@ export default function EditarPersona() {
     setErrorCambioRol(null);
     try {
       const db = await getDb();
-      await cambiarRolPersona(db, promotor.id, rolPropuesto, {
-        cedula: cedulaCambioRol.trim() || null,
-        nuevoPinManual: pinCambioRol.trim() || null,
-      });
+      const dispositivoId = await getDispositivoId(db);
+      await cambiarRolPersona(
+        db,
+        promotor.id,
+        rolPropuesto,
+        { cedula: cedulaCambioRol.trim() || null, nuevoPinManual: pinCambioRol.trim() || null },
+        dispositivoId,
+        usuarioActual.id
+      );
       setRolPropuesto(null);
       await recargar();
     } catch (error) {
@@ -110,13 +115,20 @@ export default function EditarPersona() {
     setGuardando(true);
     try {
       const db = await getDb();
-      await actualizarPersona(db, id, {
-        nombre: valores.nombre,
-        cedula: valores.cedula,
-        celular: valores.celular,
-        direccion: valores.direccion,
-        pinManual,
-      });
+      const dispositivoId = await getDispositivoId(db);
+      await actualizarPersona(
+        db,
+        id,
+        {
+          nombre: valores.nombre,
+          cedula: valores.cedula,
+          celular: valores.celular,
+          direccion: valores.direccion,
+          pinManual,
+        },
+        dispositivoId,
+        usuarioActual.id
+      );
       router.back();
     } catch (error) {
       if (error instanceof PinDuplicadoError) {
@@ -134,7 +146,8 @@ export default function EditarPersona() {
     setEliminando(true);
     try {
       const db = await getDb();
-      await eliminarPersona(db, promotor.id);
+      const dispositivoId = await getDispositivoId(db);
+      await eliminarPersona(db, promotor.id, dispositivoId, usuarioActual.id);
       setModalBajaVisible(false);
       router.back();
     } finally {
@@ -164,25 +177,11 @@ export default function EditarPersona() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={640} style={styles.encabezadoContenido}>
-          {!anchaPantalla && (
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Personal</Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Editar persona</Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo="Editar persona" rutaVolverTexto="Personal" anchoMaximo={640} />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : !promotor ? (
         <View style={styles.centrado}>
@@ -192,19 +191,11 @@ export default function EditarPersona() {
         <ContenedorAncho anchoMaximo={640} llenarAlto>
           <View style={styles.selectorRol}>
             <Text style={styles.selectorRolEtiqueta}>Rol</Text>
-            <View style={styles.chipsRol}>
-              {OPCIONES_ROL.map((opcion) => (
-                <Pressable
-                  key={opcion}
-                  style={[styles.chipRol, promotor.rol === opcion && styles.chipRolActivo]}
-                  onPress={() => abrirCambioRol(opcion)}
-                >
-                  <Text style={[styles.chipRolTexto, promotor.rol === opcion && styles.chipRolTextoActivo]}>
-                    {ETIQUETA_ROL[opcion]}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
+            <FilterTabs
+              opciones={OPCIONES_ROL.map((r) => ({ valor: r, etiqueta: ETIQUETA_ROL[r] }))}
+              valorActivo={promotor.rol}
+              onCambiar={abrirCambioRol}
+            />
           </View>
 
           <FormularioPersona
@@ -217,7 +208,7 @@ export default function EditarPersona() {
               direccion: promotor.direccion,
             }}
             pinVigente={promotor.pin}
-            colorAcento={COLORES.oscuro}
+            colorAcento={COLORES_ADMIN.vino}
             guardando={guardando}
             errorPin={errorPin}
             onGuardar={guardar}
@@ -368,35 +359,7 @@ export default function EditarPersona() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoContenido: {
-    gap: 4,
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
+    backgroundColor: COLORES_ADMIN.background,
   },
   centrado: {
     flex: 1,
@@ -444,39 +407,14 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   selectorRol: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    gap: 10,
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
+    paddingTop: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.md,
   },
   selectorRolEtiqueta: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#555',
-  },
-  chipsRol: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chipRol: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EBD3D3',
-  },
-  chipRolActivo: {
-    backgroundColor: COLORES.oscuro,
-    borderColor: COLORES.oscuro,
-  },
-  chipRolTexto: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  chipRolTextoActivo: {
-    color: '#FFFFFF',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
   },
   fondoModal: {
     flex: 1,
@@ -537,7 +475,7 @@ const styles = StyleSheet.create({
     color: '#777',
   },
   botonConfirmarRol: {
-    backgroundColor: COLORES.oscuro,
+    backgroundColor: COLORES_ADMIN.vino,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,

@@ -1,14 +1,13 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import type { Conteo, ConteoLinea } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { obtenerConteo } from '@/db/conteos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { Encabezado } from '@/ui/Encabezado';
+import { COLORES_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string): string {
@@ -22,8 +21,6 @@ export default function DetalleConteo() {
   const [conteo, setConteo] = useState<Conteo | null>(null);
   const [lineas, setLineas] = useState<ConteoLinea[]>([]);
   const [cargando, setCargando] = useState(true);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   useEffect(() => {
     (async () => {
@@ -41,25 +38,11 @@ export default function DetalleConteo() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          {!anchaPantalla && (
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Conteos</Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Detalle del conteo</Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo="Detalle del conteo" rutaVolverTexto="Conteos" />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : !conteo ? (
         <View style={styles.centrado}>
@@ -113,35 +96,7 @@ export default function DetalleConteo() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoContenido: {
-    gap: 4,
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
+    backgroundColor: COLORES_ADMIN.background,
   },
   centrado: {
     flex: 1,

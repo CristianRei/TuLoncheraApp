@@ -83,6 +83,9 @@ export function FormularioProducto({
     try {
       const db = await getDb();
       const dispositivoId = await getDispositivoId(db);
+      // Sin usuarioId: este formulario no recibe la sesión de admin como
+      // prop, así que esta creación puntual queda sin auditar — el flujo
+      // dedicado de app/admin/catalogo/categorias.tsx sí la audita.
       const categoria = await crearCategoria(db, nombreCategoriaNueva.trim(), dispositivoId);
       setCategorias((actual) =>
         actual.some((c) => c.id === categoria.id) ? actual : [...actual, categoria].sort((a, b) => a.nombre.localeCompare(b.nombre))

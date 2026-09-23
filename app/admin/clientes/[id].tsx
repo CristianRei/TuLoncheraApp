@@ -1,15 +1,16 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Cliente } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { eliminarCliente, obtenerCliente } from '@/db/clientes';
-import { COLORES } from '@/ui/colores';
+import { getDispositivoId } from '@/db/dispositivo';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(iso: string): string {
@@ -23,8 +24,6 @@ export default function DetalleCliente() {
   const [cargando, setCargando] = useState(true);
   const [eliminando, setEliminando] = useState(false);
   const [modalEliminarVisible, setModalEliminarVisible] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     if (!id) return;
@@ -46,11 +45,12 @@ export default function DetalleCliente() {
   if (!usuario) return null;
 
   async function confirmarEliminar() {
-    if (!cliente) return;
+    if (!cliente || !usuario) return;
     setEliminando(true);
     try {
       const db = await getDb();
-      await eliminarCliente(db, cliente.id);
+      const dispositivoId = await getDispositivoId(db);
+      await eliminarCliente(db, cliente.id, dispositivoId, usuario.id);
       setModalEliminarVisible(false);
       router.back();
     } finally {
@@ -60,32 +60,14 @@ export default function DetalleCliente() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          {!anchaPantalla && (
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Clientes</Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>
-            {cliente?.nombreCompleto ?? 'Cliente'}
-          </Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo={cliente?.nombreCompleto ?? 'Cliente'} rutaVolverTexto="Clientes" />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : !cliente ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Este cliente ya no existe.</Text>
-        </View>
+        <EmptyState mensaje="Este cliente ya no existe." />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <ScrollView contentContainerStyle={styles.scroll}>
@@ -105,7 +87,7 @@ export default function DetalleCliente() {
               disabled={eliminando}
             >
               {eliminando ? (
-                <ActivityIndicator color="#B00020" size="small" />
+                <ActivityIndicator color={COLORES_ADMIN.error} size="small" />
               ) : (
                 <Text style={styles.botonEliminarTexto}>Eliminar cliente</Text>
               )}
@@ -142,87 +124,52 @@ function Campo({ etiqueta, valor }: { etiqueta: string; valor: string | null }) 
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoContenido: {
-    gap: 8,
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
+    backgroundColor: COLORES_ADMIN.background,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   scroll: {
-    padding: 20,
-    gap: 16,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.lg,
   },
   tarjeta: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.lg,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
     padding: 18,
-    gap: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    gap: ESPACIADO_ADMIN.lg,
   },
   campo: {
     gap: 2,
   },
   campoEtiqueta: {
     fontSize: 11,
-    color: '#999',
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
     textTransform: 'uppercase',
     letterSpacing: 0.3,
   },
   campoValor: {
     fontSize: 15,
-    color: '#333',
-    fontWeight: '600',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.texto,
   },
   botonEliminar: {
     borderWidth: 1.5,
-    borderColor: '#B00020',
-    borderRadius: 12,
+    borderColor: COLORES_ADMIN.error,
+    borderRadius: RADII_ADMIN.lg,
     paddingVertical: 14,
     alignItems: 'center',
   },
   botonEliminarTexto: {
-    color: '#B00020',
+    color: COLORES_ADMIN.error,
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   botonDeshabilitado: {
     opacity: 0.5,

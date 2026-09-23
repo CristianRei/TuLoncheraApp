@@ -7,6 +7,8 @@ import type { Persona, Rol } from '@/core/tipos';
 import { encolarSync } from '@/db/syncCola';
 import { getSupabaseClient } from '@/sync/supabaseClient';
 
+import { registrarAccionAuditoria } from './auditoria';
+
 interface FilaPersona {
   id: string;
   nombre: string;
@@ -139,7 +141,8 @@ export interface DatosPersona {
 export async function crearPersona(
   db: SQLiteDatabase,
   datos: DatosPersona,
-  dispositivoId: string
+  dispositivoId: string,
+  creadoPorId: string
 ): Promise<Persona> {
   const pin = calcularPin(datos.rol, datos.cedula, datos.pinManual);
   if (await pinEnUso(db, pin)) throw new PinDuplicadoError(pin);
@@ -165,6 +168,11 @@ export async function crearPersona(
   });
   const creada = await obtenerPersona(db, id);
   if (!creada) throw new Error('No se pudo crear la persona');
+  await registrarAccionAuditoria(
+    db,
+    { usuarioId: creadoPorId, entidad: 'PERSONA', entidadId: id, accion: 'CREAR', detalles: { nombre: datos.nombre, rol: datos.rol } },
+    dispositivoId
+  );
   return creada;
 }
 
@@ -177,7 +185,9 @@ export async function actualizarPersona(
     celular?: string | null;
     direccion?: string | null;
     pinManual?: string | null;
-  }
+  },
+  dispositivoId: string,
+  actualizadoPorId: string
 ): Promise<void> {
   const columnas: string[] = [];
   const valores: (string | null)[] = [];
@@ -226,6 +236,11 @@ export async function actualizarPersona(
   await db.withTransactionAsync(async () => {
     await db.runAsync(`UPDATE usuarios SET ${columnas.join(', ')} WHERE id = ?`, [...valores, id]);
     await encolarSync(db, { tabla: 'usuarios', entidadId: id, tipoTarea: 'FILA' });
+    await registrarAccionAuditoria(
+      db,
+      { usuarioId: actualizadoPorId, entidad: 'PERSONA', entidadId: id, accion: 'ACTUALIZAR' },
+      dispositivoId
+    );
   });
 }
 
@@ -241,7 +256,9 @@ export async function cambiarRolPersona(
   db: SQLiteDatabase,
   id: string,
   nuevoRol: Rol,
-  opciones: { nuevoPinManual?: string | null; cedula?: string | null } = {}
+  opciones: { nuevoPinManual?: string | null; cedula?: string | null } = {},
+  dispositivoId: string,
+  cambiadoPorId: string
 ): Promise<Persona> {
   const actual = await obtenerPersona(db, id);
   if (!actual) throw new Error('Esta persona ya no existe.');
@@ -261,6 +278,17 @@ export async function cambiarRolPersona(
   });
   const actualizada = await obtenerPersona(db, id);
   if (!actualizada) throw new Error('Esta persona ya no existe.');
+  await registrarAccionAuditoria(
+    db,
+    {
+      usuarioId: cambiadoPorId,
+      entidad: 'PERSONA',
+      entidadId: id,
+      accion: 'CAMBIAR_ROL',
+      detalles: { antes: actual.rol, despues: nuevoRol },
+    },
+    dispositivoId
+  );
   return actualizada;
 }
 
@@ -270,10 +298,20 @@ export async function cambiarRolPersona(
  * criterio que productos.activo) y se libera el PIN (queda NULL) para que
  * una futura persona con la misma cédula no choque con el índice único.
  */
-export async function eliminarPersona(db: SQLiteDatabase, id: string): Promise<void> {
+export async function eliminarPersona(
+  db: SQLiteDatabase,
+  id: string,
+  dispositivoId: string,
+  eliminadoPorId: string
+): Promise<void> {
   await db.withTransactionAsync(async () => {
     await db.runAsync('UPDATE usuarios SET activo = 0, pin = NULL WHERE id = ?', [id]);
     await encolarSync(db, { tabla: 'usuarios', entidadId: id, tipoTarea: 'FILA' });
+    await registrarAccionAuditoria(
+      db,
+      { usuarioId: eliminadoPorId, entidad: 'PERSONA', entidadId: id, accion: 'ELIMINAR' },
+      dispositivoId
+    );
   });
 }
 

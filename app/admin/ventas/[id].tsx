@@ -1,8 +1,7 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Image,
   Modal,
@@ -12,7 +11,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatearPesos } from '@/core/dinero';
 import type { Venta, VentaItem } from '@/core/tipos';
@@ -20,9 +18,10 @@ import { getDb } from '@/db/client';
 import { obtenerComprobanteRemoto } from '@/db/comprobantesRemotos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { anularVenta, obtenerVenta, VentaYaAnuladaError } from '@/db/ventas';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { Encabezado } from '@/ui/Encabezado';
+import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
+import { COLORES_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string): string {
@@ -45,8 +44,7 @@ export default function DetalleVenta() {
   const [modalVisible, setModalVisible] = useState(false);
   const [motivo, setMotivo] = useState('');
   const [anulando, setAnulando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
+  const [avisoVisible, setAvisoVisible] = useState<{ titulo: string; mensaje: string } | null>(null);
 
   async function cargar() {
     setCargando(true);
@@ -94,10 +92,10 @@ export default function DetalleVenta() {
       setModalVisible(false);
       setMotivo('');
       await cargar();
-      Alert.alert('Venta anulada', 'El producto volvió al inventario del promotor.');
+      setAvisoVisible({ titulo: 'Venta anulada', mensaje: 'El producto volvió al inventario del promotor.' });
     } catch (error) {
       if (error instanceof VentaYaAnuladaError) {
-        Alert.alert('Ya estaba anulada', error.message);
+        setAvisoVisible({ titulo: 'Ya estaba anulada', mensaje: error.message });
         setModalVisible(false);
         await cargar();
       } else {
@@ -110,25 +108,11 @@ export default function DetalleVenta() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          {!anchaPantalla && (
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Ventas</Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Detalle de venta</Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo="Detalle de venta" rutaVolverTexto="Ventas" />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : !venta ? (
         <View style={styles.centrado}>
@@ -243,6 +227,17 @@ export default function DetalleVenta() {
           </View>
         </View>
       </Modal>
+
+      {avisoVisible && (
+        <ModalConfirmacion
+          visible
+          titulo={avisoVisible.titulo}
+          mensaje={avisoVisible.mensaje}
+          textoConfirmar="Entendido"
+          onConfirmar={() => setAvisoVisible(null)}
+          onCancelar={() => setAvisoVisible(null)}
+        />
+      )}
     </View>
   );
 }
@@ -250,35 +245,7 @@ export default function DetalleVenta() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoContenido: {
-    gap: 4,
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
+    backgroundColor: COLORES_ADMIN.background,
   },
   centrado: {
     flex: 1,
@@ -376,7 +343,7 @@ const styles = StyleSheet.create({
   filaSubtotal: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORES.oscuro,
+    color: COLORES_ADMIN.vino,
   },
   pie: {
     backgroundColor: '#FFFFFF',
@@ -399,7 +366,7 @@ const styles = StyleSheet.create({
   totalValor: {
     fontSize: 20,
     fontWeight: '800',
-    color: COLORES.oscuro,
+    color: COLORES_ADMIN.vino,
   },
   botonAnular: {
     borderWidth: 1.5,

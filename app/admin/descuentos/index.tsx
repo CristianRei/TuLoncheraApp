@@ -1,19 +1,24 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Descuento } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { desactivarDescuento, listarDescuentos } from '@/db/descuentos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { FilterTabs } from '@/ui/FilterTabs';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'VIGENTES' | 'VENCIDOS';
+
+const OPCIONES_FILTRO: { valor: Filtro; etiqueta: string }[] = [
+  { valor: 'VIGENTES', etiqueta: 'Vigentes' },
+  { valor: 'VENCIDOS', etiqueta: 'Vencidos / inactivos' },
+];
 
 function formatearFecha(iso: string): string {
   return new Date(iso).toLocaleDateString('es-CO', { dateStyle: 'medium' });
@@ -36,8 +41,6 @@ export default function Descuentos() {
   const [cargando, setCargando] = useState(true);
   const [idParaDesactivar, setIdParaDesactivar] = useState<string | null>(null);
   const [desactivando, setDesactivando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -78,47 +81,15 @@ export default function Descuentos() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720}>
-          <View style={styles.encabezadoFila}>
-            {!anchaPantalla && (
-              <Pressable style={styles.volverBoton} onPress={() => router.back()}>
-                <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
-                <Text style={styles.volverTexto}>Admin</Text>
-              </Pressable>
-            )}
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Descuentos</Text>
-            <Pressable style={styles.agregarBoton} onPress={() => router.push('/admin/descuentos/nuevo')}>
-              <Ionicons name="add" size={16} color={COLORES_ADMIN.vino} />
-              <Text style={styles.agregarTexto}>Nuevo</Text>
-            </Pressable>
-          </View>
-        </ContenedorAncho>
-      </View>
+      <Encabezado
+        titulo="Descuentos"
+        rutaVolverTexto="Admin"
+        accion={{ icono: 'add', texto: 'Nuevo', onPress: () => router.push('/admin/descuentos/nuevo') }}
+      />
 
       <ContenedorAncho anchoMaximo={720}>
-        <View style={styles.tabs}>
-          <Pressable
-            style={[styles.tab, filtro === 'VIGENTES' && styles.tabActivo]}
-            onPress={() => setFiltro('VIGENTES')}
-          >
-            <Text style={[styles.tabTexto, filtro === 'VIGENTES' && styles.tabTextoActivo]}>
-              Vigentes
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.tab, filtro === 'VENCIDOS' && styles.tabActivo]}
-            onPress={() => setFiltro('VENCIDOS')}
-          >
-            <Text style={[styles.tabTexto, filtro === 'VENCIDOS' && styles.tabTextoActivo]}>
-              Vencidos / inactivos
-            </Text>
-          </Pressable>
+        <View style={styles.controles}>
+          <FilterTabs opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
         </View>
       </ContenedorAncho>
 
@@ -127,11 +98,10 @@ export default function Descuentos() {
           <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : filtrados.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>
-            {filtro === 'VIGENTES' ? 'No hay descuentos vigentes.' : 'No hay descuentos vencidos o inactivos.'}
-          </Text>
-        </View>
+        <EmptyState
+          icono="pricetag-outline"
+          mensaje={filtro === 'VIGENTES' ? 'No hay descuentos vigentes.' : 'No hay descuentos vencidos o inactivos.'}
+        />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
@@ -190,101 +160,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORES_ADMIN.background,
   },
-  encabezado: {
-    backgroundColor: COLORES_ADMIN.vino,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  volverBoton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  volverTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: '#FFE9E2',
-  },
-  titulo: {
-    fontSize: 17,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#FFFFFF',
-  },
-  tituloAncho: {
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: COLORES_ADMIN.vino,
-  },
-  agregarBoton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: COLORES_ADMIN.dorado,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  agregarTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.vino,
-  },
-  tabs: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-  },
-  tabActivo: {
-    backgroundColor: COLORES_ADMIN.vino,
-    borderColor: COLORES_ADMIN.vino,
-  },
-  tabTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
-  },
-  tabTextoActivo: {
-    color: '#FFFFFF',
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  controles: {
+    paddingTop: ESPACIADO_ADMIN.lg,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
-    textAlign: 'center',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   lista: {
-    padding: 20,
-    gap: 12,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.md,
   },
   fila: {
     flexDirection: 'row',

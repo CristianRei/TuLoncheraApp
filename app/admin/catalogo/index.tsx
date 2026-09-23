@@ -10,10 +10,8 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Categoria, Producto } from '@/core/tipos';
 import { formatearPesos } from '@/core/dinero';
@@ -21,13 +19,22 @@ import { listarCategorias } from '@/db/categorias';
 import { exportarAExcel } from '@/db/exportarExcel';
 import { getDb } from '@/db/client';
 import { asignarCategoriaAProductos, listarProductos } from '@/db/productos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { FilterTabs } from '@/ui/FilterTabs';
+import { SearchBar } from '@/ui/SearchBar';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'ACTIVOS' | 'ELIMINADOS';
 type FiltroCategoria = 'TODAS' | 'SIN_CATEGORIA' | string;
+
+const OPCIONES_FILTRO: { valor: Filtro; etiqueta: string }[] = [
+  { valor: 'ACTIVOS', etiqueta: 'Activos' },
+  { valor: 'ELIMINADOS', etiqueta: 'Eliminados' },
+];
 
 export default function CatalogoProductos() {
   const usuario = useRequiereSesion(['ADMIN']);
@@ -42,7 +49,6 @@ export default function CatalogoProductos() {
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const [modalAsignarVisible, setModalAsignarVisible] = useState(false);
   const [asignando, setAsignando] = useState(false);
-  const insets = useSafeAreaInsets();
   const anchaPantalla = useEsPantallaAncha();
   const columnas = anchaPantalla ? 3 : 1;
 
@@ -126,79 +132,39 @@ export default function CatalogoProductos() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={960}>
-          <View style={styles.encabezadoFila}>
-            {!anchaPantalla && (
-              <Pressable onPress={() => router.back()}>
-                <Text style={styles.volver}>‹ Admin</Text>
-              </Pressable>
-            )}
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Catálogo de productos</Text>
-            <Pressable
-              style={styles.botonNuevo}
-              onPress={() => router.push('/admin/catalogo/nuevo')}
-            >
-              <Text style={styles.botonNuevoTexto}>+</Text>
-            </Pressable>
-          </View>
-          <View style={styles.encabezadoAcciones}>
-            <Pressable onPress={() => router.push('/admin/catalogo/categorias')}>
-              <Text style={anchaPantalla ? styles.enlaceEncabezadoAncho : styles.enlaceEncabezado}>
-                Gestionar categorías
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={() => (modoSeleccion ? salirDeSeleccion() : setModoSeleccion(true))}
-            >
-              <Text style={anchaPantalla ? styles.enlaceEncabezadoAncho : styles.enlaceEncabezado}>
-                {modoSeleccion ? 'Cancelar selección' : 'Etiquetar en bloque'}
-              </Text>
-            </Pressable>
-          </View>
-        </ContenedorAncho>
-      </View>
+      <Encabezado
+        titulo="Catálogo de productos"
+        rutaVolverTexto="Admin"
+        anchoMaximo={960}
+        accion={{ icono: 'add', onPress: () => router.push('/admin/catalogo/nuevo') }}
+      />
+      <ContenedorAncho anchoMaximo={960}>
+        <View style={styles.encabezadoAcciones}>
+          <Pressable onPress={() => router.push('/admin/catalogo/categorias')}>
+            <Text style={styles.enlaceEncabezado}>Gestionar categorías</Text>
+          </Pressable>
+          <Pressable onPress={() => (modoSeleccion ? salirDeSeleccion() : setModoSeleccion(true))}>
+            <Text style={styles.enlaceEncabezado}>
+              {modoSeleccion ? 'Cancelar selección' : 'Etiquetar en bloque'}
+            </Text>
+          </Pressable>
+        </View>
+      </ContenedorAncho>
 
       <ContenedorAncho anchoMaximo={960}>
         <View style={styles.controles}>
-          <TextInput
-            style={styles.busqueda}
-            placeholder="Buscar producto..."
-            placeholderTextColor="#999"
-            value={busqueda}
-            onChangeText={setBusqueda}
-          />
-          <View style={styles.tabs}>
+          <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Buscar producto..." />
+          <View style={styles.filaFiltroExportar}>
+            <FilterTabs opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
             <Pressable
-              style={[styles.tab, filtro === 'ACTIVOS' && styles.tabActivo]}
-              onPress={() => setFiltro('ACTIVOS')}
-            >
-              <Text style={[styles.tabTexto, filtro === 'ACTIVOS' && styles.tabTextoActivo]}>
-                Activos
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.tab, filtro === 'ELIMINADOS' && styles.tabActivo]}
-              onPress={() => setFiltro('ELIMINADOS')}
-            >
-              <Text style={[styles.tabTexto, filtro === 'ELIMINADOS' && styles.tabTextoActivo]}>
-                Eliminados
-              </Text>
-            </Pressable>
-            <Pressable
-              style={styles.tab}
+              style={styles.botonExportar}
               onPress={exportar}
               disabled={exportando || filtrados.length === 0}
             >
               {exportando ? (
-                <ActivityIndicator size="small" color={COLORES.oscuro} />
+                <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
               ) : (
-                <Text style={styles.tabTexto}>Exportar</Text>
+                <Text style={styles.botonExportarTexto}>Exportar</Text>
               )}
             </Pressable>
           </View>
@@ -255,18 +221,19 @@ export default function CatalogoProductos() {
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : filtrados.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>
-            {busqueda
+        <EmptyState
+          icono="pricetags-outline"
+          mensaje={
+            busqueda
               ? 'Ningún producto coincide con la búsqueda.'
               : filtro === 'ACTIVOS'
                 ? 'Todavía no hay productos en el catálogo.'
-                : 'No hay productos eliminados.'}
-          </Text>
-        </View>
+                : 'No hay productos eliminados.'
+          }
+        />
       ) : (
         <ContenedorAncho anchoMaximo={960} llenarAlto>
           <FlatList
@@ -289,7 +256,7 @@ export default function CatalogoProductos() {
                   <Ionicons
                     name={seleccionados.has(item.id) ? 'checkbox' : 'square-outline'}
                     size={22}
-                    color={COLORES.oscuro}
+                    color={COLORES_ADMIN.vino}
                   />
                 )}
                 {item.fotoUri ? (
@@ -360,106 +327,44 @@ export default function CatalogoProductos() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    backgroundColor: COLORES_ADMIN.background,
   },
   encabezadoAcciones: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
+    marginTop: -ESPACIADO_ADMIN.sm,
+    marginBottom: ESPACIADO_ADMIN.xs,
   },
   enlaceEncabezado: {
-    color: '#FFE9E2',
+    color: COLORES_ADMIN.vino,
     fontSize: 12.5,
-    fontWeight: '600',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     textDecorationLine: 'underline',
   },
-  enlaceEncabezadoAncho: {
-    color: COLORES.oscuro,
-    fontSize: 12.5,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+  controles: {
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
+    paddingTop: ESPACIADO_ADMIN.md,
+    gap: ESPACIADO_ADMIN.md,
   },
-  encabezadoFila: {
+  filaFiltroExportar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: ESPACIADO_ADMIN.sm,
   },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  botonNuevo: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORES.primario,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  botonNuevoTexto: {
-    color: '#3A2400',
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 22,
-  },
-  controles: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 12,
-  },
-  busqueda: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    fontSize: 15,
+  botonExportar: {
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    paddingVertical: ESPACIADO_ADMIN.sm,
+    borderRadius: RADII_ADMIN.pill,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
-    borderColor: '#EBD3D3',
+    borderColor: COLORES_ADMIN.bordeSuave,
   },
-  tabs: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EBD3D3',
-  },
-  tabActivo: {
-    backgroundColor: COLORES.oscuro,
-    borderColor: COLORES.oscuro,
-  },
-  tabTexto: {
+  botonExportarTexto: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
-  },
-  tabTextoActivo: {
-    color: '#FFFFFF',
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
   },
   chipsCategoria: {
     flexDirection: 'row',
@@ -474,8 +379,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   chipCategoriaActivo: {
-    backgroundColor: COLORES.primario,
-    borderColor: COLORES.primario,
+    backgroundColor: COLORES_ADMIN.dorado,
+    borderColor: COLORES_ADMIN.dorado,
   },
   chipCategoriaTexto: {
     fontSize: 12.5,
@@ -550,12 +455,12 @@ const styles = StyleSheet.create({
   filaPrecio: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORES.oscuro,
+    color: COLORES_ADMIN.vino,
   },
   filaCategoria: {
     fontSize: 11,
     fontWeight: '600',
-    color: COLORES.primario,
+    color: COLORES_ADMIN.dorado,
     marginTop: 1,
   },
   filaSinCategoria: {
@@ -569,7 +474,7 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     bottom: 20,
-    backgroundColor: COLORES.oscuro,
+    backgroundColor: COLORES_ADMIN.vino,
     borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 18,
@@ -588,7 +493,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   barraSeleccionBoton: {
-    backgroundColor: COLORES.primario,
+    backgroundColor: COLORES_ADMIN.dorado,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,

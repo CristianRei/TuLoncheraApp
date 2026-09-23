@@ -13,7 +13,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { parsearPesos } from '@/core/dinero';
 import type { Producto, Punto, TipoDescuento } from '@/core/tipos';
@@ -24,8 +23,8 @@ import { listarProductos } from '@/db/productos';
 import { listarPuntos } from '@/db/puntos';
 import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type PasoSelector = 'PRODUCTO' | 'PUNTO' | null;
@@ -50,8 +49,6 @@ export default function NuevoDescuento() {
   const [calendarioVisible, setCalendarioVisible] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   useEffect(() => {
     (async () => {
@@ -105,23 +102,12 @@ export default function NuevoDescuento() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={600} style={styles.encabezadoContenido}>
-          {(!anchaPantalla || selector) && (
-            <Pressable onPress={() => (selector ? setSelector(null) : router.back())}>
-              <Text style={anchaPantalla ? styles.volverAncho : styles.volver}>
-                ‹ {selector ? 'Cancelar' : 'Descuentos'}
-              </Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Nuevo descuento</Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado
+        titulo="Nuevo descuento"
+        rutaVolverTexto={selector ? 'Cancelar' : 'Descuentos'}
+        onVolver={selector ? () => setSelector(null) : undefined}
+        anchoMaximo={600}
+      />
 
       {cargando ? (
         <View style={styles.centrado}>

@@ -1,25 +1,22 @@
 import * as Crypto from 'expo-crypto';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { guardarFotoProducto } from '@/db/fotos';
 import { crearProducto } from '@/db/productos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
 import { FormularioProducto, type ValoresProducto } from '@/ui/FormularioProducto';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { COLORES_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function NuevoProducto() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [idNuevo] = useState(() => Crypto.randomUUID());
   const [guardando, setGuardando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   if (!usuario) return null;
 
@@ -40,21 +37,12 @@ export default function NuevoProducto() {
   }
 
   return (
-    <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={640}>
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Nuevo producto</Text>
-        </ContenedorAncho>
-      </View>
+    <View style={{ flex: 1, backgroundColor: COLORES_ADMIN.background }}>
+      <Encabezado titulo="Nuevo producto" rutaVolverTexto="Catálogo" anchoMaximo={640} />
       <ContenedorAncho anchoMaximo={640} llenarAlto>
         <FormularioProducto
           valorInicial={{ nombre: '', precio: 0, fotoUri: null, codigoBarras: null, marca: null, categoriaId: null }}
-          colorAcento={COLORES.oscuro}
+          colorAcento={COLORES_ADMIN.vino}
           guardando={guardando}
           onGuardar={guardar}
           onGuardarFoto={guardarFoto}
@@ -64,30 +52,3 @@ export default function NuevoProducto() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  contenedor: {
-    flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-});

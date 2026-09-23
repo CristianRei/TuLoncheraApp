@@ -26,6 +26,7 @@ import { migracion0023MetaDiariaYMensajes } from './0023_meta_diaria_y_mensajes'
 import { migracion0024ArqueosCaja } from './0024_arqueos_caja';
 import { migracion0025ColaSyncTodasLasTablas } from './0025_cola_sync_todas_las_tablas';
 import { migracion0026SyncEstado } from './0026_sync_estado';
+import { migracion0027BitacoraAuditoria } from './0027_bitacora_auditoria';
 
 export interface Migracion {
   version: number;
@@ -63,6 +64,7 @@ const migraciones: Migracion[] = [
   migracion0024ArqueosCaja,
   migracion0025ColaSyncTodasLasTablas,
   migracion0026SyncEstado,
+  migracion0027BitacoraAuditoria,
 ];
 
 /**

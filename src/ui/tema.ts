@@ -34,3 +34,26 @@ export const TIPOGRAFIA_ADMIN = {
   monoMedio: 'JetBrainsMono_500Medium',
   monoSemiNegrita: 'JetBrainsMono_600SemiBold',
 } as const;
+
+/**
+ * Escala única de radios de borde para admin — antes cada pantalla elegía
+ * su propio valor suelto (4, 6, 8, 10, 12, 14, 16, 18, 20, 24...). Los 5
+ * componentes compartidos (Encabezado, ListRow, SearchBar, FilterTabs,
+ * EmptyState) y cualquier pantalla nueva deben usar esta escala en vez de
+ * un número literal.
+ */
+export const RADII_ADMIN = {
+  sm: 8, // badges, chips pequeños
+  md: 12, // inputs, filas de lista
+  lg: 16, // tarjetas, modales
+  pill: 999, // tabs, search bar, botones pill
+} as const;
+
+export const ESPACIADO_ADMIN = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 24,
+} as const;

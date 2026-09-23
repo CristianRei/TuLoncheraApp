@@ -6,6 +6,8 @@ import type { Categoria } from '@/core/tipos';
 import { encolarSync } from '@/db/syncCola';
 import { getSupabaseClient } from '@/sync/supabaseClient';
 
+import { registrarAccionAuditoria } from './auditoria';
+
 interface FilaCategoria {
   id: string;
   nombre: string;
@@ -52,7 +54,7 @@ export async function crearCategoria(
   db: SQLiteDatabase,
   nombre: string,
   dispositivoId: string,
-  opciones: { sincronizar?: boolean } = {}
+  opciones: { sincronizar?: boolean; creadoPorId?: string } = {}
 ): Promise<Categoria> {
   // `sincronizar: false` solo lo usa el seed de demo (src/db/seedDemo.ts), para
   // que sus categorías de prueba nunca se suban a Supabase.
@@ -83,6 +85,22 @@ export async function crearCategoria(
       [id, nombreLimpio, normalizado, ahora, dispositivoId]
     );
     if (sincronizar) await encolarSync(db, { tabla: 'categorias', entidadId: id, tipoTarea: 'FILA' });
+    // Solo se audita la creación real (esta rama) — nunca el reuso de arriba.
+    // creadoPorId es opcional porque el seed de desarrollo (__DEV__) crea
+    // categorías sin admin real detrás, ver src/db/seedDemo.ts.
+    if (opciones.creadoPorId) {
+      await registrarAccionAuditoria(
+        db,
+        {
+          usuarioId: opciones.creadoPorId,
+          entidad: 'CATEGORIA',
+          entidadId: id,
+          accion: 'CREAR',
+          detalles: { nombre: nombreLimpio },
+        },
+        dispositivoId
+      );
+    }
   });
   return { id, nombre: nombreLimpio, activo: true, tsCliente: ahora };
 }

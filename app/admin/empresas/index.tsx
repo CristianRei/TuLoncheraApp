@@ -10,15 +10,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Empresa } from '@/core/tipos';
 import { crearEmpresa, listarEmpresas } from '@/db/empresas';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { ListRow } from '@/ui/ListRow';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function Empresas() {
@@ -29,8 +30,6 @@ export default function Empresas() {
   const [nombre, setNombre] = useState('');
   const [direccion, setDireccion] = useState('');
   const [guardando, setGuardando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -72,35 +71,18 @@ export default function Empresas() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720}>
-          <View style={styles.encabezadoFila}>
-            {!anchaPantalla && (
-              <Pressable onPress={() => router.back()}>
-                <Text style={styles.volver}>‹ Admin</Text>
-              </Pressable>
-            )}
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Empresas y puntos</Text>
-            <Pressable onPress={() => setModalVisible(true)}>
-              <Text style={anchaPantalla ? styles.agregarAncho : styles.agregar}>+ Nueva</Text>
-            </Pressable>
-          </View>
-        </ContenedorAncho>
-      </View>
+      <Encabezado
+        titulo="Empresas y puntos"
+        rutaVolverTexto="Admin"
+        accion={{ icono: 'add', texto: 'Nueva', onPress: () => setModalVisible(true) }}
+      />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : empresas.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Todavía no hay empresas registradas.</Text>
-        </View>
+        <EmptyState icono="business-outline" mensaje="Todavía no hay empresas registradas." />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
@@ -108,16 +90,11 @@ export default function Empresas() {
             keyExtractor={(e) => e.id}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
-              <Pressable
-                style={styles.fila}
+              <ListRow
+                titulo={item.nombre}
+                subtitulo={item.direccion ?? undefined}
                 onPress={() => router.push(`/admin/empresas/${item.id}`)}
-              >
-                <View style={styles.filaTexto}>
-                  <Text style={styles.filaNombre}>{item.nombre}</Text>
-                  {item.direccion && <Text style={styles.filaDetalle}>{item.direccion}</Text>}
-                </View>
-                <Text style={styles.filaFlecha}>›</Text>
-              </Pressable>
+              />
             )}
           />
         </ContenedorAncho>
@@ -130,7 +107,7 @@ export default function Empresas() {
             <TextInput
               style={styles.modalInput}
               placeholder="Nombre (ej. Falabella)"
-              placeholderTextColor="#999"
+              placeholderTextColor={COLORES_ADMIN.textoSecundario}
               value={nombre}
               onChangeText={setNombre}
               editable={!guardando}
@@ -138,7 +115,7 @@ export default function Empresas() {
             <TextInput
               style={styles.modalInput}
               placeholder="Dirección (opcional)"
-              placeholderTextColor="#999"
+              placeholderTextColor={COLORES_ADMIN.textoSecundario}
               value={direccion}
               onChangeText={setDireccion}
               editable={!guardando}
@@ -179,94 +156,17 @@ export default function Empresas() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  agregar: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
-  },
-  agregarAncho: {
-    color: COLORES.oscuro,
-    fontSize: 14,
-    fontWeight: '700',
-    textDecorationLine: 'underline',
+    backgroundColor: COLORES_ADMIN.background,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   lista: {
-    padding: 20,
-    gap: 12,
-  },
-  fila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  filaTexto: {
-    flex: 1,
-    gap: 2,
-  },
-  filaNombre: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
-  },
-  filaDetalle: {
-    fontSize: 12,
-    color: '#888',
-  },
-  filaFlecha: {
-    fontSize: 20,
-    color: COLORES.oscuro,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.md,
   },
   fondoModal: {
     flex: 1,
@@ -279,22 +179,24 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     backgroundColor: '#FFF',
-    borderRadius: 18,
+    borderRadius: RADII_ADMIN.lg,
     padding: 22,
     gap: 12,
   },
   modalTitulo: {
     fontSize: 17,
-    fontWeight: '700',
-    color: '#333',
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    color: COLORES_ADMIN.texto,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.texto,
   },
   modalAcciones: {
     flexDirection: 'row',
@@ -304,11 +206,11 @@ const styles = StyleSheet.create({
   },
   modalCancelar: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   modalConfirmar: {
-    backgroundColor: COLORES.oscuro,
-    borderRadius: 10,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.md,
     paddingHorizontal: 20,
     paddingVertical: 10,
     minWidth: 90,
@@ -317,7 +219,7 @@ const styles = StyleSheet.create({
   modalConfirmarTexto: {
     color: '#FFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   botonDeshabilitado: {
     opacity: 0.5,

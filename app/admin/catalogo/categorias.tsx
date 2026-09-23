@@ -1,7 +1,6 @@
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Categoria } from '@/core/tipos';
 import { getDb } from '@/db/client';
@@ -13,9 +12,10 @@ import {
   reactivarCategoria,
 } from '@/db/categorias';
 import { getDispositivoId } from '@/db/dispositivo';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function CategoriasCatalogo() {
@@ -25,8 +25,6 @@ export default function CategoriasCatalogo() {
   const [cargando, setCargando] = useState(true);
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [guardando, setGuardando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -50,6 +48,7 @@ export default function CategoriasCatalogo() {
   );
 
   if (!usuario) return null;
+  const usuarioActual = usuario;
 
   async function agregar() {
     if (nombreNuevo.trim().length === 0) return;
@@ -57,7 +56,7 @@ export default function CategoriasCatalogo() {
     try {
       const db = await getDb();
       const dispositivoId = await getDispositivoId(db);
-      await crearCategoria(db, nombreNuevo.trim(), dispositivoId);
+      await crearCategoria(db, nombreNuevo.trim(), dispositivoId, { creadoPorId: usuarioActual.id });
       setNombreNuevo('');
       await cargar();
     } finally {
@@ -74,32 +73,20 @@ export default function CategoriasCatalogo() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720}>
-          {!anchaPantalla && (
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Catálogo</Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Categorías</Text>
-          <Text style={anchaPantalla ? styles.subtituloAncho : styles.subtitulo}>
-            Solo se puede elegir entre estas — para evitar categorías repetidas por mayúsculas o
-            espacios, agrégalas aquí.
-          </Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo="Categorías" rutaVolverTexto="Catálogo" />
+      <ContenedorAncho anchoMaximo={720}>
+        <Text style={styles.subtitulo}>
+          Solo se puede elegir entre estas — para evitar categorías repetidas por mayúsculas o
+          espacios, agrégalas aquí.
+        </Text>
+      </ContenedorAncho>
 
       <ContenedorAncho anchoMaximo={720}>
         <View style={styles.formulario}>
           <TextInput
             style={styles.input}
             placeholder="Nombre de la categoría nueva (ej. Galletas)"
-            placeholderTextColor="#999"
+            placeholderTextColor={COLORES_ADMIN.textoSecundario}
             value={nombreNuevo}
             onChangeText={setNombreNuevo}
             editable={!guardando}
@@ -117,12 +104,10 @@ export default function CategoriasCatalogo() {
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : categorias.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Todavía no hay categorías.</Text>
-        </View>
+        <EmptyState icono="pricetag-outline" mensaje="Todavía no hay categorías." />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
@@ -155,67 +140,35 @@ export default function CategoriasCatalogo() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 4,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 4,
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: 4,
+    backgroundColor: COLORES_ADMIN.background,
   },
   subtitulo: {
-    color: '#FFE9E2',
     fontSize: 12,
-    marginTop: 2,
-  },
-  subtituloAncho: {
-    color: '#6B5B3F',
-    fontSize: 12,
-    marginTop: 2,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    paddingTop: ESPACIADO_ADMIN.xs,
   },
   formulario: {
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    gap: ESPACIADO_ADMIN.sm,
+    paddingTop: ESPACIADO_ADMIN.lg,
   },
   input: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
+    paddingHorizontal: ESPACIADO_ADMIN.lg,
     paddingVertical: 11,
     fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.texto,
     borderWidth: 1,
-    borderColor: '#EBD3D3',
+    borderColor: COLORES_ADMIN.bordeSuave,
   },
   botonAgregar: {
-    backgroundColor: COLORES.oscuro,
-    borderRadius: 12,
-    paddingHorizontal: 18,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.md,
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -225,35 +178,27 @@ const styles = StyleSheet.create({
   botonAgregarTexto: {
     color: '#FFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   lista: {
-    padding: 20,
-    gap: 10,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.sm,
   },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: ESPACIADO_ADMIN.md,
   },
   filaInactiva: {
     opacity: 0.55,
@@ -264,26 +209,27 @@ const styles = StyleSheet.create({
   },
   filaNombre: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.texto,
   },
   filaNombreInactivo: {
     textDecorationLine: 'line-through',
   },
   filaDetalle: {
     fontSize: 12,
-    color: '#888',
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
   },
   botonAlternar: {
     borderWidth: 1,
-    borderColor: COLORES.oscuro,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.sm,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
     paddingVertical: 7,
   },
   botonAlternarTexto: {
     fontSize: 12,
-    fontWeight: '700',
-    color: COLORES.oscuro,
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    color: COLORES_ADMIN.vino,
   },
 });

@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Producto } from '@/core/tipos';
 import { getDb } from '@/db/client';
@@ -12,10 +11,11 @@ import {
   obtenerProducto,
   restaurarProducto,
 } from '@/db/productos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
 import { FormularioProducto, type ValoresProducto } from '@/ui/FormularioProducto';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function EditarProducto() {
@@ -24,8 +24,6 @@ export default function EditarProducto() {
   const [producto, setProducto] = useState<Producto | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   useEffect(() => {
     (async () => {
@@ -66,30 +64,14 @@ export default function EditarProducto() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={640} style={styles.encabezadoContenido}>
-          {!anchaPantalla && (
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Catálogo</Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Editar producto</Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo="Editar producto" rutaVolverTexto="Catálogo" anchoMaximo={640} />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : !producto ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Este producto ya no existe.</Text>
-        </View>
+        <EmptyState mensaje="Este producto ya no existe." />
       ) : (
         <ContenedorAncho anchoMaximo={640} llenarAlto>
           <FormularioProducto
@@ -101,7 +83,7 @@ export default function EditarProducto() {
               marca: producto.marca,
               categoriaId: producto.categoriaId,
             }}
-            colorAcento={COLORES.oscuro}
+            colorAcento={COLORES_ADMIN.vino}
             guardando={guardando}
             onGuardar={guardar}
             onGuardarFoto={guardarFoto}
@@ -131,45 +113,13 @@ export default function EditarProducto() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoContenido: {
-    gap: 4,
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
+    backgroundColor: COLORES_ADMIN.background,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   botonEstado: {
     marginTop: 4,
@@ -177,17 +127,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: COLORES.primario,
+    borderColor: COLORES_ADMIN.dorado,
   },
   botonEstadoTexto: {
     fontSize: 14,
-    fontWeight: '700',
-    color: COLORES.primario,
+    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    color: COLORES_ADMIN.dorado,
   },
   botonEliminar: {
-    borderColor: '#B00020',
+    borderColor: COLORES_ADMIN.error,
   },
   botonEliminarTexto: {
-    color: '#B00020',
+    color: COLORES_ADMIN.error,
   },
 });

@@ -4,6 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { fechaHoyBogota } from '@/core/analitica';
 import { calcularOcurrencias } from '@/core/eventos';
 import type { Evento, EstadoEvento, Frecuencia } from '@/core/tipos';
+import { registrarAccionAuditoria } from './auditoria';
 
 interface FilaEvento {
   id: string;
@@ -155,6 +156,17 @@ export async function crearEvento(
   let id = '';
   await db.withTransactionAsync(async () => {
     id = await insertarEvento(db, datos, dispositivoId);
+    await registrarAccionAuditoria(
+      db,
+      {
+        usuarioId: datos.creadoPor,
+        entidad: 'EVENTO',
+        entidadId: id,
+        accion: 'CREAR',
+        detalles: { empresaId: datos.empresaId, puntoId: datos.puntoId, fecha: datos.fecha },
+      },
+      dispositivoId
+    );
   });
   const creado = await obtenerEvento(db, id);
   if (!creado) throw new Error('No se pudo crear el evento');
@@ -208,6 +220,23 @@ export async function crearSerieRecurrente(
       );
       idsCreados.push(id);
     }
+    await registrarAccionAuditoria(
+      db,
+      {
+        usuarioId: datos.creadoPor,
+        entidad: 'EVENTO',
+        entidadId: serieId,
+        accion: 'CREAR',
+        detalles: {
+          empresaId: datos.empresaId,
+          puntoId: datos.puntoId,
+          ocurrencias: idsCreados.length,
+          fechaDesde: datos.fechaDesde,
+          fechaHasta: datos.fechaHasta,
+        },
+      },
+      dispositivoId
+    );
   });
 
   const filas = await db.getAllAsync<FilaEvento>(

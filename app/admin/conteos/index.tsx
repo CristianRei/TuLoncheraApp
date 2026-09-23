@@ -1,14 +1,15 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import type { Conteo } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarConteos } from '@/db/conteos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { ListRow } from '@/ui/ListRow';
+import { COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string): string {
@@ -20,8 +21,6 @@ export default function Conteos() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [conteos, setConteos] = useState<Conteo[]>([]);
   const [cargando, setCargando] = useState(true);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -43,33 +42,14 @@ export default function Conteos() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720}>
-          <View style={styles.encabezadoFila}>
-            {!anchaPantalla && (
-              <Pressable onPress={() => router.back()}>
-                <Text style={styles.volver}>‹ Admin</Text>
-              </Pressable>
-            )}
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Conteos de cierre</Text>
-            {!anchaPantalla && <View style={{ width: 60 }} />}
-          </View>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo="Conteos de cierre" rutaVolverTexto="Admin" />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : conteos.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Todavía no se ha registrado ningún conteo de cierre.</Text>
-        </View>
+        <EmptyState icono="clipboard-outline" mensaje="Todavía no se ha registrado ningún conteo de cierre." />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
@@ -77,16 +57,11 @@ export default function Conteos() {
             keyExtractor={(c) => c.id}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
-              <Pressable
-                style={styles.fila}
+              <ListRow
+                titulo={item.promotorNombre}
+                subtitulo={formatearFecha(item.tsCliente)}
                 onPress={() => router.push(`/admin/conteos/${item.id}`)}
-              >
-                <View style={styles.filaTexto}>
-                  <Text style={styles.filaPromotor}>{item.promotorNombre}</Text>
-                  <Text style={styles.filaDetalle}>{formatearFecha(item.tsCliente)}</Text>
-                </View>
-                <Text style={styles.filaFlecha}>›</Text>
-              </Pressable>
+              />
             )}
           />
         </ContenedorAncho>
@@ -98,81 +73,16 @@ export default function Conteos() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
+    backgroundColor: COLORES_ADMIN.background,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   lista: {
-    padding: 20,
-    gap: 12,
-  },
-  fila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  filaTexto: {
-    flex: 1,
-    gap: 2,
-  },
-  filaPromotor: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#333',
-  },
-  filaDetalle: {
-    fontSize: 12,
-    color: '#888',
-  },
-  filaFlecha: {
-    fontSize: 20,
-    color: COLORES.oscuro,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.md,
   },
 });

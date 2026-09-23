@@ -1,15 +1,16 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 
 import type { Turno } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarTurnos } from '@/db/turnos';
 import { listarTurnosRemotos } from '@/db/turnosRemotos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { ListRow } from '@/ui/ListRow';
+import { COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearHora(ts: string): string {
@@ -28,8 +29,6 @@ export default function Turnos() {
   const [turnos, setTurnos] = useState<Turno[]>([]);
   const [cargando, setCargando] = useState(true);
   const [actualizando, setActualizando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -67,39 +66,24 @@ export default function Turnos() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720}>
-          <View style={styles.encabezadoFila}>
-            {!anchaPantalla && (
-              <Pressable onPress={() => router.back()}>
-                <Text style={styles.volver}>‹ Admin</Text>
-              </Pressable>
-            )}
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Turnos</Text>
-            <Pressable onPress={actualizar} disabled={actualizando}>
-              {actualizando ? (
-                <ActivityIndicator size="small" color={anchaPantalla ? COLORES.oscuro : '#FFFFFF'} />
-              ) : (
-                <Text style={anchaPantalla ? styles.accionAncho : styles.volver}>Actualizar</Text>
-              )}
-            </Pressable>
-          </View>
-        </ContenedorAncho>
-      </View>
+      <Encabezado
+        titulo="Turnos"
+        rutaVolverTexto="Admin"
+        accion={{ icono: 'refresh', onPress: actualizar }}
+      />
+
+      {actualizando && (
+        <View style={styles.actualizandoAviso}>
+          <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
+        </View>
+      )}
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : turnos.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Todavía no se ha registrado ningún turno.</Text>
-        </View>
+        <EmptyState icono="time-outline" mensaje="Todavía no se ha registrado ningún turno." />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
@@ -107,21 +91,14 @@ export default function Turnos() {
             keyExtractor={(t) => t.id}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
-              <Pressable style={styles.fila} onPress={() => router.push(`/admin/turnos/${item.id}`)}>
-                <View style={styles.filaTexto}>
-                  <Text style={styles.filaPromotor}>{item.promotorNombre}</Text>
-                  <Text style={styles.filaDetalle}>
-                    Inicio: {formatearHora(item.horaInicio)}
-                    {item.horaFin ? ` · Fin: ${formatearHora(item.horaFin)}` : ''}
-                  </Text>
-                </View>
-                {!item.horaFin && (
-                  <View style={styles.badgeEnCurso}>
-                    <Text style={styles.badgeEnCursoTexto}>En curso</Text>
-                  </View>
-                )}
-                <Text style={styles.filaFlecha}>›</Text>
-              </Pressable>
+              <ListRow
+                titulo={item.promotorNombre}
+                subtitulo={`Inicio: ${formatearHora(item.horaInicio)}${
+                  item.horaFin ? ` · Fin: ${formatearHora(item.horaFin)}` : ''
+                }`}
+                badge={!item.horaFin ? 'En curso' : undefined}
+                onPress={() => router.push(`/admin/turnos/${item.id}`)}
+              />
             )}
           />
         </ContenedorAncho>
@@ -133,100 +110,20 @@ export default function Turnos() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
+    backgroundColor: COLORES_ADMIN.background,
   },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  accionAncho: {
-    color: COLORES.oscuro,
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
+  actualizandoAviso: {
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
+    paddingTop: ESPACIADO_ADMIN.sm,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   lista: {
-    padding: 20,
-    gap: 12,
-  },
-  fila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  filaTexto: {
-    flex: 1,
-    gap: 2,
-  },
-  filaPromotor: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#333',
-  },
-  filaDetalle: {
-    fontSize: 12,
-    color: '#888',
-  },
-  badgeEnCurso: {
-    backgroundColor: '#EAF5EA',
-    borderWidth: 1,
-    borderColor: '#C3E3C3',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  badgeEnCursoTexto: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#2E7D32',
-  },
-  filaFlecha: {
-    fontSize: 20,
-    color: COLORES.oscuro,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.md,
   },
 });
