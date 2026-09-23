@@ -6,8 +6,43 @@ de Supabase en este repo — todo se aplica a mano en el dashboard.
 
 ## 1. Tablas + RLS + trigger
 
-Correr `migraciones/0001_turnos_y_comprobantes.sql` completo en
-**SQL Editor** del dashboard de Supabase, una sola vez.
+**Camino corto (recomendado):** correr en **SQL Editor** del dashboard de
+Supabase, en este orden:
+
+1. `migraciones/0001_turnos_y_comprobantes.sql` (una sola vez)
+2. `migraciones/0009_sincronizacion_completa.sql` — script **idempotente** que
+   reúne TODO lo de 0003 a 0008 (personal, catálogo, mensajes, ventas,
+   movimientos, cargues, conteos, arqueos), agrega las columnas de clave
+   natural (`producto_sku`, responsables de ubicación), los triggers de
+   `subido_ts`, la protección de cargues y habilita **Realtime**. Se puede
+   correr las veces que haga falta y sobre un proyecto con cualquier
+   subconjunto de 0003-0008 ya aplicado (probado contra un Postgres real,
+   `npm run test:sql`). Termina con `notify pgrst, 'reload schema'` para que
+   la API vea las tablas nuevas enseguida.
+
+Cada vez que cambie el esquema, 0009 se actualiza en su lugar (siempre
+idempotente) — no hay que ir corriendo archivos sueltos.
+
+**Detalle histórico (ya incluido en 0009):** los archivos `0003` a `0008`
+siguen aquí como referencia de cómo se fue construyendo. Si prefieres correrlos
+uno por uno, en orden, cada uno una sola vez:
+
+1. `migraciones/0001_turnos_y_comprobantes.sql`
+2. `migraciones/0003_mensajes.sql` (mensajes/notificaciones push del admin —
+   `push_tokens`, `mensajes`, `mensaje_destinatarios`)
+3. `migraciones/0004_ventas_movimientos_cargues_conteos.sql` (segunda
+   rebanada del motor de inventario/ventas — `ventas`, `venta_items`,
+   `movimientos`, `lotes`, `cargues`, `cargue_lineas`, `conteos`,
+   `conteo_lineas`)
+4. `migraciones/0005_arqueos_caja.sql` (arqueo de caja al cerrar turno)
+5. `migraciones/0006_usuarios.sql` (primera rebanada de sincronización de
+   bajada — personal/PINs, ver CLAUDE.md sección 11)
+6. `migraciones/0007_catalogo.sql` (segunda rebanada de bajada — productos y
+   categorías, ver CLAUDE.md sección 11)
+7. `migraciones/0008_politicas_update_reintentos.sql` (corrección: política de
+   UPDATE para `comprobantes_venta` y `arqueos_caja`, sin la cual un
+   reintento de subida tras una subida ya exitosa fallaba para siempre —
+   correr después de 0005)
 
 ## 2. Buckets de Storage
 
