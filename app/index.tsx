@@ -27,8 +27,10 @@ import { descargarDatosDeAdminConLimite } from '@/sync/bajada';
 import { registrarPushToken } from '@/sync/push';
 import { CampoPin } from '@/ui/CampoPin';
 import { FondoFlotante, HaloResplandor } from '@/ui/FondoAnimado';
+import { LoginPantallaAncha } from '@/ui/LoginPantallaAncha';
 import { ModalDesbloqueoPin } from '@/ui/ModalDesbloqueoPin';
 import { useSesion } from '@/ui/SesionContext';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 
 // Admin usa PIN de 6 dígitos (ver src/core/pin.ts, modoPinParaRol); el resto
 // de roles sigue derivando el PIN de los últimos 4 dígitos de la cédula.
@@ -93,6 +95,7 @@ export default function Login() {
   // auto-desbloqueo abajo). No se muestra en UI, solo es insumo de esa consulta.
   const [ultimoIntentoTs, setUltimoIntentoTs] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   const tema = TEMAS[modo];
 
@@ -263,6 +266,41 @@ export default function Login() {
     setModo(nuevoModo);
     setPin('');
     setError(null);
+  }
+
+  // Pantalla ancha (PC/navegador): diseño tipo "terminal POS" calcado del
+  // mockup en TemDesing/code.html — toda la lógica de arriba (verificación,
+  // backoff, desbloqueo remoto) es la misma, solo cambia la presentación.
+  // En celular sigue el diseño original de siempre, sin cambios.
+  if (anchaPantalla) {
+    return (
+      <>
+        <LoginPantallaAncha
+          modo={modo}
+          pin={pin}
+          largoPin={LARGO_PIN[modo]}
+          verificando={verificando}
+          error={error}
+          estadoIntentos={estadoIntentos}
+          segundosRestantes={segundosRestantes}
+          onCambiarPin={setPin}
+          onCambiarModo={cambiarModo}
+          onMostrarDesbloqueo={() => setMostrarDesbloqueo(true)}
+        />
+        {dispositivoId && (
+          <ModalDesbloqueoPin
+            visible={mostrarDesbloqueo}
+            modo={modo}
+            dispositivoId={dispositivoId}
+            onDesbloqueado={() => {
+              setMostrarDesbloqueo(false);
+              refrescarEstadoIntentos(dispositivoId, modo);
+            }}
+            onCerrar={() => setMostrarDesbloqueo(false)}
+          />
+        )}
+      </>
+    );
   }
 
   return (

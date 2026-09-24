@@ -952,15 +952,32 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   serie recurrente no viaja (el evento baja con `serie_id` NULL, es solo
   trazabilidad del admin). Una edición propia aún sin subir no se pisa.
 - **Turnos** (`app/promotor/index.tsx` → `PantallaIniciarTurno`,
-  `app/admin/turnos/`, `src/db/turnos.ts`, migración 0015): antes de poder
-  vender, el promotor hace check-in diario (selfie + ubicación GPS,
-  ambas obligatorias, con timeout de 15s si el GPS no resuelve) — sin
-  turno abierto hoy, la grilla de venta no se muestra. Botón "Cierre de
-  jornada" en el menú del promotor abre esa pantalla (ver bullet de
-  Arqueo de caja abajo) — ahí, no en un Alert, vive el cierre real del
-  turno. El turno se cruza informativamente con el evento del calendario
-  del día (chip visible, nunca bloquea). Ver ADR 0006 (sincronización) y
-  0008 (conexión con calendario/cargue/conteo).
+  `app/admin/turnos/`, `src/db/turnos.ts`, `src/db/turnosRemotos.ts`,
+  migración 0015): antes de poder vender, el promotor hace check-in diario
+  (selfie + ubicación GPS, ambas obligatorias, con timeout de 15s si el GPS
+  no resuelve) — sin turno abierto hoy, la grilla de venta no se muestra.
+  **Un promotor nunca queda con dos turnos abiertos a la vez**: `turnos`
+  solo sincroniza en dirección de subida (nunca se descarga hacia el propio
+  promotor), así que si el mismo promotor hace check-in desde OTRO
+  dispositivo el mismo día, `iniciarTurno` primero busca un turno abierto
+  hoy LOCAL y, si no hay, uno REMOTO (`obtenerTurnoAbiertoHoyRemoto`,
+  best-effort) — si encuentra cualquiera de los dos, lo reusa tal cual (la
+  selfie/GPS recién tomados en este intento se descartan en silencio, sin
+  ningún mensaje de bloqueo: el promotor nunca debe verse frenado por
+  esto). Si el turno existente era remoto, se inserta localmente con el
+  MISMO id (nunca uno nuevo) para que el resto del flujo del promotor (que
+  siempre relee el turno LOCAL como gate: `app/promotor/index.tsx`,
+  `ventas.ts`, `cargues.ts`, `ventas-turno/`, `cierre-jornada.tsx`)
+  encuentre una fila. Botón "Cierre de jornada" en el menú del promotor
+  abre esa pantalla (ver bullet de Arqueo de caja abajo) — ahí, no en un
+  Alert, vive el cierre real del turno. El turno se cruza informativamente
+  con el evento del calendario del día (chip visible, nunca bloquea). El
+  panel de admin (`app/admin/turnos/`) filtra por Período (Hoy/7 días/30
+  días/Personalizado, mismo estándar de Dashboard/Bitácora), Estado (En
+  curso/Finalizados) y Promotor, combinables — y muestra un aviso si
+  detecta promotores con más de un turno EN CURSO a la vez (rastro de
+  duplicados de antes de este fix, o de un caso nuevo no contemplado). Ver
+  ADR 0006 (sincronización) y 0008 (conexión con calendario/cargue/conteo).
 - **Arqueo de caja** (`app/promotor/cierre-jornada.tsx`, `src/db/arqueos.ts`,
   `src/db/arqueosRemotos.ts`, migración 0024): pantalla que el promotor
   puede abrir y cerrar en cualquier momento del día (no solo al terminar)

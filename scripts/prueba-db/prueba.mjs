@@ -977,5 +977,79 @@ console.log('\n== L. Mensajes: el admin solo guarda el mensaje; el push lo enví
   }
 }
 
+console.log('\n== K. Un promotor nunca queda con dos turnos abiertos a la vez ==');
+{
+  const { iniciarTurno: iniciarTurnoJ } = await imp('db/turnos.ts');
+
+  const dbJ1 = crearDb();
+  await aplicar(dbJ1, migs);
+  const dispJ1 = await getDispositivoId(dbJ1);
+  await sembrarUsuariosDePrueba(dbJ1, dispJ1);
+  const promotorJ = await dbJ1.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+
+  await paso('flujo feliz: sin turno local ni remoto, se crea uno nuevo con su propia selfie', async () => {
+    globalThis.__supabase = { from: () => ({ select: () => ({ eq: () => ({ is: () => ({ gte: () => ({ order: () => ({ limit: () => ({ returns: async () => ({ data: [], error: null }) }) }) }) }) }) }) }) };
+    const turno = await iniciarTurnoJ(dbJ1, { promotorId: promotorJ.id, selfieUri: 'file:///dispositivo1.jpg', latitud: 1, longitud: 1 }, dispJ1);
+    assert.equal(turno.selfieUri, 'file:///dispositivo1.jpg');
+    const local = await dbJ1.getFirstAsync('SELECT count(*) n FROM turnos');
+    assert.equal(local.n, 1);
+  });
+
+  await paso('llamar iniciarTurno de nuevo en el MISMO dispositivo reutiliza el turno local (no crea un segundo)', async () => {
+    const turno = await iniciarTurnoJ(dbJ1, { promotorId: promotorJ.id, selfieUri: 'file:///otra-selfie.jpg', latitud: 2, longitud: 2 }, dispJ1);
+    assert.equal(turno.selfieUri, 'file:///dispositivo1.jpg', 'debió reusar la selfie original, no la nueva');
+    const total = await dbJ1.getFirstAsync('SELECT count(*) n FROM turnos');
+    assert.equal(total.n, 1);
+  });
+
+  const dbJ2 = crearDb();
+  await aplicar(dbJ2, migs);
+  const dispJ2 = 'j2j2j2j2-0000-4000-8000-000000000000';
+  await sembrarUsuariosDePrueba(dbJ2, dispJ2);
+  // Mismo promotor real (mismo PIN 8509), pero id LOCAL distinto en cada
+  // dispositivo (cada uno generó el suyo al sembrar) — igual que pasaría
+  // de verdad, el registro remoto en Supabase se resuelve por identidad de
+  // ESTE dispositivo (`datos.promotorId` que pasa el llamador), no por el
+  // id que trae la fila remota.
+  const promotorJ2 = await dbJ2.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+  await paso('SEGUNDO dispositivo del mismo promotor: no crea un turno duplicado, reusa el remoto con su mismo id', async () => {
+    const turnoRemotoId = (await dbJ1.getFirstAsync('SELECT id, hora_inicio FROM turnos LIMIT 1'));
+    const fakeJ = crearFake();
+    await fakeJ.from('turnos').upsert({
+      id: turnoRemotoId.id,
+      promotor_id: promotorJ2.id,
+      promotor_nombre: promotorJ2.nombre,
+      selfie_path: `${turnoRemotoId.id}.jpg`,
+      latitud: 1,
+      longitud: 1,
+      hora_inicio: turnoRemotoId.hora_inicio,
+      hora_fin: null,
+      dispositivo_id: dispJ1,
+    });
+    globalThis.__supabase = fakeJ;
+
+    const turno = await iniciarTurnoJ(dbJ2, { promotorId: promotorJ2.id, selfieUri: 'file:///dispositivo2.jpg', latitud: 9, longitud: 9 }, dispJ2);
+    assert.equal(turno.id, turnoRemotoId.id, 'debió reusar el id del turno remoto, no generar uno nuevo');
+
+    const localJ2 = await dbJ2.getFirstAsync('SELECT count(*) n FROM turnos');
+    assert.equal(localJ2.n, 1, 'debió insertar exactamente una fila local para el turno remoto');
+
+    const { obtenerTurnoAbiertoHoy: obtenerTurnoAbiertoHoyJ } = await imp('db/turnos.ts');
+    const gate = await obtenerTurnoAbiertoHoyJ(dbJ2, promotorJ2.id);
+    assert.ok(gate, 'el gate local del promotor debe encontrar el turno recién reconciliado');
+  });
+
+  await paso('sin red en el segundo intento: sigue creando su propio turno normal (no rompe el flujo offline)', async () => {
+    const dbJ3 = crearDb();
+    await aplicar(dbJ3, migs);
+    const dispJ3 = 'j3j3j3j3-0000-4000-8000-000000000000';
+    await sembrarUsuariosDePrueba(dbJ3, dispJ3);
+    const otroPromotor = await dbJ3.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+    globalThis.__supabase = { from: () => ({ select: () => ({ eq: () => ({ is: () => ({ gte: () => ({ order: () => ({ limit: () => ({ returns: async () => { throw new Error('Network request failed'); } }) }) }) }) }) }) }) };
+    const turno = await iniciarTurnoJ(dbJ3, { promotorId: otroPromotor.id, selfieUri: 'file:///offline.jpg', latitud: 3, longitud: 3 }, dispJ3);
+    assert.equal(turno.selfieUri, 'file:///offline.jpg');
+  });
+}
+
 console.log(fallos === 0 ? '\nTODO OK' : `\n${fallos} PRUEBA(S) FALLARON`);
 process.exit(fallos === 0 ? 0 : 1);
