@@ -18,9 +18,12 @@ import { formatearPesos, parsearPesos } from '@/core/dinero';
 import {
   calcularProyeccionMes,
   calcularRangoMesBogota,
+  calcularRangoPeriodo,
   diasEnMes,
+  ETIQUETAS_PERIODO,
   fechaHoyBogota,
   mesActualBogota,
+  type Periodo,
 } from '@/core/analitica';
 import type { Categoria, MetodoPago, Producto, Punto, TipoMeta, UsuarioSesion } from '@/core/tipos';
 import { getDb } from '@/db/client';
@@ -81,43 +84,11 @@ const COLORES_METODO_PAGO: Record<MetodoPago, string> = {
   LIBRANZA: COLORES_ADMIN.dorado,
 };
 
-type Periodo = 'HOY' | 'SEMANA' | 'MES' | 'PERSONALIZADO';
-
-const OFFSET_BOGOTA_MS = 5 * 60 * 60 * 1000;
-
-const ETIQUETAS_PERIODO: Record<Exclude<Periodo, 'PERSONALIZADO'>, string> = {
-  HOY: 'Hoy',
-  SEMANA: 'Últimos 7 días',
-  MES: 'Últimos 30 días',
-};
-
-const DIAS_POR_PERIODO: Record<Exclude<Periodo, 'PERSONALIZADO'>, number> = {
-  HOY: 1,
-  SEMANA: 7,
-  MES: 30,
-};
-
 const ETIQUETAS_METODO: Record<string, string> = {
   EFECTIVO: 'Efectivo',
   TRANSFERENCIA: 'Transferencia',
   LIBRANZA: 'Libranza',
 };
-
-/** Medianoche de hoy en Bogotá, menos N días, convertida a ISO UTC. */
-function calcularRango(periodo: Exclude<Periodo, 'PERSONALIZADO'>): RangoFechas {
-  const ahoraBogota = new Date(Date.now() - OFFSET_BOGOTA_MS);
-  const medianocheBogota = new Date(
-    Date.UTC(ahoraBogota.getUTCFullYear(), ahoraBogota.getUTCMonth(), ahoraBogota.getUTCDate())
-  );
-  const desdeBogota = new Date(
-    medianocheBogota.getTime() - (DIAS_POR_PERIODO[periodo] - 1) * 24 * 60 * 60 * 1000
-  );
-
-  return {
-    desde: new Date(desdeBogota.getTime() + OFFSET_BOGOTA_MS).toISOString(),
-    hasta: new Date().toISOString(),
-  };
-}
 
 /** Navega al detalle de un KPI de venta, pasando el rango vigente y los filtros activos del dashboard por query param. */
 function irADetalleVentas(
@@ -311,7 +282,7 @@ export default function Dashboard() {
         hasta: new Date(`${hastaPersonalizado}T23:59:59-05:00`).toISOString(),
       };
     }
-    return calcularRango(periodo);
+    return calcularRangoPeriodo(periodo);
   }, [periodo, desdePersonalizado, hastaPersonalizado]);
 
   const cargar = useCallback(async () => {

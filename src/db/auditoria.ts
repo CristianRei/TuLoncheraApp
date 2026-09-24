@@ -55,8 +55,15 @@ export async function registrarAccionAuditoria(
 interface FiltrosLineaDeTiempo {
   desde: string;
   hasta: string;
+  /** "Hecho por" — quién ejecutó la acción. */
   usuarioId?: string;
   entidad?: EntidadAuditoria;
+  /** "Sobre quién" — la persona/cliente/categoría afectada (solo tiene sentido junto con `entidad`, ver app/admin/auditoria). */
+  entidadId?: string;
+  /** Solo afecta el bloque de movimientos de inventario (no aplica cuando `entidad` está fijado). */
+  productoId?: string;
+  /** Solo afecta el bloque de movimientos de inventario, vía productos.categoria_id. */
+  categoriaId?: string;
 }
 
 /**
@@ -74,11 +81,13 @@ export async function obtenerLineaDeTiempoAuditoria(
   filtros: FiltrosLineaDeTiempo
 ): Promise<LogAuditoria[]> {
   const condicionEntidad = filtros.entidad ? 'AND a.entidad = ?' : '';
+  const condicionEntidadId = filtros.entidadId ? 'AND a.entidad_id = ?' : '';
   const condicionUsuarioAuditoria = filtros.usuarioId ? 'AND a.usuario_id = ?' : '';
   const parametrosAuditoria = [
     filtros.desde,
     filtros.hasta,
     ...(filtros.entidad ? [filtros.entidad] : []),
+    ...(filtros.entidadId ? [filtros.entidadId] : []),
     ...(filtros.usuarioId ? [filtros.usuarioId] : []),
   ];
 
@@ -93,7 +102,7 @@ export async function obtenerLineaDeTiempoAuditoria(
     `SELECT a.id, u.nombre as usuarioNombre, a.entidad, a.accion, a.detalles, a.ts_cliente as tsCliente
      FROM bitacora_auditoria a
      JOIN usuarios u ON u.id = a.usuario_id
-     WHERE a.ts_cliente >= ? AND a.ts_cliente <= ? ${condicionEntidad} ${condicionUsuarioAuditoria}
+     WHERE a.ts_cliente >= ? AND a.ts_cliente <= ? ${condicionEntidad} ${condicionEntidadId} ${condicionUsuarioAuditoria}
      ORDER BY a.ts_cliente DESC`,
     parametrosAuditoria
   );
@@ -108,15 +117,21 @@ export async function obtenerLineaDeTiempoAuditoria(
     tsCliente: fila.tsCliente,
   }));
 
-  // Movimientos de inventario solo si no se filtró por una entidad distinta
-  // (no tiene sentido mostrarlos cuando el admin pidió ver solo "Clientes", etc).
+  // Movimientos de inventario solo si no se filtró por una de las 4
+  // entidades administrativas (Personal/Clientes/Categorías/Eventos no
+  // tienen productos ni movimientos propios) — `entidadId` tampoco aplica
+  // aquí por el mismo motivo.
   let logsMovimientos: LogAuditoria[] = [];
-  if (!filtros.entidad) {
+  if (!filtros.entidad && !filtros.entidadId) {
     const condicionUsuarioMov = filtros.usuarioId ? 'AND m.usuario_id = ?' : '';
+    const condicionProducto = filtros.productoId ? 'AND m.producto_id = ?' : '';
+    const condicionCategoria = filtros.categoriaId ? 'AND p.categoria_id = ?' : '';
     const parametrosMov = [
       filtros.desde,
       filtros.hasta,
       ...(filtros.usuarioId ? [filtros.usuarioId] : []),
+      ...(filtros.productoId ? [filtros.productoId] : []),
+      ...(filtros.categoriaId ? [filtros.categoriaId] : []),
     ];
     const filasMovimiento = await db.getAllAsync<{
       id: string;
@@ -130,7 +145,7 @@ export async function obtenerLineaDeTiempoAuditoria(
        FROM movimientos m
        JOIN usuarios u ON u.id = m.usuario_id
        JOIN productos p ON p.id = m.producto_id
-       WHERE m.ts_cliente >= ? AND m.ts_cliente <= ? ${condicionUsuarioMov}
+       WHERE m.ts_cliente >= ? AND m.ts_cliente <= ? ${condicionUsuarioMov} ${condicionProducto} ${condicionCategoria}
        ORDER BY m.ts_cliente DESC`,
       parametrosMov
     );
@@ -145,11 +160,18 @@ export async function obtenerLineaDeTiempoAuditoria(
     }));
   }
 
-  // Intentos fallidos de PIN: sin usuario_id (anónimos por diseño), y solo
-  // relevantes cuando no se filtró por usuario específico (no se puede
-  // saber quién intentó, así que no se puede filtrar por usuario).
+  // Intentos fallidos de PIN: sin usuario_id (anónimos por diseño) y sin
+  // producto/categoría — solo relevantes cuando ninguno de esos filtros
+  // está activo (no se puede saber "quién" ni "qué producto" en un intento
+  // fallido, así que fijar cualquiera de esos filtros los excluye).
   let logsAccesos: LogAuditoria[] = [];
-  if (!filtros.entidad && !filtros.usuarioId) {
+  if (
+    !filtros.entidad &&
+    !filtros.entidadId &&
+    !filtros.usuarioId &&
+    !filtros.productoId &&
+    !filtros.categoriaId
+  ) {
     const filasAcceso = await db.getAllAsync<{
       id: string;
       dispositivoId: string;

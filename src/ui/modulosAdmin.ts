@@ -13,7 +13,7 @@ export interface ModuloAdmin {
 }
 
 /**
- * Los 15 módulos reales de administración — única fuente de verdad, usada
+ * Los módulos reales de administración — única fuente de verdad, usada
  * por el menú principal (app/admin/index.tsx) y por el sidebar fijo de
  * pantalla ancha (src/ui/SidebarAdmin.tsx). Agregar un módulo nuevo aquí
  * lo agrega automáticamente en ambos lugares.
@@ -107,6 +107,12 @@ export const MODULOS_ADMIN: ModuloAdmin[] = [
     titulo: 'Seguridad de acceso',
     descripcion: 'Dispositivos bloqueados e intentos fallidos de PIN.',
     icono: 'lock-closed-outline',
+  },
+  {
+    ruta: '/admin/auditoria',
+    titulo: 'Bitácora y auditoría',
+    descripcion: 'Quién hizo qué: personal, clientes, categorías, eventos y accesos.',
+    icono: 'document-text-outline',
   },
   {
     ruta: '/admin/personal',

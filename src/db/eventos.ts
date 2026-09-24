@@ -323,16 +323,31 @@ export async function reasignarEvento(
 /** Cancela un evento con motivo obligatorio — nunca se borra (mismo patrón que `ventas.anulada`, ADR 0004). */
 export async function cancelarEvento(
   db: SQLiteDatabase,
-  datos: { eventoId: string; motivo: string }
+  datos: { eventoId: string; motivo: string },
+  dispositivoId: string,
+  canceladoPorId: string
 ): Promise<void> {
   const actual = await obtenerEvento(db, datos.eventoId);
   if (!actual) throw new Error('Este evento ya no existe.');
   verificarFechaNoPasada(actual.fecha);
 
-  await db.runAsync("UPDATE eventos SET estado = 'CANCELADO', motivo_cancelacion = ? WHERE id = ?", [
-    datos.motivo,
-    datos.eventoId,
-  ]);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync("UPDATE eventos SET estado = 'CANCELADO', motivo_cancelacion = ? WHERE id = ?", [
+      datos.motivo,
+      datos.eventoId,
+    ]);
+    await registrarAccionAuditoria(
+      db,
+      {
+        usuarioId: canceladoPorId,
+        entidad: 'EVENTO',
+        entidadId: datos.eventoId,
+        accion: 'CANCELAR',
+        detalles: { motivo: datos.motivo, empresaId: actual.empresaId, puntoId: actual.puntoId, fecha: actual.fecha },
+      },
+      dispositivoId
+    );
+  });
 }
 
 /** Cambia el estado informativo de un evento (PLANEADO/EN_CURSO/CERRADO) — ya no determina el punto vigente para ventas. */

@@ -623,7 +623,13 @@ export default function CalendarioAdmin() {
                   setGuardando(true);
                   try {
                     const db = await getDb();
-                    await cancelarEvento(db, { eventoId: detalleEvento.id, motivo: motivoCancelacion.trim() });
+                    const dispositivoId = await getDispositivoId(db);
+                    await cancelarEvento(
+                      db,
+                      { eventoId: detalleEvento.id, motivo: motivoCancelacion.trim() },
+                      dispositivoId,
+                      usuarioActual.id
+                    );
                     setModalCancelar(false);
                     setMotivoCancelacion('');
                     setDetalleEvento(null);

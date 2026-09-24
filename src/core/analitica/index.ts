@@ -58,6 +58,43 @@ export interface RangoIso {
   hasta: string;
 }
 
+/**
+ * Estándar de filtro de tiempo para toda pantalla de admin con filtro de
+ * período (Dashboard, Bitácora y auditoría, y las que vengan después) — ver
+ * CLAUDE.md. `PERSONALIZADO` no tiene un rango fijo: la pantalla abre un
+ * `CalendarioRango` (src/ui/CalendarioRango.tsx) y guarda desde/hasta aparte.
+ */
+export type Periodo = 'HOY' | 'SEMANA' | 'MES' | 'PERSONALIZADO';
+
+export const ETIQUETAS_PERIODO: Record<Exclude<Periodo, 'PERSONALIZADO'>, string> = {
+  HOY: 'Hoy',
+  SEMANA: 'Últimos 7 días',
+  MES: 'Últimos 30 días',
+};
+
+const DIAS_POR_PERIODO: Record<Exclude<Periodo, 'PERSONALIZADO'>, number> = {
+  HOY: 1,
+  SEMANA: 7,
+  MES: 30,
+};
+
+/** Medianoche de hoy en Bogotá, menos N días, convertida a ISO UTC. */
+export function calcularRangoPeriodo(periodo: Exclude<Periodo, 'PERSONALIZADO'>): RangoIso {
+  const offsetMs = OFFSET_BOGOTA_HORAS * 60 * 60 * 1000;
+  const ahoraBogota = new Date(Date.now() - offsetMs);
+  const medianocheBogota = new Date(
+    Date.UTC(ahoraBogota.getUTCFullYear(), ahoraBogota.getUTCMonth(), ahoraBogota.getUTCDate())
+  );
+  const desdeBogota = new Date(
+    medianocheBogota.getTime() - (DIAS_POR_PERIODO[periodo] - 1) * 24 * 60 * 60 * 1000
+  );
+
+  return {
+    desde: new Date(desdeBogota.getTime() + offsetMs).toISOString(),
+    hasta: new Date().toISOString(),
+  };
+}
+
 /** Medianoche de hoy en Bogotá hasta ahora, en ISO UTC — para filtrar "hoy". */
 export function calcularRangoHoyBogota(ahora: Date = new Date()): RangoIso {
   const offsetMs = OFFSET_BOGOTA_HORAS * 60 * 60 * 1000;
