@@ -8,6 +8,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
@@ -24,14 +25,13 @@ import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { EmptyState } from '@/ui/EmptyState';
 import { Encabezado } from '@/ui/Encabezado';
-import { FilterTabs } from '@/ui/FilterTabs';
 import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type FiltroEntidad = 'TODOS' | EntidadAuditoria | 'ACCESOS';
 
 const OPCIONES_ENTIDAD: { valor: FiltroEntidad; etiqueta: string }[] = [
-  { valor: 'TODOS', etiqueta: 'Todos' },
+  { valor: 'TODOS', etiqueta: 'Todos los registros' },
   { valor: 'PERSONA', etiqueta: 'Personal' },
   { valor: 'CLIENTE', etiqueta: 'Clientes' },
   { valor: 'CATEGORIA', etiqueta: 'Categorías' },
@@ -39,18 +39,21 @@ const OPCIONES_ENTIDAD: { valor: FiltroEntidad; etiqueta: string }[] = [
   { valor: 'ACCESOS', etiqueta: 'Accesos' },
 ];
 
-const OPCIONES_PERIODO: { valor: Periodo; etiqueta: string }[] = [
-  ...(Object.keys(ETIQUETAS_PERIODO) as Exclude<Periodo, 'PERSONALIZADO'>[]).map((p) => ({
-    valor: p as Periodo,
-    etiqueta: ETIQUETAS_PERIODO[p],
-  })),
-  { valor: 'PERSONALIZADO', etiqueta: 'Personalizado' },
-];
+const OPCIONES_PERIODO: { valor: Exclude<Periodo, 'PERSONALIZADO'>; etiqueta: string }[] = (
+  Object.keys(ETIQUETAS_PERIODO) as Exclude<Periodo, 'PERSONALIZADO'>[]
+).map((p) => ({ valor: p, etiqueta: ETIQUETAS_PERIODO[p] }));
 
 const ICONO_ORIGEN: Record<LogAuditoria['origen'], keyof typeof Ionicons.glyphMap> = {
   AUDITORIA: 'person-circle-outline',
   MOVIMIENTO: 'cube-outline',
   ACCESO_FALLIDO: 'warning-outline',
+};
+
+/** Icono en caja de color según origen — mismo lenguaje del mockup (ámbar=alerta, naranja=movimiento, vino=administrativo). */
+const ESTILO_ICONO: Record<LogAuditoria['origen'], { fondo: string; borde: string; color: string }> = {
+  AUDITORIA: { fondo: COLORES_ADMIN.superficieBaja, borde: COLORES_ADMIN.bordeSuave, color: COLORES_ADMIN.vino },
+  MOVIMIENTO: { fondo: '#FFF3E8', borde: '#FBDCA3', color: '#B5651D' },
+  ACCESO_FALLIDO: { fondo: '#FEF6E7', borde: '#FBDCA3', color: '#976200' },
 };
 
 function formatearFecha(tsCliente: string): string {
@@ -62,7 +65,7 @@ interface OpcionSelector {
   etiqueta: string;
 }
 
-/** Modal de selección simple (lista de opciones + "Quitar filtro") — usado por los 4 selectores de esta pantalla. */
+/** Modal de selección simple (lista de opciones + "Quitar filtro") — usado por los selectores de esta pantalla. */
 function SelectorModal({
   visible,
   titulo,
@@ -103,6 +106,32 @@ function SelectorModal({
   );
 }
 
+/** Fila-selector estilo "dropdown" del mockup (icono + etiqueta + valor elegido) — abre un SelectorModal al tocarla. */
+function FilaSelector({
+  icono,
+  etiqueta,
+  valor,
+  onPress,
+}: {
+  icono: keyof typeof Ionicons.glyphMap;
+  etiqueta: string;
+  valor: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={styles.dropdown} onPress={onPress}>
+      <Text style={styles.dropdownEtiqueta}>{etiqueta}</Text>
+      <View style={styles.dropdownValor}>
+        <Ionicons name={icono} size={14} color={COLORES_ADMIN.textoSecundario} />
+        <Text style={styles.dropdownValorTexto} numberOfLines={1}>
+          {valor}
+        </Text>
+        <Ionicons name="chevron-down" size={14} color={COLORES_ADMIN.textoSecundario} />
+      </View>
+    </Pressable>
+  );
+}
+
 export default function Auditoria() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [logs, setLogs] = useState<LogAuditoria[]>([]);
@@ -113,6 +142,7 @@ export default function Auditoria() {
   const [desdePersonalizado, setDesdePersonalizado] = useState<string | null>(null);
   const [hastaPersonalizado, setHastaPersonalizado] = useState<string | null>(null);
   const [calendarioVisible, setCalendarioVisible] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
 
   const [actorId, setActorId] = useState<string | null>(null);
   const [afectadoId, setAfectadoId] = useState<string | null>(null);
@@ -203,6 +233,18 @@ export default function Auditoria() {
     setCategoriaId(null);
   }
 
+  function restablecerFiltros() {
+    setFiltroEntidad('TODOS');
+    setPeriodo('SEMANA');
+    setDesdePersonalizado(null);
+    setHastaPersonalizado(null);
+    setBusqueda('');
+    setActorId(null);
+    setAfectadoId(null);
+    setProductoId(null);
+    setCategoriaId(null);
+  }
+
   const nombreActor = actorId ? personal.find((p) => p.id === actorId)?.nombre : null;
   const nombreAfectado = afectadoId ? opcionesAfectado.find((o) => o.id === afectadoId)?.etiqueta : null;
   const nombreProducto = productoId ? productos.find((p) => p.id === productoId)?.nombre : null;
@@ -211,88 +253,217 @@ export default function Auditoria() {
   const muestraProductoCategoria = filtroEntidad === 'TODOS';
   const muestraAfectado = ['PERSONA', 'CLIENTE', 'CATEGORIA'].includes(filtroEntidad);
 
+  const terminoBusqueda = busqueda.trim().toLowerCase();
+  const logsFiltrados = terminoBusqueda
+    ? logs.filter((l) => l.descripcion.toLowerCase().includes(terminoBusqueda))
+    : logs;
+
+  const hayFiltrosActivos =
+    filtroEntidad !== 'TODOS' ||
+    periodo !== 'SEMANA' ||
+    busqueda.trim().length > 0 ||
+    actorId !== null ||
+    afectadoId !== null ||
+    productoId !== null ||
+    categoriaId !== null;
+
+  const etiquetaPeriodo =
+    periodo === 'PERSONALIZADO'
+      ? desdePersonalizado && hastaPersonalizado
+        ? `${desdePersonalizado} — ${hastaPersonalizado}`
+        : 'Personalizado'
+      : ETIQUETAS_PERIODO[periodo];
+
   return (
     <View style={styles.contenedor}>
-      <Encabezado titulo="Bitácora y auditoría" rutaVolverTexto="Admin" anchoMaximo={720} />
+      <Encabezado titulo="Bitácora y auditoría" rutaVolverTexto="Admin" anchoMaximo={860} />
 
-      <ContenedorAncho anchoMaximo={720}>
-        <View style={styles.controles}>
-          <View style={styles.filaPeriodo}>
-            <FilterTabs
-              opciones={OPCIONES_PERIODO}
-              valorActivo={periodo}
-              onCambiar={(valor) => {
-                setPeriodo(valor);
-                if (valor === 'PERSONALIZADO') setCalendarioVisible(true);
+      <ContenedorAncho anchoMaximo={860} llenarAlto>
+        <View style={styles.scroll}>
+          {/* Panel de filtros — una sola tarjeta con 3 filas divididas, igual al mockup de Stitch */}
+          <View style={styles.panelFiltros}>
+            {/* Fila 1: segmented de período + buscador */}
+            <View style={styles.filaPanel}>
+              <View style={styles.periodoSegmentado}>
+                {OPCIONES_PERIODO.map((op) => {
+                  const activo = periodo === op.valor;
+                  return (
+                    <Pressable
+                      key={op.valor}
+                      style={[styles.periodoBoton, activo && styles.periodoBotonActivo]}
+                      onPress={() => setPeriodo(op.valor)}
+                    >
+                      <Text style={[styles.periodoBotonTexto, activo && styles.periodoBotonTextoActivo]}>
+                        {op.etiqueta}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+                <Pressable
+                  style={[styles.periodoBoton, periodo === 'PERSONALIZADO' && styles.periodoBotonActivo]}
+                  onPress={() => {
+                    setPeriodo('PERSONALIZADO');
+                    setCalendarioVisible(true);
+                  }}
+                >
+                  <Ionicons
+                    name="calendar-outline"
+                    size={13}
+                    color={periodo === 'PERSONALIZADO' ? '#FFFFFF' : COLORES_ADMIN.textoSecundario}
+                  />
+                  <Text
+                    style={[
+                      styles.periodoBotonTexto,
+                      periodo === 'PERSONALIZADO' && styles.periodoBotonTextoActivo,
+                    ]}
+                  >
+                    Personalizado
+                  </Text>
+                </Pressable>
+              </View>
+
+              <View style={styles.buscador}>
+                <Ionicons name="search-outline" size={15} color={COLORES_ADMIN.textoSecundario} />
+                <TextInput
+                  style={styles.buscadorInput}
+                  placeholder="Buscar por usuario, producto o descripción..."
+                  placeholderTextColor={COLORES_ADMIN.textoSecundario}
+                  value={busqueda}
+                  onChangeText={setBusqueda}
+                />
+              </View>
+            </View>
+
+            {/* Fila 2: pills de tipo + restablecer */}
+            <View style={styles.filaPanel}>
+              <View style={styles.pillsFila}>
+                <Text style={styles.pillsEtiqueta}>Filtrar por:</Text>
+                {OPCIONES_ENTIDAD.map((op) => {
+                  const activo = filtroEntidad === op.valor;
+                  return (
+                    <Pressable
+                      key={op.valor}
+                      style={[styles.pill, activo && styles.pillActivo]}
+                      onPress={() => elegirTipo(op.valor)}
+                    >
+                      <Text style={[styles.pillTexto, activo && styles.pillTextoActivo]}>{op.etiqueta}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {hayFiltrosActivos && (
+                <Pressable onPress={restablecerFiltros}>
+                  <Text style={styles.restablecer}>Restablecer filtros</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {/* Fila 3: selectores tipo dropdown */}
+            <View style={[styles.filaPanel, styles.filaDropdowns]}>
+              <FilaSelector
+                icono="person-outline"
+                etiqueta="Usuario responsable"
+                valor={nombreActor ?? 'Cualquier usuario (Todos)'}
+                onPress={() => setSelectorAbierto('ACTOR')}
+              />
+              {muestraAfectado && (
+                <FilaSelector
+                  icono="locate-outline"
+                  etiqueta="Sobre quién"
+                  valor={nombreAfectado ?? 'Cualquiera'}
+                  onPress={() => setSelectorAbierto('AFECTADO')}
+                />
+              )}
+              {muestraProductoCategoria && (
+                <>
+                  <FilaSelector
+                    icono="pricetag-outline"
+                    etiqueta="Producto o SKU"
+                    valor={nombreProducto ?? 'Cualquier producto (Todos)'}
+                    onPress={() => setSelectorAbierto('PRODUCTO')}
+                  />
+                  <FilaSelector
+                    icono="pricetags-outline"
+                    etiqueta="Categoría de producto"
+                    valor={nombreCategoria ?? 'Cualquier categoría'}
+                    onPress={() => setSelectorAbierto('CATEGORIA')}
+                  />
+                </>
+              )}
+            </View>
+          </View>
+
+          {/* Chips de filtros aplicados + contador */}
+          <View style={styles.resumenFila}>
+            <Text style={styles.resumenEtiqueta}>Filtros aplicados:</Text>
+            <View style={styles.chipResumen}>
+              <Text style={styles.chipResumenTexto}>
+                Período: <Text style={styles.chipResumenValor}>{etiquetaPeriodo}</Text>
+              </Text>
+            </View>
+            <View style={styles.chipResumen}>
+              <Text style={styles.chipResumenTexto}>
+                Tipo:{' '}
+                <Text style={styles.chipResumenValor}>
+                  {OPCIONES_ENTIDAD.find((o) => o.valor === filtroEntidad)?.etiqueta}
+                </Text>
+              </Text>
+            </View>
+            <Text style={styles.resumenContador}>
+              Mostrando {logsFiltrados.length} de {logs.length} eventos
+            </Text>
+          </View>
+
+          {cargando ? (
+            <View style={styles.centrado}>
+              <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
+            </View>
+          ) : logsFiltrados.length === 0 ? (
+            <EmptyState icono="document-text-outline" mensaje="Sin actividad registrada con estos filtros." />
+          ) : (
+            <FlatList
+              data={logsFiltrados}
+              keyExtractor={(log) => log.id}
+              contentContainerStyle={styles.lista}
+              renderItem={({ item }) => {
+                const estilo = ESTILO_ICONO[item.origen];
+                return (
+                  <View
+                    style={[
+                      styles.tarjetaEvento,
+                      item.origen === 'ACCESO_FALLIDO' && styles.tarjetaEventoAlerta,
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.iconoCaja,
+                        { backgroundColor: estilo.fondo, borderColor: estilo.borde },
+                      ]}
+                    >
+                      <Ionicons name={ICONO_ORIGEN[item.origen]} size={18} color={estilo.color} />
+                    </View>
+                    <View style={styles.tarjetaTexto}>
+                      <Text style={styles.tarjetaDescripcion}>{item.descripcion}</Text>
+                      <View style={styles.tarjetaMetaFila}>
+                        <Ionicons name="time-outline" size={13} color={COLORES_ADMIN.textoSecundario} />
+                        <Text style={styles.tarjetaMeta}>{formatearFecha(item.tsCliente)}</Text>
+                        {item.dispositivoId && (
+                          <>
+                            <Text style={styles.tarjetaMetaSeparador}>·</Text>
+                            <Text style={styles.tarjetaMetaMono}>
+                              Dispositivo: {item.dispositivoId.slice(0, 8)}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+                );
               }}
             />
-            {periodo === 'PERSONALIZADO' && desdePersonalizado && hastaPersonalizado && (
-              <Pressable onPress={() => setCalendarioVisible(true)}>
-                <Text style={styles.rangoTexto}>
-                  {desdePersonalizado} — {hastaPersonalizado}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-
-          <FilterTabs opciones={OPCIONES_ENTIDAD} valorActivo={filtroEntidad} onCambiar={elegirTipo} />
-
-          <View style={styles.chipsFiltro}>
-            <Pressable style={styles.chipFiltro} onPress={() => setSelectorAbierto('ACTOR')}>
-              <Ionicons name="person-outline" size={14} color={COLORES_ADMIN.vino} />
-              <Text style={styles.chipFiltroTexto}>{nombreActor ?? 'Hecho por: cualquiera'}</Text>
-            </Pressable>
-
-            {muestraAfectado && (
-              <Pressable style={styles.chipFiltro} onPress={() => setSelectorAbierto('AFECTADO')}>
-                <Ionicons name="locate-outline" size={14} color={COLORES_ADMIN.vino} />
-                <Text style={styles.chipFiltroTexto}>{nombreAfectado ?? 'Sobre quién: cualquiera'}</Text>
-              </Pressable>
-            )}
-
-            {muestraProductoCategoria && (
-              <>
-                <Pressable style={styles.chipFiltro} onPress={() => setSelectorAbierto('PRODUCTO')}>
-                  <Ionicons name="pricetag-outline" size={14} color={COLORES_ADMIN.vino} />
-                  <Text style={styles.chipFiltroTexto}>{nombreProducto ?? 'Producto: cualquiera'}</Text>
-                </Pressable>
-                <Pressable style={styles.chipFiltro} onPress={() => setSelectorAbierto('CATEGORIA')}>
-                  <Ionicons name="pricetags-outline" size={14} color={COLORES_ADMIN.vino} />
-                  <Text style={styles.chipFiltroTexto}>{nombreCategoria ?? 'Categoría: cualquiera'}</Text>
-                </Pressable>
-              </>
-            )}
-          </View>
+          )}
         </View>
       </ContenedorAncho>
-
-      {cargando ? (
-        <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
-        </View>
-      ) : logs.length === 0 ? (
-        <EmptyState icono="document-text-outline" mensaje="Sin actividad registrada con estos filtros." />
-      ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
-          <FlatList
-            data={logs}
-            keyExtractor={(log) => log.id}
-            contentContainerStyle={styles.lista}
-            renderItem={({ item }) => (
-              <View style={styles.fila}>
-                <Ionicons name={ICONO_ORIGEN[item.origen]} size={20} color={COLORES_ADMIN.vino} />
-                <View style={styles.filaTexto}>
-                  <Text style={styles.filaDescripcion}>{item.descripcion}</Text>
-                  <Text style={styles.filaDetalle}>
-                    {formatearFecha(item.tsCliente)}
-                    {item.dispositivoId ? ` · Dispositivo ${item.dispositivoId.slice(0, 8)}` : ''}
-                  </Text>
-                </View>
-              </View>
-            )}
-          />
-        </ContenedorAncho>
-      )}
 
       <Modal visible={calendarioVisible} animationType="fade" transparent>
         <View style={styles.fondoModal}>
@@ -319,7 +490,7 @@ export default function Auditoria() {
 
       <SelectorModal
         visible={selectorAbierto === 'ACTOR'}
-        titulo="Hecho por"
+        titulo="Usuario responsable"
         opciones={personal.map((p) => ({ id: p.id, etiqueta: p.nombre }))}
         onElegir={(id) => {
           setActorId(id);
@@ -339,7 +510,7 @@ export default function Auditoria() {
       />
       <SelectorModal
         visible={selectorAbierto === 'PRODUCTO'}
-        titulo="Producto"
+        titulo="Producto o SKU"
         opciones={productos.map((p) => ({ id: p.id, etiqueta: p.nombre }))}
         onElegir={(id) => {
           setProductoId(id);
@@ -366,39 +537,184 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORES_ADMIN.background,
   },
-  controles: {
+  scroll: {
+    padding: ESPACIADO_ADMIN.xl,
     paddingTop: ESPACIADO_ADMIN.lg,
     gap: ESPACIADO_ADMIN.md,
+    flex: 1,
   },
-  filaPeriodo: {
-    gap: ESPACIADO_ADMIN.sm,
+  panelFiltros: {
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.lg,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    overflow: 'hidden',
   },
-  rangoTexto: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
-    color: COLORES_ADMIN.textoSecundario,
-    textDecorationLine: 'underline',
+  filaPanel: {
+    padding: ESPACIADO_ADMIN.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORES_ADMIN.bordeSuave,
+    gap: ESPACIADO_ADMIN.md,
   },
-  chipsFiltro: {
+  filaDropdowns: {
+    borderBottomWidth: 0,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: ESPACIADO_ADMIN.sm,
   },
-  chipFiltro: {
+  periodoSegmentado: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 2,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    padding: 3,
+    borderRadius: RADII_ADMIN.sm,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    alignSelf: 'flex-start',
+  },
+  periodoBoton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    paddingVertical: ESPACIADO_ADMIN.xs + 2,
+    borderRadius: RADII_ADMIN.sm - 2,
+  },
+  periodoBotonActivo: {
+    backgroundColor: COLORES_ADMIN.vino,
+  },
+  periodoBotonTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  periodoBotonTextoActivo: {
+    color: '#FFFFFF',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  buscador: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO_ADMIN.sm,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.sm,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    paddingVertical: ESPACIADO_ADMIN.sm,
+  },
+  buscadorInput: {
+    flex: 1,
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.texto,
+  },
+  pillsFila: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: ESPACIADO_ADMIN.xs,
+    flex: 1,
+  },
+  pillsEtiqueta: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginRight: 2,
+  },
+  pill: {
     backgroundColor: COLORES_ADMIN.superficieBaja,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: RADII_ADMIN.pill,
     paddingHorizontal: ESPACIADO_ADMIN.md,
-    paddingVertical: ESPACIADO_ADMIN.sm,
+    paddingVertical: ESPACIADO_ADMIN.xs + 2,
   },
-  chipFiltroTexto: {
+  pillActivo: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderColor: COLORES_ADMIN.vino,
+  },
+  pillTexto: {
     fontSize: 12,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  pillTextoActivo: {
+    color: '#FFFFFF',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  restablecer: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
+    textDecorationLine: 'underline',
+  },
+  dropdown: {
+    minWidth: 180,
+    flex: 1,
+    gap: 2,
+  },
+  dropdownEtiqueta: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  dropdownValor: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO_ADMIN.xs,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.sm,
+    paddingHorizontal: ESPACIADO_ADMIN.sm,
+    paddingVertical: ESPACIADO_ADMIN.sm,
+  },
+  dropdownValorTexto: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.texto,
+  },
+  resumenFila: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: ESPACIADO_ADMIN.sm,
+    paddingHorizontal: 2,
+  },
+  resumenEtiqueta: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  chipResumen: {
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.sm,
+    paddingHorizontal: ESPACIADO_ADMIN.sm,
+    paddingVertical: 3,
+  },
+  chipResumenTexto: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  chipResumenValor: {
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
+  },
+  resumenContador: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    marginLeft: 'auto',
   },
   centrado: {
     flex: 1,
@@ -407,32 +723,63 @@ const styles = StyleSheet.create({
     padding: ESPACIADO_ADMIN.xxl,
   },
   lista: {
-    padding: ESPACIADO_ADMIN.xl,
     gap: ESPACIADO_ADMIN.sm,
+    paddingBottom: ESPACIADO_ADMIN.xl,
   },
-  fila: {
+  tarjetaEvento: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: ESPACIADO_ADMIN.md,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: RADII_ADMIN.md,
+    borderRadius: RADII_ADMIN.lg,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: ESPACIADO_ADMIN.md,
   },
-  filaTexto: {
-    flex: 1,
-    gap: 2,
+  tarjetaEventoAlerta: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#F3A712',
   },
-  filaDescripcion: {
+  iconoCaja: {
+    width: 36,
+    height: 36,
+    borderRadius: RADII_ADMIN.sm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tarjetaTexto: {
+    flex: 1,
+    gap: 4,
+  },
+  tarjetaDescripcion: {
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.texto,
   },
-  filaDetalle: {
+  tarjetaMetaFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO_ADMIN.xs,
+    flexWrap: 'wrap',
+  },
+  tarjetaMeta: {
     fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  tarjetaMetaSeparador: {
+    fontSize: 12,
+    color: COLORES_ADMIN.bordeSuave,
+  },
+  tarjetaMetaMono: {
+    fontSize: 11,
     fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
     color: COLORES_ADMIN.textoSecundario,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
   },
   fondoModal: {
     flex: 1,

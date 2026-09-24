@@ -1,454 +1,672 @@
 <!DOCTYPE html>
 
-<html class="h-full bg-[#fdf9f8]" lang="es"><head>
+<html class="h-full bg-[#fcf8f6]" lang="es"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Portal Operativo Central | Tu Lonchera</title>
+<title>Tu Lonchera Market - Bitácora y Auditoría</title>
 <!-- Tailwind CSS v3 with Plugins -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<!-- Google Fonts: Plus Jakarta Sans -->
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <script>
     tailwind.config = {
       theme: {
         extend: {
-          fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-          },
           colors: {
             brand: {
-              wine: '#541212',
-              'wine-dark': '#420d0d',
-              'wine-light': '#6c1b1b',
-              amber: '#f59e0b',
-              cream: '#fdf9f8',
+              maroon: '#541212',
+              'maroon-hover': '#430e0e',
+              'maroon-light': '#6f1d1d',
+              gold: '#F3A712',
+              'gold-light': '#fef7e9',
+              warm: '#fff8f6',
               surface: '#ffffff',
-              subtle: '#fff2ee',
-              muted: '#725e5a',
-              heading: '#3b1212'
+              border: '#eeddd8',
+              muted: '#7a6560'
             }
           },
-          boxShadow: {
-            'card': '0 2px 10px -2px rgba(84, 18, 18, 0.04), 0 1px 3px -1px rgba(84, 18, 18, 0.02)',
-            'card-hover': '0 12px 28px -4px rgba(84, 18, 18, 0.08), 0 4px 10px -2px rgba(84, 18, 18, 0.04)',
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
           }
         }
       }
     }
   </script>
-<style data-purpose="custom-enhancements">
-    /* Subtle custom scrollbar */
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-scrollbars">
+    /* Custom refined scrollbars */
     ::-webkit-scrollbar {
       width: 6px;
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #faf5f3;
+      background: #faf2ef;
     }
     ::-webkit-scrollbar-thumb {
-      background: #d8c4bf;
+      background: #dfcbc4;
       border-radius: 9999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #bfa59f;
+      background: #c9b1aa;
     }
   </style>
 </head>
-<body class="h-full flex flex-col font-sans text-[#2f2220] bg-[#fbf6f4] antialiased selection:bg-[#541212] selection:text-white">
-<!-- BEGIN: TopBar -->
-<header class="bg-[#541212] text-white flex-shrink-0 z-30 sticky top-0 shadow-md">
-<div class="px-5 lg:px-8 py-3 flex items-center justify-between">
-<!-- Brand & Section Info -->
-<div class="flex items-center gap-3.5">
-<div class="bg-white p-1 rounded-lg shadow-sm flex items-center justify-center h-10 w-24">
-<img alt="Tu Lonchera Market S.A.S" class="max-h-full max-w-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCAuVz2loPAsYUV7Qxf6ng-G39GdlgzcXvha3D_18Z0LTladpIYNh59Md7_dmrmt50gINeY1hAHsHEhEG4hZFj3hyIcXo3k3felRhdQzjHQm1Pie-G_Q84SWyfXUqFEj5scUaV9tBoZJIMT1hCo0lhkmiJYOVBL3e0Lcoz6jBJIoeDAgFM0dmBAW2vwxvAe15kOGnHrjYjVA4GUdfSALATUeIUoVnU6_h1kBKEPN0ql_g62JWJFpjaBEEZJI3I3X8_DQ"/>
+<body class="h-full flex flex-col font-sans text-gray-800 bg-[#fcf8f6] antialiased selection:bg-amber-100 selection:text-brand-maroon">
+<!-- BEGIN: TopNavigation -->
+<header class="bg-brand-maroon text-white h-16 flex items-center justify-between px-5 sm:px-7 shrink-0 shadow-md border-b border-[#3e0b0b] z-30" data-purpose="main-header">
+<!-- Left branding & status -->
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<div class="bg-white/95 rounded-lg px-2.5 py-1 flex items-center shadow-inner">
+<img alt="Tu Lonchera Market S.A.S" class="h-7 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDm_rQw8k57AuOd2HjPajOZW8jMJjJDeuuZQRHDx87sX-RsrDqUJLjhspbnWWeEqf08rNOzMPCa61BWGiF8raX32XxtvHY7EO8rSdelzOaA3Uo-8cAuF68Y-K3o0WIT52MoLXrWEJ9Cn3ZrXo9wH4QffVv0PxXQdzT9WCgzEhHyvogIb7YmbGt-ihWFaGKn1WyNUolvXfcwc77_chEwGADUhDxlwIl17_GbxKOvGRvVl1CCLa75zcfL"/>
 </div>
-<div class="flex flex-col">
-<span class="text-[10px] font-bold tracking-widest text-[#f5a742] uppercase leading-tight">Administración</span>
-<span class="text-base font-bold tracking-tight text-white leading-tight">Tu Lonchera</span>
+<div class="border-l border-white/20 pl-3 hidden md:block">
+<span class="text-[10px] tracking-widest font-semibold uppercase text-brand-gold block leading-none">Administración</span>
+<span class="text-xs font-medium text-white/90">Consola Central de Operaciones</span>
 </div>
 </div>
-<!-- Action Button -->
-<div>
-<button class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 hover:bg-white/20 text-xs font-semibold tracking-wide text-white transition-all duration-150 backdrop-blur-sm shadow-sm" title="Cerrar sesión" type="button">
-<svg class="w-4 h-4 text-white/90" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
+<!-- Station status badge -->
+<div class="hidden lg:flex items-center gap-2 bg-black/25 px-3 py-1 rounded-full border border-white/10 text-xs text-white/90">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+</span>
+<span class="font-medium">Terminal BOG-01</span>
+<span class="text-white/40">•</span>
+<span class="text-emerald-300 font-mono text-[11px]">En línea</span>
+</div>
+</div>
+<!-- Right user actions -->
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center gap-2 text-xs text-white/80">
+<div class="h-8 w-8 rounded-full bg-brand-gold text-brand-maroon font-bold flex items-center justify-center text-xs shadow">
+          AD
+        </div>
+<div class="text-left leading-tight">
+<p class="font-medium text-white">Supervisor Master</p>
+<p class="text-[10px] text-white/60">admin@tulonchera.co</p>
+</div>
+</div>
+<button class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-white/90 bg-white/10 hover:bg-white/15 hover:text-white border border-white/15 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-gold" type="button">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
 <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round"></path>
 </svg>
 <span>Cerrar sesión</span>
 </button>
-</div>
 </div>
 </header>
-<!-- END: TopBar -->
-<div class="flex flex-1 overflow-hidden">
-<!-- BEGIN: SidebarNavigation -->
-<aside class="w-64 bg-[#f8f0ed] border-r border-[#eddcd6] flex flex-col flex-shrink-0 select-none">
-<!-- Section Title -->
-<div class="px-6 pt-5 pb-3">
-<p class="text-[11px] font-bold tracking-wider text-[#8b655d] uppercase">Módulos</p>
+<!-- END: TopNavigation -->
+<!-- BEGIN: MainContainer -->
+<div class="flex-1 flex overflow-hidden">
+<!-- BEGIN: LeftSidebar -->
+<aside class="w-64 bg-[#fffaf8] border-r border-[#eedfd9] flex flex-col shrink-0 overflow-y-auto hidden lg:flex" data-purpose="sidebar-navigation">
+<div class="px-4 py-3.5 border-b border-[#f3e7e2]">
+<p class="text-[11px] font-bold tracking-wider text-brand-muted uppercase">Módulos del Sistema</p>
 </div>
-<!-- Scrollable Navigation Items -->
-<nav class="flex-1 overflow-y-auto px-3 space-y-0.5 text-[13px] font-medium text-[#4d3632]">
-<!-- Calendario de eventos -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Calendario de eventos</span>
-</a>
-<!-- Cargue a promotor -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Cargue a promotor</span>
-</a>
-<!-- Turnos -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Turnos</span>
-</a>
-<!-- Ventas -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Ventas</span>
-</a>
-<!-- Conteos de cierre -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Conteos de cierre</span>
-</a>
-<!-- Inventario -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Inventario</span>
-</a>
-<!-- Catálogo de productos -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Catálogo de productos</span>
-</a>
-<!-- Empresas y puntos -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Empresas y puntos</span>
-</a>
-<!-- Clientes -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Clientes</span>
-</a>
-<!-- Descuentos -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Descuentos</span>
-</a>
-<!-- Dashboard -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<nav class="flex-1 px-3 py-3 space-y-0.5 text-xs text-gray-600 font-medium">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
 <span>Dashboard</span>
 </a>
-<!-- Análisis -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Calendario de eventos</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Cargue a promotor</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Turnos</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Ventas</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Conteos de cierre</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Inventario</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Catálogo de productos</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Empresas y puntos</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Clientes</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Descuentos</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
 <span>Análisis</span>
 </a>
-<!-- Notificaciones -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
 <span>Notificaciones</span>
 </a>
-<!-- Seguridad de acceso -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
 <span>Seguridad de acceso</span>
 </a>
-<!-- Gestionar promotores -->
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#ebd8d2] text-[#422c28] hover:text-[#541212] transition-colors group" href="#">
-<svg class="w-4 h-4 text-[#795a53] group-hover:text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Gestionar promotores</span>
+<!-- Active Menu Item -->
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-brand-maroon text-white font-semibold shadow-sm" href="#">
+<svg class="w-4 h-4 text-brand-gold" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Bitácora y auditoría</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Gestionar personal</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
+<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
+<span>Mensajes</span>
 </a>
 </nav>
-<!-- Sidebar Footer Controls -->
-<div class="p-3 border-t border-[#ebdcd6] bg-[#f8f0ed] flex flex-col gap-2">
-<button class="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-[#dec5be] bg-white text-xs font-semibold text-[#541212] shadow-sm hover:bg-[#fff9f8] hover:border-[#bfa59f] transition" type="button">
-<svg class="w-4 h-4 text-[#541212]" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Ver todos los módulos</span>
-</button>
-<button class="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#c0392b] hover:text-[#962d22] transition" type="button">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24">
-<path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Cerrar sesión</span>
-</button>
+<!-- Sidebar footer / sync status -->
+<div class="p-3 border-t border-[#f3e7e2] bg-[#fbf5f2]">
+<div class="text-[11px] text-gray-500 leading-tight">
+<span class="font-semibold text-gray-700">Audit Engine v2.4</span>
+<p class="text-[10px] text-gray-400 mt-0.5">Sincronización en tiempo real activa</p>
+</div>
 </div>
 </aside>
-<!-- END: SidebarNavigation -->
+<!-- END: LeftSidebar -->
 <!-- BEGIN: MainContentArea -->
-<main class="flex-1 overflow-y-auto px-6 py-6 lg:px-10 lg:py-8">
-<div class="max-w-6xl mx-auto space-y-6">
-<!-- Header Panel Section -->
-<section class="bg-white rounded-2xl p-6 lg:p-7 border border-[#eedfd9] shadow-card">
-<!-- Tag indicator -->
-<div class="inline-flex items-center gap-2 mb-2.5">
-<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-<span class="text-[11px] font-bold tracking-wider text-[#8b655d] uppercase">Panel Operativo Central</span>
-</div>
-<!-- Titles -->
-<h1 class="text-2xl lg:text-3xl font-extrabold text-[#541212] tracking-tight mb-1.5">
-            Portal de módulos administrativos
-          </h1>
-<p class="text-sm text-[#735852] max-w-3xl leading-relaxed mb-6">
-            Gestiona el inventario de bodega, despachos a promotores, cobros en puntos de venta y cuadres diarios.
-          </p>
-<!-- Metrics Row -->
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-2">
-<!-- Metric 1 -->
-<div class="bg-[#fcf5f3] border border-[#f3e3df] rounded-xl px-4 py-3.5 transition-all">
-<span class="block text-xs font-medium text-[#7a5e58] mb-1">Promotores con punto asignado</span>
-<span class="text-2xl font-bold text-[#541212]">3</span>
-</div>
-<!-- Metric 2 -->
-<div class="bg-[#fcf5f3] border border-[#f3e3df] rounded-xl px-4 py-3.5 transition-all">
-<span class="block text-xs font-medium text-[#7a5e58] mb-1">Conteos con descuadre hoy</span>
-<span class="text-2xl font-bold text-[#541212]">0</span>
-</div>
-<!-- Metric 3 -->
-<div class="bg-[#fcf5f3] border border-[#f3e3df] rounded-xl px-4 py-3.5 transition-all">
-<span class="block text-xs font-medium text-[#7a5e58] mb-1">Ventas registradas hoy</span>
-<span class="text-2xl font-bold text-[#541212]">0</span>
-</div>
-</div>
-</section>
-<!-- BEGIN: ModulesGrid -->
-<section aria-label="Módulos del Sistema" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-<!-- Card 1: Calendario de eventos -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Calendario de eventos</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Planear qué promotor va a cada empresa y punto, día a día.</p>
-</div>
-</div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-<!-- Card 2: Cargue a promotor -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Cargue a promotor</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Asignar productos del stock de bodega a un promotor.</p>
-</div>
-</div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-<!-- Card 3: Turnos -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Turnos</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Selfie, hora y ubicación de inicio/fin de turno de cada promotor.</p>
-</div>
-</div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-<!-- Card 4: Ventas -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Ventas</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Ver las ventas registradas por los promotores.</p>
-</div>
-</div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-<!-- Card 5: Conteos de cierre con BADGE AUDITORÍA -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
+<main class="flex-1 overflow-y-auto bg-[#faf4f1]" data-purpose="content-area">
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+<!-- Header Section -->
+<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#ebdcd5] pb-4">
 <div>
 <div class="flex items-center gap-2">
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Conteos de cierre</h2>
-<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#faeee9] text-[#73362a] tracking-wider border border-[#eddcd6]">AUDITORÍA</span>
+<h1 class="text-2xl font-bold tracking-tight text-brand-maroon">Bitácora y auditoría</h1>
+<span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-200">En vivo</span>
 </div>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Ver los conteos de cierre de los promotores y sus descuadres.</p>
+<p class="text-xs sm:text-sm text-gray-600 mt-0.5">
+              Historial cronológico de transacciones en caja, aperturas de turno, alertas de seguridad y movimientos en punto de venta.
+            </p>
+</div>
+<!-- Top Action Buttons -->
+<div class="flex items-center gap-2 self-start sm:self-auto">
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#dac8c1] bg-white text-xs font-medium text-gray-700 hover:bg-[#fcf8f6] hover:text-brand-maroon shadow-sm transition" type="button">
+<svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Exportar Excel / CSV</span>
+</button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-maroon text-white text-xs font-medium hover:bg-brand-maroon-hover shadow-sm transition" type="button">
+<svg class="w-3.5 h-3.5 text-brand-gold" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Actualizar</span>
+</button>
 </div>
 </div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
+<!-- BEGIN: FilterControlHub -->
+<!-- Redesigned, highly structured and visually hierarchical filter control center -->
+<div class="bg-white rounded-xl border border-[#ecdcd4] shadow-sm divide-y divide-[#f2e7e2]" data-purpose="filter-control-panel">
+<!-- Control Row 1: Time Range Segmented Bar & Search -->
+<div class="p-3.5 sm:p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 bg-[#fdfbf9] rounded-t-xl">
+<!-- Segmented Date Selector -->
+<div class="flex items-center gap-1 bg-[#f2e6e1] p-1 rounded-lg self-start sm:self-auto border border-[#e5d5cf]">
+<button class="px-3 py-1 text-xs font-medium rounded-md text-gray-700 hover:text-brand-maroon transition-colors" type="button">
+                Hoy
+              </button>
+<button class="px-3.5 py-1 text-xs font-semibold rounded-md bg-brand-maroon text-white shadow-sm transition" type="button">
+                Últimos 7 días
+              </button>
+<button class="px-3 py-1 text-xs font-medium rounded-md text-gray-700 hover:text-brand-maroon transition-colors" type="button">
+                Últimos 30 días
+              </button>
+<button class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-gray-700 hover:text-brand-maroon transition-colors" type="button">
+<svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Personalizado</span>
+</button>
+</div>
+<!-- Instant search input -->
+<div class="flex-1 lg:max-w-md w-full relative">
+<span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</span>
+<input class="w-full pl-9 pr-24 py-1.5 text-xs bg-white rounded-lg border border-[#d9c7bf] focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon placeholder-gray-400 text-gray-800 shadow-inner" placeholder="Buscar por usuario, SKU, acción o dispositivo..." type="text"/>
+<div class="absolute inset-y-0 right-0 pr-2 flex items-center">
+<span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 font-mono">⌘K</span>
+</div>
+</div>
+</div>
+<!-- Control Row 2: Event Type / Category Pills -->
+<div class="px-3.5 py-2.5 sm:px-4 flex items-center justify-between gap-3 overflow-x-auto">
+<div class="flex items-center gap-1.5 text-xs whitespace-nowrap">
+<span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Filtrar por:</span>
+<!-- Active 'Todos' pill -->
+<button class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-maroon text-white shadow-sm" type="button">
+<span>Todos los registros</span>
+<span class="bg-white/20 text-white rounded-full px-1.5 py-0.2 text-[10px]">248</span>
+</button>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-[#f8efea] hover:bg-[#eedfd7] hover:text-brand-maroon border border-[#ebdcd3] transition" type="button">
+<span>Ventas &amp; Caja</span>
+<span class="text-[10px] text-gray-500 font-mono">194</span>
+</button>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-[#f8efea] hover:bg-[#eedfd7] hover:text-brand-maroon border border-[#ebdcd3] transition" type="button">
+<span>Seguridad &amp; PIN</span>
+<span class="text-[10px] text-amber-700 bg-amber-100 px-1 rounded-full font-mono font-bold">12</span>
+</button>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-[#f8efea] hover:bg-[#eedfd7] hover:text-brand-maroon border border-[#ebdcd3] transition" type="button">
+<span>Bodega &amp; Cargues</span>
+<span class="text-[10px] text-gray-500 font-mono">31</span>
+</button>
+<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-[#f8efea] hover:bg-[#eedfd7] hover:text-brand-maroon border border-[#ebdcd3] transition" type="button">
+<span>Personal &amp; Turnos</span>
+<span class="text-[10px] text-gray-500 font-mono">11</span>
+</button>
+</div>
+<!-- Clear filters button -->
+<button class="text-xs text-brand-maroon hover:underline shrink-0 font-medium hidden md:inline-block" type="button">
+              Restablecer filtros
+            </button>
+</div>
+<!-- Control Row 3: Dropdown Selectors for Entity Filtering -->
+<div class="px-3.5 py-3 sm:px-4 bg-[#fdfaf8] rounded-b-xl">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+<!-- Dropdown 1: Hecho por / Usuario -->
+<div class="relative">
+<label class="block text-[10px] font-semibold text-gray-500 uppercase mb-0.5 tracking-wider">Usuario responsable</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</span>
+<select class="w-full text-xs rounded-lg pl-8 pr-7 py-1.5 border border-[#dccec7] bg-white text-gray-700 hover:border-brand-maroon focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon">
+<option value="">Cualquier usuario (Todos)</option>
+<option value="cristian">Cristian (Cajero / Promotor)</option>
+<option value="andres">Andrés Pérez (Supervisor)</option>
+<option value="sistema">Sistema Automático</option>
+</select>
+</div>
+</div>
+<!-- Dropdown 2: Producto -->
+<div class="relative">
+<label class="block text-[10px] font-semibold text-gray-500 uppercase mb-0.5 tracking-wider">Producto o SKU</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</span>
+<select class="w-full text-xs rounded-lg pl-8 pr-7 py-1.5 border border-[#dccec7] bg-white text-gray-700 hover:border-brand-maroon focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon">
+<option value="">Cualquier producto (Todos)</option>
+<option value="gansito">GANSITO X 6 TRADICIONAL</option>
+<option value="cacero">CACERO MARMOLADO TRES LECHES</option>
+<option value="vino">VINO LA MERCED</option>
+<option value="ramito">RAMITO X 8</option>
+<option value="colageno">GOMA COLAGENO X 70 GR</option>
+<option value="monserrate">VINO MONSERRATE</option>
+<option value="bimboletes">BIMBOLETES X 10 UND</option>
+</select>
+</div>
+</div>
+<!-- Dropdown 3: Categoría o Módulo -->
+<div class="relative">
+<label class="block text-[10px] font-semibold text-gray-500 uppercase mb-0.5 tracking-wider">Módulo origen</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</span>
+<select class="w-full text-xs rounded-lg pl-8 pr-7 py-1.5 border border-[#dccec7] bg-white text-gray-700 hover:border-brand-maroon focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon">
+<option value="">Cualquier módulo</option>
+<option value="pos">Punto de Venta / Caja</option>
+<option value="bodega">Bodega y Despachos</option>
+<option value="seguridad">Seguridad / Autenticación</option>
+<option value="inventario">Ajustes de Inventario</option>
+</select>
+</div>
+</div>
+<!-- Dropdown 4: Severidad / Tipo -->
+<div class="relative">
+<label class="block text-[10px] font-semibold text-gray-500 uppercase mb-0.5 tracking-wider">Nivel de criticidad</label>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</span>
+<select class="w-full text-xs rounded-lg pl-8 pr-7 py-1.5 border border-[#dccec7] bg-white text-gray-700 hover:border-brand-maroon focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon">
+<option value="">Todos los niveles</option>
+<option value="advertencia">Advertencia / Alerta PIN</option>
+<option value="exito">Transacciones exitosas</option>
+<option value="info">Operaciones de sistema</option>
+</select>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- END: FilterControlHub -->
+<!-- Active Filter Status Chips -->
+<div class="flex items-center justify-between text-xs text-gray-500 px-1">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-medium text-gray-600">Filtros aplicados:</span>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white border border-[#dfcec6] text-gray-700 text-[11px]">
+              Período: <strong class="text-brand-maroon font-semibold">Últimos 7 días</strong>
+</span>
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white border border-[#dfcec6] text-gray-700 text-[11px]">
+              Estado: <strong class="text-gray-900 font-medium">Todos</strong>
+</span>
+<span class="text-gray-400 text-[11px] ml-1">Mostrando 8 de 248 eventos encontrados</span>
+</div>
+<span class="text-[11px] font-mono text-gray-400 hidden sm:inline">Zona horaria: America/Bogota (UTC-5)</span>
+</div>
+<!-- BEGIN: AuditLogList -->
+<div class="space-y-2.5" data-purpose="audit-events-stream">
+<!-- Card 1: Critical Security Warning (Intento fallido PIN) -->
+<div class="bg-white rounded-xl p-3.5 sm:p-4 border-l-4 border-l-amber-500 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<!-- Icon badge for Warning -->
+<div class="h-9 w-9 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 text-amber-600 shadow-sm mt-0.5">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
 </svg>
 </div>
+<!-- Event Details -->
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap">
+<span class="font-bold text-gray-900 text-sm tracking-tight">Intento fallido de PIN</span>
+<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-200">Modo BODEGA</span>
+<span class="text-xs text-rose-600 font-medium">Código no autorizado</span>
 </div>
-<!-- Card 6: Inventario -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round"></path>
+<!-- Metadata details -->
+<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+<span class="inline-flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<time class="font-medium text-gray-700" datetime="2026-09-23T18:39:00">23/09/26 · 6:39 p. m.</time>
+</span>
+<span class="text-gray-300">•</span>
+<span class="inline-flex items-center gap-1 font-mono text-[11px] bg-gray-100 px-2 py-0.5 rounded text-gray-600 border border-gray-200">
+                      Dispositivo: <strong class="text-gray-800">29ca44bf</strong>
+</span>
+<span class="text-gray-300">•</span>
+<span class="text-gray-500 text-[11px]">IP: 192.168.1.104</span>
+</div>
+</div>
+</div>
+<!-- Action buttons on item -->
+<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- Card 2: Sale Event (Cristian · GANSITO) -->
+<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<!-- Icon badge for Sale / Box -->
+<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
 </svg>
 </div>
+<!-- Event Details -->
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap text-sm">
+<span class="font-semibold text-brand-maroon">Cristian</span>
+<span class="text-gray-400">registró venta de</span>
+<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">GANSITO X 6 TRADICIONAL</span>
+<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 3</span>
+</div>
+<!-- Metadata details -->
+<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+<span class="inline-flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<time class="text-gray-600" datetime="2026-09-22T09:53:00">22/09/26 · 9:53 p. m.</time>
+</span>
+<span class="text-gray-300">•</span>
+<span class="text-[11px] text-gray-500">Módulo: Caja POS #1</span>
+<span class="text-gray-300">•</span>
+<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10934</span>
+</div>
+</div>
+</div>
+<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- Card 3: Sale Event (Andrés Pérez · CACERO MARMOLADO) -->
+<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap text-sm">
+<span class="font-semibold text-brand-maroon">Andrés Pérez</span>
+<span class="text-gray-400">registró venta de</span>
+<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">CACERO MARMOLADO TRES LECHES</span>
+<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 2</span>
+</div>
+<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+<span class="inline-flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<time class="text-gray-600" datetime="2026-09-22T20:13:00">22/09/26 · 8:13 p. m.</time>
+</span>
+<span class="text-gray-300">•</span>
+<span class="text-[11px] text-gray-500">Módulo: Caja POS #2</span>
+<span class="text-gray-300">•</span>
+<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10933</span>
+</div>
+</div>
+</div>
+<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- Card 4: Sale Event (Andrés Pérez · VINO LA MERCED) -->
+<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap text-sm">
+<span class="font-semibold text-brand-maroon">Andrés Pérez</span>
+<span class="text-gray-400">registró venta de</span>
+<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">VINO LA MERCED</span>
+<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 3</span>
+</div>
+<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+<span class="inline-flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<time class="text-gray-600" datetime="2026-09-22T20:13:00">22/09/26 · 8:13 p. m.</time>
+</span>
+<span class="text-gray-300">•</span>
+<span class="text-[11px] text-gray-500">Módulo: Caja POS #2</span>
+<span class="text-gray-300">•</span>
+<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10932</span>
+</div>
+</div>
+</div>
+<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- Card 5: Sale Event (Cristian · RAMITO X 8) -->
+<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap text-sm">
+<span class="font-semibold text-brand-maroon">Cristian</span>
+<span class="text-gray-400">registró venta de</span>
+<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">RAMITO X 8</span>
+<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 1</span>
+</div>
+<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+<span class="inline-flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<time class="text-gray-600" datetime="2026-09-22T13:04:00">22/09/26 · 1:04 p. m.</time>
+</span>
+<span class="text-gray-300">•</span>
+<span class="text-[11px] text-gray-500">Módulo: Punto de Venta Express</span>
+<span class="text-gray-300">•</span>
+<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10915</span>
+</div>
+</div>
+</div>
+<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- Card 6: Sale Event (Cristian · GOMA COLAGENO) -->
+<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap text-sm">
+<span class="font-semibold text-brand-maroon">Cristian</span>
+<span class="text-gray-400">registró venta de</span>
+<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">GOMA COLAGENO X 70 GR</span>
+<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 3</span>
+</div>
+<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+<span class="inline-flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<time class="text-gray-600" datetime="2026-09-22T13:04:00">22/09/26 · 1:04 p. m.</time>
+</span>
+<span class="text-gray-300">•</span>
+<span class="text-[11px] text-gray-500">Módulo: Punto de Venta Express</span>
+<span class="text-gray-300">•</span>
+<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10914</span>
+</div>
+</div>
+</div>
+<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- Card 7: Sale Event (Cristian · VINO MONSERRATE) -->
+<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap text-sm">
+<span class="font-semibold text-brand-maroon">Cristian</span>
+<span class="text-gray-400">registró venta de</span>
+<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">VINO MONSERRATE</span>
+<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 2</span>
+</div>
+<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+<span class="inline-flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<time class="text-gray-600" datetime="2026-09-22T13:04:00">22/09/26 · 1:04 p. m.</time>
+</span>
+<span class="text-gray-300">•</span>
+<span class="text-[11px] text-gray-500">Módulo: Punto de Venta Express</span>
+<span class="text-gray-300">•</span>
+<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10913</span>
+</div>
+</div>
+</div>
+<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+<!-- Card 8: Sale Event (Cristian · BIMBOLETES) -->
+<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-start gap-3.5">
+<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
+<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</svg>
+</div>
+<div class="space-y-1">
+<div class="flex items-center gap-2 flex-wrap text-sm">
+<span class="font-semibold text-brand-maroon">Cristian</span>
+<span class="text-gray-400">registró venta de</span>
+<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">BIMBOLETES X 10 UND</span>
+<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 1</span>
+</div>
+<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
+<span class="inline-flex items-center gap-1">
+<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<time class="text-gray-600" datetime="2026-09-22T12:58:00">22/09/26 · 12:58 p. m.</time>
+</span>
+<span class="text-gray-300">•</span>
+<span class="text-[11px] text-gray-500">Módulo: Punto de Venta Express</span>
+<span class="text-gray-300">•</span>
+<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10912</span>
+</div>
+</div>
+</div>
+<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</div>
+</div>
+<!-- END: AuditLogList -->
+<!-- BEGIN: PaginationBar -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 pb-8 text-xs text-gray-600 border-t border-[#ebdcd5]" data-purpose="pagination">
 <div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Inventario</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Ver el stock de bodega e ingresar pedidos.</p>
+            Mostrando registros del <span class="font-semibold text-gray-800">1</span> al <span class="font-semibold text-gray-800">8</span> de <span class="font-semibold text-gray-800">248</span> eventos
+          </div>
+<div class="flex items-center gap-1.5">
+<button class="px-3 py-1 rounded-lg border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed" disabled="" type="button">
+              Anterior
+            </button>
+<button class="px-3 py-1 rounded-lg bg-brand-maroon text-white font-medium shadow-sm" type="button">
+              1
+            </button>
+<button class="px-3 py-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700" type="button">
+              2
+            </button>
+<button class="px-3 py-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700" type="button">
+              3
+            </button>
+<span class="px-1 text-gray-400">...</span>
+<button class="px-3 py-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700" type="button">
+              31
+            </button>
+<button class="px-3 py-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700" type="button">
+              Siguiente
+            </button>
 </div>
 </div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-<!-- Card 7: Catálogo de productos -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Catálogo de productos</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Agregar, editar y eliminar productos y precios.</p>
-</div>
-</div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-<!-- Card 8: Empresas y puntos -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Empresas y puntos</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Clientes y sus sedes (ej. Falabella Norte, Falabella Sur).</p>
-</div>
-</div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-<!-- Card 9: Clientes -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Clientes</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Clientes finales registrados por los promotores en campo.</p>
-</div>
-</div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-<!-- Card 10: Descuentos -->
-<div class="bg-white rounded-2xl p-4 lg:p-5 border border-[#eedfd9] shadow-card hover:shadow-card-hover hover:border-[#dbc2bb] transition-all duration-200 flex items-center justify-between group cursor-pointer">
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-xl bg-[#faeee9] flex items-center justify-center text-[#541212] flex-shrink-0 group-hover:scale-105 transition-transform duration-200">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.8" viewbox="0 0 24 24">
-<path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-<div>
-<h2 class="text-sm font-bold text-[#35120e] group-hover:text-[#541212] transition-colors leading-snug">Descuentos</h2>
-<p class="text-xs text-[#755f5b] mt-0.5 leading-normal">Crear y ver descuentos por producto y/o punto, con vigencia.</p>
-</div>
-</div>
-<div class="pl-3 text-[#a08782] group-hover:text-[#541212] group-hover:translate-x-1 transition-all">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewbox="0 0 24 24">
-<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-</div>
-</div>
-</section>
-<!-- END: ModulesGrid -->
+<!-- END: PaginationBar -->
 </div>
 </main>
 <!-- END: MainContentArea -->
 </div>
+<!-- END: MainContainer -->
 </body></html>
