@@ -49,6 +49,41 @@ export async function listarResumenIntentosPinRemoto(): Promise<ResumenIntentosP
   );
 }
 
+interface FilaIntentoFallidoRemoto {
+  id: string;
+  dispositivo_id: string;
+  modo: ModoLogin;
+  ts_cliente: string;
+}
+
+/**
+ * Intentos fallidos de PIN de TODOS los dispositivos, en el rango dado —
+ * filas individuales (no el resumen agregado de `listarResumenIntentosPinRemoto`),
+ * para fusionar con los locales en la línea de tiempo de Bitácora y auditoría
+ * (ver `src/db/auditoria.ts`, `obtenerLineaDeTiempoAuditoria`). Lanza si no
+ * hay red/credenciales — el llamador decide si se degrada a mostrar solo lo
+ * local.
+ */
+export async function listarIntentosFallidosRemotos(
+  desde: string,
+  hasta: string
+): Promise<{ id: string; dispositivoId: string; modo: ModoLogin; tsCliente: string }[]> {
+  const supabase = await getSupabaseClient();
+  const { data, error } = await supabase
+    .from('intentos_pin_fallidos')
+    .select('id, dispositivo_id, modo, ts_cliente')
+    .gte('ts_cliente', desde)
+    .lte('ts_cliente', hasta)
+    .returns<FilaIntentoFallidoRemoto[]>();
+  if (error) throw error;
+  return (data ?? []).map((fila) => ({
+    id: fila.id,
+    dispositivoId: fila.dispositivo_id,
+    modo: fila.modo,
+    tsCliente: fila.ts_cliente,
+  }));
+}
+
 /**
  * ¿Ya hubo un desbloqueo remoto de esta combinación dispositivo+modo,
  * posterior a `desdeTs` (el timestamp del último fallo local)? La pantalla de

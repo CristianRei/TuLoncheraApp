@@ -2,6 +2,10 @@ import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { AccionAuditoria, EntidadAuditoria, LogAuditoria } from '@/core/auditoria';
+import { mensajeDeError } from '@/core/errores';
+import type { ModoLogin } from '@/core/tipos';
+
+import { listarIntentosFallidosRemotos } from './intentosPinRemotos';
 
 const ETIQUETA_ENTIDAD: Record<EntidadAuditoria, string> = {
   PERSONA: 'Personal',
@@ -184,7 +188,24 @@ export async function obtenerLineaDeTiempoAuditoria(
        ORDER BY ts_cliente DESC`,
       [filtros.desde, filtros.hasta]
     );
-    logsAccesos = filasAcceso.map((fila) => ({
+
+    // Local solo ve los fallos de ESTE dispositivo (el de admin) — un
+    // promotor bloqueado en su propio celular nunca escribió en este SQLite.
+    // Se completa con Supabase (best-effort, se degrada a solo local sin
+    // red), deduplicando por id contra lo que ya subió el propio drenado de
+    // la cola de este dispositivo (no debería pasar, admin no genera fallos
+    // de PROMOTOR/BODEGA en su propio celular, pero es inofensivo si pasara).
+    let filasAccesoRemoto: { id: string; dispositivoId: string; modo: ModoLogin; tsCliente: string }[] = [];
+    try {
+      filasAccesoRemoto = await listarIntentosFallidosRemotos(filtros.desde, filtros.hasta);
+    } catch (error) {
+      console.log('[auditoria] no se pudieron traer accesos remotos:', mensajeDeError(error));
+    }
+
+    const idsLocales = new Set(filasAcceso.map((f) => f.id));
+    const combinadas = [...filasAcceso, ...filasAccesoRemoto.filter((f) => !idsLocales.has(f.id))];
+
+    logsAccesos = combinadas.map((fila) => ({
       id: fila.id,
       origen: 'ACCESO_FALLIDO',
       usuarioNombre: null,
