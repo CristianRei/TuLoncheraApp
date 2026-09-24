@@ -180,7 +180,7 @@ await paso('DESPUES de la 0025, la tarea vieja de turnos se conserva', async () 
   assert.equal(f.n, 1);
 });
 await paso('DESPUES de la 0025, se puede encolar cualquier tabla', async () => {
-  for (const tabla of ['turnos','comprobantes_venta','ventas','movimientos','lotes','cargues','conteos','arqueos_caja','usuarios','productos','categorias'])
+  for (const tabla of ['turnos','comprobantes_venta','ventas','movimientos','lotes','cargues','conteos','arqueos_caja','usuarios','productos','categorias','intentos_pin_fallidos','desbloqueos_pin','logins_exitosos_pin'])
     await encolarSync(dbA, { tabla, entidadId: 'x', tipoTarea: 'FILA' });
 });
 await dbA.runAsync('DELETE FROM _sync_pendiente');
@@ -227,6 +227,13 @@ await paso('admin anula una venta', async () => { await anularVenta(dbA, { venta
 await paso('cerrar turno + arqueo de caja', async () => {
   await finalizarTurno(dbA, { turnoId: turno.id });
   await registrarArqueoCaja(dbA, { turnoId: turno.id, promotorId: promotor.id, efectivoTeorico: 6000, efectivoContado: 5500, totalTransferencia: 3000, totalLibranza: 3000 }, dispA);
+});
+
+const { registrarIntentoFallido, registrarLoginExitoso, registrarDesbloqueo } = await imp('db/intentosPin.ts');
+await paso('seguridad de PIN: intento fallido, login exitoso y desbloqueo de admin', async () => {
+  await registrarIntentoFallido(dbA, dispA, 'PROMOTOR');
+  await registrarLoginExitoso(dbA, dispA, 'PROMOTOR');
+  await registrarDesbloqueo(dbA, dispA, 'PROMOTOR', admin.id);
 });
 
 console.log('\n== C. Admin: catálogo y personal (lo que se sube) ==');

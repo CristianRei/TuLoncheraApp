@@ -8,13 +8,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { rolesPermitidosPara, type ModoLogin } from '@/core/auth';
 import type { EstadoIntentosPin, Rol } from '@/core/tipos';
+import { mensajeDeError } from '@/core/errores';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import {
+  aplicarDesbloqueoRemoto,
+  contarFallosConsecutivos,
   obtenerEstadoIntentos,
   registrarIntentoFallido,
   registrarLoginExitoso,
 } from '@/db/intentosPin';
+import { huboDesbloqueoRemotoReciente } from '@/db/intentosPinRemotos';
 import { encolarPersonalSinSubir } from '@/db/personal';
 import { buscarUsuarioPorPin } from '@/db/usuarios';
 import { descargarDatosDeAdminConLimite } from '@/sync/bajada';
@@ -82,6 +86,10 @@ export default function Login() {
   const [estadoIntentos, setEstadoIntentos] = useState<EstadoIntentosPin>({ estado: 'NORMAL' });
   const [segundosRestantes, setSegundosRestantes] = useState(0);
   const [mostrarDesbloqueo, setMostrarDesbloqueo] = useState(false);
+  // Timestamp del último fallo local — necesario para preguntarle a Supabase
+  // "¿hay un desbloqueo remoto MÁS RECIENTE que esto?" (ver efecto de
+  // auto-desbloqueo abajo). No se muestra en UI, solo es insumo de esa consulta.
+  const [ultimoIntentoTs, setUltimoIntentoTs] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   const tema = TEMAS[modo];
@@ -95,6 +103,8 @@ export default function Login() {
 
   async function refrescarEstadoIntentos(idDispositivo: string, modoActual: ModoLogin) {
     const db = await getDb();
+    const { ultimoIntentoTs: ultimo } = await contarFallosConsecutivos(db, idDispositivo, modoActual);
+    setUltimoIntentoTs(ultimo);
     const estado = await obtenerEstadoIntentos(db, idDispositivo, modoActual);
     setEstadoIntentos(estado);
     if (estado.estado === 'ESPERANDO') setSegundosRestantes(estado.segundosRestantes);
@@ -105,8 +115,10 @@ export default function Login() {
     let cancelado = false;
     (async () => {
       const db = await getDb();
+      const { ultimoIntentoTs: ultimo } = await contarFallosConsecutivos(db, dispositivoId, modo);
       const estado = await obtenerEstadoIntentos(db, dispositivoId, modo);
       if (cancelado) return;
+      setUltimoIntentoTs(ultimo);
       setEstadoIntentos(estado);
       if (estado.estado === 'ESPERANDO') setSegundosRestantes(estado.segundosRestantes);
     })();
@@ -114,6 +126,47 @@ export default function Login() {
       cancelado = true;
     };
   }, [dispositivoId, modo]);
+
+  // Mientras está BLOQUEADO, pregunta a Supabase (best-effort, cada 5s) si un
+  // admin ya lo desbloqueó desde OTRO dispositivo — así la persona no tiene
+  // que teclear el PIN de un admin en su propio celular (ver
+  // src/db/intentosPinRemotos.ts). Sin red, esto simplemente no encuentra
+  // nada y el link local sigue funcionando igual (R5).
+  useEffect(() => {
+    if (estadoIntentos.estado !== 'BLOQUEADO' || !dispositivoId) return;
+    let cancelado = false;
+
+    async function verificar() {
+      if (!dispositivoId) return;
+      try {
+        const desbloqueo = await huboDesbloqueoRemotoReciente(
+          dispositivoId,
+          modo,
+          ultimoIntentoTs ?? '0000-00-00'
+        );
+        if (cancelado || !desbloqueo) return;
+        const db = await getDb();
+        await aplicarDesbloqueoRemoto(db, {
+          id: desbloqueo.id,
+          dispositivoId,
+          modo,
+          adminId: desbloqueo.adminId,
+          tsCliente: desbloqueo.tsCliente,
+        });
+        if (cancelado) return;
+        await refrescarEstadoIntentos(dispositivoId, modo);
+      } catch (error) {
+        console.log('[login] chequeo de desbloqueo remoto falló (sin red probablemente):', mensajeDeError(error));
+      }
+    }
+
+    verificar();
+    const intervalo = setInterval(verificar, 5000);
+    return () => {
+      cancelado = true;
+      clearInterval(intervalo);
+    };
+  }, [estadoIntentos.estado, dispositivoId, modo, ultimoIntentoTs]);
 
   useEffect(() => {
     if (estadoIntentos.estado !== 'ESPERANDO' || !dispositivoId) return;

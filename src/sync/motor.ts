@@ -400,6 +400,70 @@ async function subirFila(
       }
       return;
     }
+
+    case 'intentos_pin_fallidos': {
+      const fila = await db.getFirstAsync<{
+        id: string;
+        dispositivo_id: string;
+        modo: string;
+        ts_cliente: string;
+      }>('SELECT id, dispositivo_id, modo, ts_cliente FROM intentos_pin_fallidos WHERE id = ?', [
+        tarea.entidad_id,
+      ]);
+      if (!fila) return;
+      const { error } = await supabase.from('intentos_pin_fallidos').upsert({
+        id: fila.id,
+        dispositivo_id: fila.dispositivo_id,
+        modo: fila.modo,
+        ts_cliente: fila.ts_cliente,
+      });
+      if (error) throw error;
+      return;
+    }
+
+    case 'logins_exitosos_pin': {
+      const fila = await db.getFirstAsync<{
+        id: string;
+        dispositivo_id: string;
+        modo: string;
+        ts_cliente: string;
+      }>('SELECT id, dispositivo_id, modo, ts_cliente FROM logins_exitosos_pin WHERE id = ?', [
+        tarea.entidad_id,
+      ]);
+      if (!fila) return;
+      const { error } = await supabase.from('logins_exitosos_pin').upsert({
+        id: fila.id,
+        dispositivo_id: fila.dispositivo_id,
+        modo: fila.modo,
+        ts_cliente: fila.ts_cliente,
+      });
+      if (error) throw error;
+      return;
+    }
+
+    case 'desbloqueos_pin': {
+      const fila = await db.getFirstAsync<{
+        id: string;
+        dispositivo_id: string;
+        modo: string;
+        admin_id: string;
+        ts_cliente: string;
+      }>('SELECT id, dispositivo_id, modo, admin_id, ts_cliente FROM desbloqueos_pin WHERE id = ?', [
+        tarea.entidad_id,
+      ]);
+      if (!fila) return;
+      // Idempotente con el insert directo que ya intenta `registrarDesbloqueo`
+      // (ver src/db/intentosPin.ts) — si ya llegó, este upsert es un no-op.
+      const { error } = await supabase.from('desbloqueos_pin').upsert({
+        id: fila.id,
+        dispositivo_id: fila.dispositivo_id,
+        modo: fila.modo,
+        admin_id: fila.admin_id,
+        ts_cliente: fila.ts_cliente,
+      });
+      if (error) throw error;
+      return;
+    }
   }
 }
 

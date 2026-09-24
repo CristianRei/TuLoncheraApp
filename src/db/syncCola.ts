@@ -12,7 +12,10 @@ export type TablaSync =
   | 'arqueos_caja'
   | 'usuarios'
   | 'productos'
-  | 'categorias';
+  | 'categorias'
+  | 'intentos_pin_fallidos'
+  | 'desbloqueos_pin'
+  | 'logins_exitosos_pin';
 export type TipoTareaSync = 'FILA' | 'FOTO';
 
 let disparadorSync: (() => void) | null = null;

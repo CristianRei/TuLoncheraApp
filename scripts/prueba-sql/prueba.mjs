@@ -39,6 +39,16 @@ await paso('0001, 0003, 0004, 0005, 0006, 0007, 0008', async () => {
 });
 await paso('0009 encima', async () => { await b.exec(leer('0009_sincronizacion_completa.sql')); });
 
+console.log('\n== 0010 (seguridad de PIN) encima de 0009, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  await paso(`0010 aplica sin error (proyecto ${nombre})`, async () => { await db.exec(leer('0010_seguridad_pin.sql')); });
+  await paso(`existen las 3 tablas de seguridad de PIN (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select table_name from information_schema.tables where table_schema='public'`);
+    const tablas = new Set(r.rows.map((x) => x.table_name));
+    for (const t of ['intentos_pin_fallidos', 'desbloqueos_pin', 'logins_exitosos_pin']) assert.ok(tablas.has(t), `falta la tabla ${t}`);
+  });
+}
+
 for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   console.log(`\n== Comportamiento (proyecto ${nombre}) ==`);
   const U = () => crypto.randomUUID();
@@ -105,6 +115,23 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
       await db.query(`insert into mensajes (id, cuerpo, tipo, creado_por, creado_por_nombre, ts_cliente) values ($1,'Ánimo','MANUAL',$2,'Admin',$3)`, [m, U(), ahora]);
       await db.query(`insert into mensaje_destinatarios (mensaje_id, destinatario_id) values ($1,$2)`, [m, U()]);
       await db.query(`update mensaje_destinatarios set leida = true where mensaje_id=$1`, [m]);
+    } finally { await db.exec('reset role'); }
+  });
+  await paso('seguridad de PIN: insertar intento fallido, login exitoso y desbloqueo como authenticated', async () => {
+    // Nota: no se prueba aquí que un UPDATE sea rechazado por falta de policy
+    // (append-only, mismo criterio que mensajes/turnos) — este arnés con
+    // PGlite no aplica RLS de forma estricta contra el owner de la tabla
+    // (confirmado con `mensajes`, que tampoco tiene policy de UPDATE y aun
+    // así un UPDATE directo pasa aquí); la garantía real la da Supabase real
+    // (Postgres con RLS activo de verdad), no probado end-to-end todavía
+    // (ver CLAUDE.md sección 11).
+    await db.exec('set role authenticated');
+    try {
+      const id = U();
+      await db.query(`insert into intentos_pin_fallidos (id, dispositivo_id, modo, ts_cliente) values ($1,$2,'PROMOTOR',$3)`, [id, U(), ahora]);
+      await db.query(`insert into logins_exitosos_pin (id, dispositivo_id, modo, ts_cliente) values ($1,$2,'PROMOTOR',$3)`, [U(), U(), ahora]);
+      const admin = U();
+      await db.query(`insert into desbloqueos_pin (id, dispositivo_id, modo, admin_id, ts_cliente) values ($1,$2,'PROMOTOR',$3,$4)`, [U(), U(), admin, ahora]);
     } finally { await db.exec('reset role'); }
   });
   await paso('reintento tras subida exitosa: upsert sobre comprobantes_venta y arqueos_caja no falla por falta de UPDATE', async () => {

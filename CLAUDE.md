@@ -563,7 +563,17 @@ logins_exitosos_pin   (id UUID PK, dispositivo_id, modo, ts_cliente)          �
                     fallos consecutivos nunca es una columna: se deriva
                     contando filas de intentos_pin_fallidos posteriores al
                     evento más reciente entre las otras dos tablas — mismo
-                    espíritu de R1.
+                    espíritu de R1. Sincronizan a Supabase (subida, ver
+                    `supabase/migraciones/0010_seguridad_pin.sql`) desde que
+                    admin necesitó ver/desbloquear un dispositivo bloqueado
+                    desde OTRO dispositivo — antes eran 100% locales y admin
+                    no tenía forma de saber que un promotor se había
+                    bloqueado en su propio celular. `app/index.tsx` además
+                    consulta Supabase (best-effort, cada 5s mientras el
+                    estado es BLOQUEADO) para autodesbloquearse si un admin ya
+                    lo desbloqueó desde otro dispositivo — ver
+                    `huboDesbloqueoRemotoReciente` en
+                    `src/db/intentosPinRemotos.ts`.
 ```
 
 **Tipos de movimiento:**
@@ -681,12 +691,26 @@ faltan empresas/puntos, eventos y descuentos —, Fase 6 bastante avanzada
   si siembra los datos de demo (empresas, ventas) — si ese PIN queda
   desactualizado ahí, la demo deja de aparecer sin ningún error visible; ya
   pasó una vez (quedó en `'0000'` tras el cambio a 6 dígitos) y se corrigió.
-- **Seguridad de PIN** (`src/core/seguridadPin/`, `src/db/intentosPin.ts`):
-  backoff progresivo (3, 8, 20, 45, 90s) tras 3 fallos consecutivos y bloqueo
-  duro a los 8, por dispositivo+modo. Un admin desbloquea tecleando su propio
-  PIN (`src/ui/ModalDesbloqueoPin.tsx`). Nunca se guarda el PIN tecleado.
-  Panel de admin en `app/admin/intentos-pin/` para ver dispositivos
-  bloqueados e intentos fallidos.
+- **Seguridad de PIN, con sincronización remota** (`src/core/seguridadPin/`,
+  `src/db/intentosPin.ts`, `src/db/intentosPinRemotos.ts`,
+  `supabase/migraciones/0010_seguridad_pin.sql`): backoff progresivo (3, 8,
+  20, 45, 90s) tras 3 fallos consecutivos y bloqueo duro a los 8, por
+  dispositivo+modo. Un admin puede desbloquear tecleando su propio PIN EN EL
+  MISMO dispositivo bloqueado (`src/ui/ModalDesbloqueoPin.tsx`, siempre
+  disponible, no depende de red) — o, desde `app/admin/intentos-pin/`, ver
+  y desbloquear CUALQUIER dispositivo (`intentos_pin_fallidos`/
+  `desbloqueos_pin`/`logins_exitosos_pin` ahora sincronizan a Supabase,
+  subida únicamente; antes eran 100% locales y admin no podía saber que un
+  promotor se había bloqueado en su propio celular, ni desbloquearlo desde
+  otro). Un desbloqueo hecho por admin desde OTRO dispositivo llega solo con
+  red: `app/index.tsx` pregunta a Supabase cada 5s mientras el estado es
+  BLOQUEADO (`huboDesbloqueoRemotoReciente`) y se auto-destraba sin que la
+  persona tenga que teclear nada — best-effort (R5), sin red sigue
+  funcionando el link local de siempre. `registrarDesbloqueo` también
+  intenta un insert directo a Supabase (fuera de la cola normal de sync,
+  además de encolarla) para no depender del drenado diferido de ~700ms
+  cuando lo urgente es que la otra persona pueda reintentar ya. Nunca se
+  guarda el PIN tecleado.
 - **Dashboard de ventas** (`app/admin/dashboard/`, `src/db/analitica.ts`,
   `src/core/analitica/`): KPIs (total vendido, cantidad de ventas, ticket
   promedio, saldo en bodega), desglose por método de pago, por promotor,
@@ -1312,6 +1336,13 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
       clave natural, triggers de `subido_ts`, protección de cargues y
       Realtime. Sin esto: "Could not find the table 'public.mensajes'", las
       ventas no suben y Realtime no avisa.
+- [ ] **Correr `supabase/migraciones/0010_seguridad_pin.sql`** en el SQL
+      Editor de Supabase, después de `0009` (no usa su helper
+      `_politicas_abiertas` porque esa migración lo borra al final — políticas
+      escritas explícitas). Crea `intentos_pin_fallidos`/`desbloqueos_pin`/
+      `logins_exitosos_pin` remotas. Sin esto: sincronizar seguridad de PIN
+      falla silenciosamente (queda en la cola, ver `app/admin/sync/`) y
+      "Seguridad de acceso" solo ve el propio dispositivo de admin.
 - [ ] **Nada de la sincronización se ha probado contra un Supabase real con
       dos dispositivos.** Todo verificado hasta ahora es `tsc`/tests/lint/
       bundle (y lectura del código). Antes de darla por buena: correr en

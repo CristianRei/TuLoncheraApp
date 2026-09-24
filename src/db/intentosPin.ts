@@ -1,8 +1,12 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { UMBRAL_BLOQUEO, calcularEstadoIntentos } from '@/core/seguridadPin';
+import { calcularEstadoIntentos, calcularResumenIntentosPin } from '@/core/seguridadPin';
 import type { EstadoIntentosPin, ModoLogin, ResumenIntentosPin } from '@/core/tipos';
+import { mensajeDeError } from '@/core/errores';
+import { getSupabaseClient } from '@/sync/supabaseClient';
+
+import { encolarSync } from './syncCola';
 
 const CORTE_SIN_EVENTOS = '0000-00-00';
 
@@ -34,40 +38,93 @@ export async function contarFallosConsecutivos(
   return { fallos: fila?.fallos ?? 0, ultimoIntentoTs: fila?.ultimo ?? null };
 }
 
-/** Registra un intento fallido. Nunca guarda el PIN tecleado. */
+/** Registra un intento fallido. Nunca guarda el PIN tecleado. Sincroniza a Supabase (subida, ver src/sync/motor.ts). */
 export async function registrarIntentoFallido(
   db: SQLiteDatabase,
   dispositivoId: string,
   modo: ModoLogin
 ): Promise<void> {
-  await db.runAsync(
-    'INSERT INTO intentos_pin_fallidos (id, dispositivo_id, modo, ts_cliente) VALUES (?, ?, ?, ?)',
-    [Crypto.randomUUID(), dispositivoId, modo, new Date().toISOString()]
-  );
+  const id = Crypto.randomUUID();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      'INSERT INTO intentos_pin_fallidos (id, dispositivo_id, modo, ts_cliente) VALUES (?, ?, ?, ?)',
+      [id, dispositivoId, modo, new Date().toISOString()]
+    );
+    await encolarSync(db, { tabla: 'intentos_pin_fallidos', entidadId: id, tipoTarea: 'FILA' });
+  });
 }
 
-/** Un login correcto resetea el contador de fallos consecutivos. */
+/** Un login correcto resetea el contador de fallos consecutivos. Sincroniza a Supabase. */
 export async function registrarLoginExitoso(
   db: SQLiteDatabase,
   dispositivoId: string,
   modo: ModoLogin
 ): Promise<void> {
-  await db.runAsync(
-    'INSERT INTO logins_exitosos_pin (id, dispositivo_id, modo, ts_cliente) VALUES (?, ?, ?, ?)',
-    [Crypto.randomUUID(), dispositivoId, modo, new Date().toISOString()]
-  );
+  const id = Crypto.randomUUID();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      'INSERT INTO logins_exitosos_pin (id, dispositivo_id, modo, ts_cliente) VALUES (?, ?, ?, ?)',
+      [id, dispositivoId, modo, new Date().toISOString()]
+    );
+    await encolarSync(db, { tabla: 'logins_exitosos_pin', entidadId: id, tipoTarea: 'FILA' });
+  });
 }
 
-/** Un admin desbloquea una combinación dispositivo+modo, reseteando el contador. */
+/**
+ * Un admin desbloquea una combinación dispositivo+modo, reseteando el
+ * contador. Sincroniza a Supabase por la cola normal (para que quede
+ * registrado incluso sin red), pero ADEMÁS intenta un insert directo a
+ * Supabase best-effort: si el dispositivo bloqueado es OTRO (ej. admin
+ * desbloqueando desde su panel a un promotor), ese dispositivo nunca lee
+ * este SQLite local — solo puede enterarse consultando Supabase (ver
+ * `app/index.tsx`, chequeo de desbloqueo remoto mientras está BLOQUEADO).
+ * Esperar el drenado diferido de la cola (~700ms) igual funcionaría, pero
+ * el insert directo evita depender de que ese drenado tenga éxito ya mismo.
+ */
 export async function registrarDesbloqueo(
   db: SQLiteDatabase,
   dispositivoId: string,
   modo: ModoLogin,
   adminId: string
 ): Promise<void> {
+  const id = Crypto.randomUUID();
+  const tsCliente = new Date().toISOString();
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      'INSERT INTO desbloqueos_pin (id, dispositivo_id, modo, admin_id, ts_cliente) VALUES (?, ?, ?, ?, ?)',
+      [id, dispositivoId, modo, adminId, tsCliente]
+    );
+    await encolarSync(db, { tabla: 'desbloqueos_pin', entidadId: id, tipoTarea: 'FILA' });
+  });
+
+  try {
+    const supabase = await getSupabaseClient();
+    const { error } = await supabase
+      .from('desbloqueos_pin')
+      .upsert({ id, dispositivo_id: dispositivoId, modo, admin_id: adminId, ts_cliente: tsCliente });
+    if (error) throw error;
+  } catch (error) {
+    console.log('[intentosPin] desbloqueo remoto inmediato falló, queda en la cola:', mensajeDeError(error));
+  }
+}
+
+/**
+ * Aplica LOCALMENTE un desbloqueo que ya existe en Supabase (ver
+ * `src/db/intentosPinRemotos.ts`, `huboDesbloqueoRemotoReciente`, llamado
+ * desde `app/index.tsx` mientras el estado es BLOQUEADO). Usa el MISMO id
+ * que ya tiene la fila remota — nunca genera uno nuevo — para que sea un
+ * no-op si el drenado normal de la cola de OTRO dispositivo también la trae
+ * algún día (no debería pasar, pero R3 hace que sea inofensivo). No vuelve a
+ * escribir a Supabase: esa fila ya vive allá, esto solo la refleja acá para
+ * que `contarFallosConsecutivos` local vuelva a NORMAL sin duplicar lógica.
+ */
+export async function aplicarDesbloqueoRemoto(
+  db: SQLiteDatabase,
+  desbloqueo: { id: string; dispositivoId: string; modo: ModoLogin; adminId: string; tsCliente: string }
+): Promise<void> {
   await db.runAsync(
-    'INSERT INTO desbloqueos_pin (id, dispositivo_id, modo, admin_id, ts_cliente) VALUES (?, ?, ?, ?, ?)',
-    [Crypto.randomUUID(), dispositivoId, modo, adminId, new Date().toISOString()]
+    'INSERT OR IGNORE INTO desbloqueos_pin (id, dispositivo_id, modo, admin_id, ts_cliente) VALUES (?, ?, ?, ?, ?)',
+    [desbloqueo.id, desbloqueo.dispositivoId, desbloqueo.modo, desbloqueo.adminId, desbloqueo.tsCliente]
   );
 }
 
@@ -84,25 +141,31 @@ export async function obtenerEstadoIntentos(
   return calcularEstadoIntentos(fallos, msDesdeUltimoIntento);
 }
 
-/** Para el panel de admin: una fila por cada dispositivo+modo con historial de fallos. */
+/**
+ * Para el panel de admin: una fila por cada dispositivo+modo con historial de
+ * fallos, EN ESTE dispositivo únicamente (su propio SQLite local — solo
+ * aporta algo si el propio admin generó fallos en su propio celular/PC). Ver
+ * `src/db/intentosPinRemotos.ts` para la vista de TODOS los dispositivos vía
+ * Supabase, que es la que de verdad importa en `app/admin/intentos-pin/`.
+ */
 export async function listarResumenIntentosPin(
   db: SQLiteDatabase
 ): Promise<ResumenIntentosPin[]> {
-  const combinaciones = await db.getAllAsync<{ dispositivo_id: string; modo: ModoLogin }>(
-    'SELECT DISTINCT dispositivo_id, modo FROM intentos_pin_fallidos'
-  );
+  const [fallos, desbloqueos, logins] = await Promise.all([
+    db.getAllAsync<{ dispositivo_id: string; modo: ModoLogin; ts_cliente: string }>(
+      'SELECT dispositivo_id, modo, ts_cliente FROM intentos_pin_fallidos'
+    ),
+    db.getAllAsync<{ dispositivo_id: string; modo: ModoLogin; ts_cliente: string }>(
+      'SELECT dispositivo_id, modo, ts_cliente FROM desbloqueos_pin'
+    ),
+    db.getAllAsync<{ dispositivo_id: string; modo: ModoLogin; ts_cliente: string }>(
+      'SELECT dispositivo_id, modo, ts_cliente FROM logins_exitosos_pin'
+    ),
+  ]);
 
-  const resumen: ResumenIntentosPin[] = [];
-  for (const { dispositivo_id: dispositivoId, modo } of combinaciones) {
-    const { fallos, ultimoIntentoTs } = await contarFallosConsecutivos(db, dispositivoId, modo);
-    if (fallos === 0) continue;
-    resumen.push({
-      dispositivoId,
-      modo,
-      fallosConsecutivos: fallos,
-      bloqueado: fallos >= UMBRAL_BLOQUEO,
-      ultimoIntentoTs,
-    });
-  }
-  return resumen.sort((a, b) => (b.ultimoIntentoTs ?? '').localeCompare(a.ultimoIntentoTs ?? ''));
+  return calcularResumenIntentosPin(
+    fallos.map((f) => ({ dispositivoId: f.dispositivo_id, modo: f.modo, tsCliente: f.ts_cliente })),
+    desbloqueos.map((d) => ({ dispositivoId: d.dispositivo_id, modo: d.modo, tsCliente: d.ts_cliente })),
+    logins.map((l) => ({ dispositivoId: l.dispositivo_id, modo: l.modo, tsCliente: l.ts_cliente }))
+  );
 }

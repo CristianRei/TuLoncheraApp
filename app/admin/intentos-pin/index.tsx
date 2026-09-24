@@ -3,9 +3,11 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { mensajeDeError } from '@/core/errores';
 import type { ResumenIntentosPin } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarResumenIntentosPin, registrarDesbloqueo } from '@/db/intentosPin';
+import { listarResumenIntentosPinRemoto } from '@/db/intentosPinRemotos';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
@@ -32,7 +34,30 @@ export default function IntentosPin() {
     setCargando(true);
     try {
       const db = await getDb();
-      setResumen(await listarResumenIntentosPin(db));
+      const local = await listarResumenIntentosPin(db);
+
+      // Local solo ve los fallos que el PROPIO dispositivo de admin generó
+      // (si los hubiera) — lo que de verdad importa es el remoto, que trae
+      // los de CUALQUIER dispositivo. Se degrada a solo local sin red, sin
+      // bloquear la pantalla (R5).
+      let remoto: ResumenIntentosPin[] = [];
+      try {
+        remoto = await listarResumenIntentosPinRemoto();
+      } catch (error) {
+        console.log('[intentos-pin] no se pudo traer el resumen remoto:', mensajeDeError(error));
+      }
+
+      const combinado = new Map<string, ResumenIntentosPin>();
+      for (const item of [...local, ...remoto]) {
+        const clave = `${item.dispositivoId}-${item.modo}`;
+        const actual = combinado.get(clave);
+        if (!actual || item.fallosConsecutivos > actual.fallosConsecutivos) {
+          combinado.set(clave, item);
+        }
+      }
+      setResumen(
+        [...combinado.values()].sort((a, b) => (b.ultimoIntentoTs ?? '').localeCompare(a.ultimoIntentoTs ?? ''))
+      );
     } finally {
       setCargando(false);
     }
