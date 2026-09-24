@@ -882,7 +882,8 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
   Catálogo real del cliente ya cargado (123 productos, migración 0005).
 - **Stock de bodega** (`app/admin/inventario/`): vista de solo lectura del
-  saldo por producto. La única forma de que entre stock es "Ingresar
+  saldo por producto, con barra de búsqueda (nombre, SKU, código de barras
+  o marca; sin distinguir tildes ni mayúsculas). La única forma de que entre stock es "Ingresar
   pedido" (`src/ui/PantallaIngresarPedido.tsx`, compartida con Bodega):
   escanear el producto y teclear la cantidad (suelen ser +60 unidades, por
   eso teclear y no un contador +/-) → `COMPRA_PROVEEDOR`, con fecha de
