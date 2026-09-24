@@ -24,6 +24,8 @@ const ETIQUETA_TABLA: Record<TablaSync, string> = {
   usuarios: 'Personal',
   productos: 'Producto',
   categorias: 'Categoría',
+  empresas: 'Empresa',
+  puntos: 'Punto',
   intentos_pin_fallidos: 'Intento fallido de PIN',
   desbloqueos_pin: 'Desbloqueo de PIN',
   logins_exitosos_pin: 'Login exitoso',

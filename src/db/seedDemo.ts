@@ -165,9 +165,11 @@ export async function sembrarDatosDemo(
   // Empresas y puntos
   const puntosCreados: { id: string; empresaId: string }[] = [];
   for (const { nombre, puntos } of EMPRESAS_DEMO) {
-    const empresa = await crearEmpresa(db, { nombre }, dispositivoId);
+    const empresa = await crearEmpresa(db, { nombre }, dispositivoId, { sincronizar: false });
     for (const nombrePunto of puntos) {
-      const punto = await crearPunto(db, { empresaId: empresa.id, nombre: nombrePunto }, dispositivoId);
+      const punto = await crearPunto(db, { empresaId: empresa.id, nombre: nombrePunto }, dispositivoId, {
+        sincronizar: false,
+      });
       puntosCreados.push({ id: punto.id, empresaId: empresa.id });
     }
   }

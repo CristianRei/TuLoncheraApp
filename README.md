@@ -16,15 +16,16 @@ contraria (Supabase → celular) cubre **personal/PINs**, **catálogo**
 (productos/categorías, sin fotos) y los **datos operativos** — el admin ve las
 ventas de los promotores, bodega ve los cargues que admin planea, y lo que
 bodega entrega llega al inventario del promotor — con **Realtime** de Supabase
-para que se vea al instante. Falta bajar empresas/puntos, eventos y descuentos
-(ver CLAUDE.md sección 11), y todo esto está pendiente de probarse con
-dispositivos reales contra un Supabase real (hay que correr
-`supabase/migraciones/0009_sincronizacion_completa.sql`). Las pantallas abiertas se actualizan solas cuando llega algo nuevo.
+para que se vea al instante, además de empresas y puntos. Falta bajar
+eventos y descuentos (ver CLAUDE.md sección 11). Las pantallas abiertas se
+actualizan solas cuando llega algo nuevo. La sincronización de ventas ya se
+confirmó con dispositivos reales; antes de probar lo demás hay que aplicar en
+Supabase las migraciones pendientes (ver [`supabase/README.md`](supabase/README.md)).
 
 ## Qué está hecho y qué falta
 
 ### Fase 1 — Base local ✅ Completa
-- [x] SQLite + sistema de migraciones versionado (0001 a 0026)
+- [x] SQLite + sistema de migraciones versionado (0001 a 0029)
 - [x] Catálogo de productos (alta, edición, baja lógica) — 123 productos reales cargados
 - [x] Categorías de producto administrables (lista cerrada, sin duplicados por mayúsculas/espacios) y marca con autocompletado
 - [x] Usuarios y roles (promotor, conductor, bodega, admin) con login por PIN (4 dígitos derivados de cédula, 6 manuales para admin)
@@ -78,12 +79,15 @@ dispositivos reales contra un Supabase real (hay que correr
   los cargues, y el promotor recibe en su inventario lo que bodega entrega
 - [x] Visibilidad en tiempo real (Realtime de Supabase) para ventas, cargues
   y movimientos
-- [ ] Bajar el resto de lo que crea admin (empresas/puntos, eventos con meta
+- [x] Empresas y puntos bajan al celular del promotor/bodega
+- [ ] Bajar el resto de lo que crea admin (eventos con meta
   diaria, descuentos) — todavía no llega al celular del promotor/bodega. Ver
   CLAUDE.md sección 11
 - [ ] Fotos de producto (dónde almacenarlas y cómo viajan)
-- [ ] Probar toda la sincronización con dos dispositivos contra un Supabase
-  real (hoy solo verificada con `tsc`/tests/lint/bundle)
+- [ ] Mensajes push desde el admin en el computador: hoy no llegan (el
+  navegador bloquea la llamada al servicio de Expo — ver CLAUDE.md sección 11)
+- [ ] Probar el resto de la sincronización con dispositivos reales (las
+  ventas ya se confirmaron; lo demás, solo en laboratorio con `test:db`/`test:sql`)
 - [ ] Panel web
 - [ ] Conductor todavía no tiene pantalla propia ni puede iniciar sesión
 

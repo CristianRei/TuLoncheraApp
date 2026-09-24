@@ -174,7 +174,7 @@ await paso('ANTES de la 0025, encolar una venta falla con CHECK (reproduce el er
   try { await encolarSync(dbA, { tabla: 'ventas', entidadId: 'x', tipoTarea: 'FILA' }); } catch (e) { msg = e.message; }
   assert.match(msg, /CHECK constraint failed/);
 });
-await aplicar(dbA, migs.filter((m) => m.version === 25));
+await aplicar(dbA, migs.filter((m) => m.version >= 25));
 await paso('DESPUES de la 0025, la tarea vieja de turnos se conserva', async () => {
   const f = await dbA.getFirstAsync(`SELECT count(*) n FROM _sync_pendiente WHERE id='t1'`);
   assert.equal(f.n, 1);
@@ -247,8 +247,8 @@ await paso('crear categoría nueva', async () => { catNueva = await crearCategor
 await paso('crear producto nuevo en esa categoría', async () => { await crearProducto(dbA, { nombre: 'PRODUCTO NUEVO', precio: 4500, categoriaId: catNueva.id, codigoBarras: '770123' }, dispA); });
 await paso('editar precio/marca/categoría de un producto del catálogo inicial', async () => { await actualizarProducto(dbA, tl001.id, { precio: 3300, marca: 'Ramo', categoriaId: galletasA.id }); });
 await paso('contratar promotor (PIN derivado de cédula) y un segundo admin', async () => {
-  await crearPersona(dbA, { nombre: 'Nuevo Promotor', rol: 'PROMOTOR', cedula: '1098765432' }, dispA);
-  await crearPersona(dbA, { nombre: 'Otro Admin', rol: 'ADMIN', cedula: null, pinManual: '123456' }, dispA);
+  await crearPersona(dbA, { nombre: 'Nuevo Promotor', rol: 'PROMOTOR', cedula: '1098765432' }, dispA, admin.id);
+  await crearPersona(dbA, { nombre: 'Otro Admin', rol: 'ADMIN', cedula: null, pinManual: '123456' }, dispA, admin.id);
 });
 
 console.log('\n== D. Drenar la cola contra un Supabase falso ==');
@@ -469,8 +469,10 @@ console.log('\n== H. Tres dispositivos: admin (computador), bodega y promotor (c
 
   let pedro, beto, ventaP;
   await paso('admin contrata a un promotor y a un bodeguero, y sube el personal', async () => {
-    pedro = await crearPersona(dbAdmin, { nombre: 'Pedro Promotor', rol: 'PROMOTOR', cedula: '1234567001' }, dAdm);
-    beto = await crearPersona(dbAdmin, { nombre: 'Beto Bodega', rol: 'BODEGA', cedula: '1234567002' }, dAdm);
+    pedro = await crearPersona(dbAdmin, { nombre: 'Pedro Promotor', rol: 'PROMOTOR', cedula: '1234567001' }, dAdm, adminId);
+    beto = await crearPersona(dbAdmin, { nombre: 'Beto Bodega', rol: 'BODEGA', cedula: '1234567002' }, dAdm, adminId);
+    // Bitácora de auditoría (Julian, migración 0027): registra cada contratación en la misma transacción.
+    assert.equal((await dbAdmin.getFirstAsync(`SELECT count(*) n FROM bitacora_auditoria WHERE entidad = 'PERSONA' AND accion = 'CREAR'`)).n, 2);
     await subir(dbAdmin);
   });
   await paso('admin ingresa un pedido a bodega (50 unidades)', async () => {
@@ -697,6 +699,97 @@ console.log('\n== I. Traslado entre promotores (sin pasar por bodega) ==');
       const columnas = tabla === 'traslados' ? cols : colsLineas;
       for (const k of Object.keys(fila)) assert.ok(columnas.has(k), `${tabla}.${k} no existe en Supabase`);
     }
+  });
+}
+
+console.log('\n== J. Empresas y puntos: admin los crea, el celular del promotor los recibe ==');
+{
+  const { crearEmpresa, listarEmpresas } = await imp('db/empresas.ts');
+  const { crearPunto, listarPuntos, encolarEmpresasYPuntosSinSubir } = await imp('db/puntos.ts');
+  const { sincronizarDatosRemotos } = await imp('sync/bajada.ts');
+
+  const nube = crearFake();
+  const dbAdm = crearDb(), dbPro = crearDb();
+  for (const d of [dbAdm, dbPro]) await aplicar(d, migs);
+  const dAdm = await getDispositivoId(dbAdm);
+  const conNube = (db, fn) => { globalThis.__db = db; globalThis.__supabase = nube; return fn(); };
+  const sesionPromotor = { id: randomUUID(), nombre: 'Pedro', rol: 'PROMOTOR' };
+  const tareas = async (tabla) => (await dbAdm.getFirstAsync(`SELECT count(*) n FROM _sync_pendiente WHERE tabla = ?`, [tabla])).n;
+
+  let falabella, norte, sur;
+  await paso('admin crea una empresa y dos puntos: cada uno se encola en la misma transacción', async () => {
+    falabella = await crearEmpresa(dbAdm, { nombre: 'Falabella', direccion: 'Cra 7' }, dAdm);
+    norte = await crearPunto(dbAdm, { empresaId: falabella.id, nombre: 'Norte' }, dAdm);
+    sur = await crearPunto(dbAdm, { empresaId: falabella.id, nombre: 'Sur' }, dAdm);
+    assert.equal(await tareas('empresas'), 1);
+    assert.equal(await tareas('puntos'), 2);
+  });
+  await paso('el seed de demo (sincronizar: false) NO encola nada', async () => {
+    const demo = await crearEmpresa(dbAdm, { nombre: 'Empresa Demo' }, dAdm, { sincronizar: false });
+    await crearPunto(dbAdm, { empresaId: demo.id, nombre: 'Demo' }, dAdm, { sincronizar: false });
+    assert.equal(await tareas('empresas'), 1);
+    assert.equal(await tareas('puntos'), 2);
+  });
+  let exito;
+  await paso('empresa creada ANTES de sincronizar: el respaldo la encola una sola vez, y subir su punto la sube también', async () => {
+    exito = randomUUID();
+    await dbAdm.runAsync(`INSERT INTO empresas (id, nombre, ts_cliente, dispositivo_id) VALUES (?, 'Éxito', ?, ?)`, [exito, new Date().toISOString(), dAdm]);
+    await dbAdm.runAsync(`INSERT INTO puntos (id, empresa_id, nombre, activo, ts_cliente, dispositivo_id) VALUES (?, ?, 'Centro', 1, ?, ?)`, [randomUUID(), exito, new Date().toISOString(), dAdm]);
+    await encolarEmpresasYPuntosSinSubir(dbAdm);
+    await encolarEmpresasYPuntosSinSubir(dbAdm);
+    // Incluye las de demo: el respaldo solo corre fuera de __DEV__ (app/index.tsx), donde no hay seed.
+    assert.equal(await tareas('empresas'), 3);
+    assert.equal(await tareas('puntos'), 4);
+  });
+  await paso('subir: sin tareas pendientes y lo subido coincide con las columnas de 0012', async () => {
+    await conNube(dbAdm, () => drenarColaSync());
+    const pend = await dbAdm.getAllAsync('SELECT tabla, ultimo_error FROM _sync_pendiente WHERE completado_ts IS NULL');
+    assert.deepEqual(pend, []);
+    const esquema = esquemaSupabase();
+    const problemas = [];
+    for (const { tabla, fila } of nube.capturas.filter((c) => ['empresas', 'puntos'].includes(c.tabla))) {
+      const cols = esquema.get(tabla);
+      if (!cols) { problemas.push(`falta la tabla ${tabla} en supabase/migraciones`); continue; }
+      for (const k of Object.keys(fila)) if (!cols.has(k)) problemas.push(`${tabla}.${k} no existe en Supabase`);
+      for (const [c, req] of cols) if (req && !(c in fila)) problemas.push(`${tabla}.${c} es obligatoria y no se envía`);
+    }
+    assert.deepEqual([...new Set(problemas)], []);
+    assert.equal(nube.tablas.get('empresas').size, 3);
+    assert.equal(nube.tablas.get('puntos').size, 4);
+  });
+  await paso('el celular del promotor descarga empresas y puntos con el MISMO id del admin', async () => {
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, sesionPromotor));
+    const puntos = await listarPuntos(dbPro, { empresaId: falabella.id });
+    assert.deepEqual(puntos.map((p) => p.nombre).sort(), ['Norte', 'Sur']);
+    assert.ok((await listarEmpresas(dbPro)).some((e) => e.id === exito && e.nombre === 'Éxito'));
+    assert.deepEqual(await dbPro.getAllAsync('PRAGMA foreign_key_check'), []);
+  });
+  await paso('un punto desactivado en el admin deja de aparecer en el celular', async () => {
+    await dbAdm.runAsync('UPDATE puntos SET activo = 0 WHERE id = ?', [sur.id]);
+    await dbAdm.runAsync(`INSERT INTO _sync_pendiente (id, tabla, entidad_id, tipo_tarea, creado_ts) VALUES (?, 'puntos', ?, 'FILA', ?)`, [randomUUID(), sur.id, new Date().toISOString()]);
+    await conNube(dbAdm, () => drenarColaSync());
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, sesionPromotor));
+    assert.deepEqual((await listarPuntos(dbPro, { empresaId: falabella.id })).map((p) => p.nombre), ['Norte']);
+  });
+  await paso('descargar otra vez es idempotente (sin duplicados)', async () => {
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, sesionPromotor));
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM empresas')).n, 3);
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM puntos')).n, 4);
+  });
+  await paso('un punto cuya empresa no llegó se omite sin frenar a los demás', async () => {
+    const huerfano = randomUUID(), nuevo = randomUUID();
+    await nube.from('puntos').upsert({ id: huerfano, empresa_id: randomUUID(), nombre: 'Huérfano', direccion: null, activo: true, ts_cliente: new Date().toISOString(), dispositivo_id: dAdm });
+    await nube.from('puntos').upsert({ id: nuevo, empresa_id: falabella.id, nombre: 'Occidente', direccion: null, activo: true, ts_cliente: new Date().toISOString(), dispositivo_id: dAdm });
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, sesionPromotor));
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM puntos WHERE id = ?', [huerfano])).n, 0);
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM puntos WHERE id = ?', [nuevo])).n, 1);
+  });
+  await paso('sin red: no lanza, no toca empresas/puntos locales', async () => {
+    const antes = (await dbPro.getFirstAsync('SELECT count(*) n FROM puntos')).n;
+    globalThis.__db = dbPro;
+    globalThis.__supabase = { from: () => ({ select: () => ({ returns: async () => { throw new Error('Network request failed'); } }) }) };
+    await sincronizarDatosRemotos(dbPro, sesionPromotor);
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM puntos')).n, antes);
   });
 }
 

@@ -8,11 +8,13 @@ import { getDb } from '@/db/client';
 import { obtenerCargue } from '@/db/cargues';
 import { obtenerConteo } from '@/db/conteos';
 import { getDispositivoId } from '@/db/dispositivo';
+import { obtenerEmpresaParaSync } from '@/db/empresas';
 import { obtenerLoteParaSync } from '@/db/lotes';
 import { skuPorProductoId } from '@/db/mapeoRemoto';
 import { obtenerMovimientoParaSync } from '@/db/movimientos';
 import { obtenerPersona } from '@/db/personal';
 import { obtenerProducto } from '@/db/productos';
+import { obtenerPuntoParaSync } from '@/db/puntos';
 import type { TablaSync } from '@/db/syncCola';
 import { obtenerTraslado } from '@/db/traslados';
 import { obtenerTurno } from '@/db/turnos';
@@ -404,6 +406,54 @@ async function subirFila(
         nombre_normalizado: normalizarNombreCategoria(categoria.nombre),
         activo: categoria.activo,
         ts_cliente: categoria.tsCliente,
+        dispositivo_id: dispositivoId,
+      });
+      if (error) throw error;
+      return;
+    }
+
+    case 'empresas': {
+      const empresa = await obtenerEmpresaParaSync(db, tarea.entidad_id);
+      if (!empresa) return;
+      const { error } = await supabase.from('empresas').upsert({
+        id: empresa.id,
+        nombre: empresa.nombre,
+        direccion: empresa.direccion,
+        sector: empresa.sector,
+        contacto: empresa.contacto,
+        ts_cliente: empresa.tsCliente,
+        dispositivo_id: dispositivoId,
+      });
+      if (error) throw error;
+      return;
+    }
+
+    case 'puntos': {
+      const punto = await obtenerPuntoParaSync(db, tarea.entidad_id);
+      if (!punto) return;
+      // Su empresa sube primero (idempotente): una empresa creada antes de que
+      // sincronizaran nunca se encoló, y sin ella el otro dispositivo no puede
+      // insertar el punto (FK local puntos.empresa_id).
+      const empresa = await obtenerEmpresaParaSync(db, punto.empresaId);
+      if (empresa) {
+        const { error: errorEmpresa } = await supabase.from('empresas').upsert({
+          id: empresa.id,
+          nombre: empresa.nombre,
+          direccion: empresa.direccion,
+          sector: empresa.sector,
+          contacto: empresa.contacto,
+          ts_cliente: empresa.tsCliente,
+          dispositivo_id: dispositivoId,
+        });
+        if (errorEmpresa) throw errorEmpresa;
+      }
+      const { error } = await supabase.from('puntos').upsert({
+        id: punto.id,
+        empresa_id: punto.empresaId,
+        nombre: punto.nombre,
+        direccion: punto.direccion,
+        activo: punto.activo,
+        ts_cliente: punto.tsCliente,
         dispositivo_id: dispositivoId,
       });
       if (error) throw error;

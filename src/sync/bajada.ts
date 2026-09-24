@@ -8,7 +8,9 @@ import {
   descargarVentasNuevas,
 } from '@/db/bajadaOperativa';
 import { descargarCategoriasNuevas } from '@/db/categorias';
+import { descargarEmpresasNuevas } from '@/db/empresas';
 import { descargarProductosNuevos } from '@/db/productos';
+import { descargarPuntosNuevos } from '@/db/puntos';
 import { descargarUsuariosNuevos } from '@/db/usuarios';
 
 import { notificarDatosActualizados } from './eventosDatos';
@@ -24,7 +26,8 @@ import { notificarDatosActualizados } from './eventosDatos';
  * src/db/client.ts) y porque los productos necesitan el mapa "id remoto → id
  * local" de las categorías. Si las categorías no se pudieron descargar
  * (`null`, ej. sin red) los productos se omiten: sin ese mapa les borrarían
- * la categoría.
+ * la categoría. Igual con empresas antes que puntos (`puntos.empresa_id` es
+ * FK): si las empresas fallan, los puntos se omiten.
  *
  * Nunca se llama desde el dispositivo de admin: esa base local ya es la
  * fuente de verdad de todas estas tablas (él es quien las crea), y
@@ -35,6 +38,7 @@ export async function descargarDatosDeAdmin(db: SQLiteDatabase): Promise<void> {
   await descargarUsuariosNuevos(db);
   const categorias = await descargarCategoriasNuevas(db);
   if (categorias) await descargarProductosNuevos(db, categorias);
+  if (await descargarEmpresasNuevas(db)) await descargarPuntosNuevos(db);
 }
 
 async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesion): Promise<number> {

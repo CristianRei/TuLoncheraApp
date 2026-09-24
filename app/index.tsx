@@ -20,6 +20,7 @@ import {
 } from '@/db/intentosPin';
 import { huboDesbloqueoRemotoReciente } from '@/db/intentosPinRemotos';
 import { encolarPersonalSinSubir } from '@/db/personal';
+import { encolarEmpresasYPuntosSinSubir } from '@/db/puntos';
 import { buscarUsuarioPorPin } from '@/db/usuarios';
 import { descargarDatosDeAdminConLimite } from '@/sync/bajada';
 import { registrarPushToken } from '@/sync/push';
@@ -229,6 +230,9 @@ export default function Login() {
         if (!__DEV__ && usuario.rol === 'ADMIN') {
           encolarPersonalSinSubir(db).catch((errorEncolado) =>
             console.log('[personal] no se pudo encolar personal existente:', errorEncolado)
+          );
+          encolarEmpresasYPuntosSinSubir(db).catch((errorEncolado) =>
+            console.log('[puntos] no se pudo encolar empresas/puntos existentes:', errorEncolado)
           );
         }
         // Nunca bloquea el login (R5): si falla (sin red, permiso negado,

@@ -63,6 +63,35 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   });
 }
 
+console.log('\n== 0012 (empresas y puntos) encima de 0011, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  await paso(`0012 aplica sin error y es idempotente (proyecto ${nombre})`, async () => {
+    await db.exec(leer('0012_empresas_puntos.sql'));
+    await db.exec(leer('0012_empresas_puntos.sql'));
+  });
+  await paso(`como usuario autenticado: crear empresa + punto, reenviarlos (upsert) y desactivar el punto (proyecto ${nombre})`, async () => {
+    await db.exec('set role authenticated');
+    try {
+      const e = crypto.randomUUID(), p = crypto.randomUUID(), d = crypto.randomUUID();
+      const ahora = new Date().toISOString();
+      const sqlE = `insert into empresas (id, nombre, ts_cliente, dispositivo_id) values ($1, 'Falabella', $2, $3)
+                    on conflict (id) do update set nombre = excluded.nombre`;
+      await db.query(sqlE, [e, ahora, d]);
+      await db.query(sqlE, [e, ahora, d]);
+      const sqlP = `insert into puntos (id, empresa_id, nombre, activo, ts_cliente, dispositivo_id) values ($1, $2, 'Norte', $3, $4, $5)
+                    on conflict (id) do update set activo = excluded.activo`;
+      await db.query(sqlP, [p, e, true, ahora, d]);
+      await db.query(sqlP, [p, e, false, ahora, d]);
+      const f = await db.query(`select p.activo, e.nombre from puntos p join empresas e on e.id = p.empresa_id where p.id = $1`, [p]);
+      assert.deepEqual([f.rows[0].activo, f.rows[0].nombre], [false, 'Falabella']);
+    } finally { await db.exec('reset role'); }
+  });
+  await paso(`sin política de DELETE en empresas/puntos (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select tablename, cmd from pg_policies where tablename in ('empresas', 'puntos') and cmd = 'DELETE'`);
+    assert.equal(r.rows.length, 0);
+  });
+}
+
 for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   console.log(`\n== Comportamiento (proyecto ${nombre}) ==`);
   const U = () => crypto.randomUUID();

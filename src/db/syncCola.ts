@@ -14,6 +14,8 @@ export type TablaSync =
   | 'usuarios'
   | 'productos'
   | 'categorias'
+  | 'empresas'
+  | 'puntos'
   | 'intentos_pin_fallidos'
   | 'desbloqueos_pin'
   | 'logins_exitosos_pin';

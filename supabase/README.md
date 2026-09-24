@@ -20,8 +20,17 @@ Supabase, en este orden:
    `npm run test:sql`). Termina con `notify pgrst, 'reload schema'` para que
    la API vea las tablas nuevas enseguida.
 
-Cada vez que cambie el esquema, 0009 se actualiza en su lugar (siempre
-idempotente) — no hay que ir corriendo archivos sueltos.
+Después de 0009, cada funcionalidad nueva trae su propio archivo, que se
+corre una vez en orden:
+
+3. `migraciones/0010_seguridad_pin.sql` — intentos/desbloqueos/logins de PIN
+   remotos (ya aplicada en el proyecto real).
+4. `migraciones/0011_traslados.sql` — traslados entre promotores (no es
+   idempotente: correrla una sola vez).
+5. `migraciones/0012_empresas_puntos.sql` — empresas y puntos (sedes) para
+   la bajada al celular del promotor/bodega. Idempotente.
+
+Todo se valida contra un Postgres real en memoria con `npm run test:sql`.
 
 **Detalle histórico (ya incluido en 0009):** los archivos `0003` a `0008`
 siguen aquí como referencia de cómo se fue construyendo. Si prefieres correrlos
