@@ -909,8 +909,12 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   producto directo del inventario de un promotor al de otro, sin pasar
   físicamente por bodega. Vive dentro del mismo módulo Cargue, mismo
   patrón de dos pasos: admin elige promotor origen → promotor destino →
-  productos (topados al saldo REAL del origen, `obtenerSaldosPromotor`,
-  nunca al de bodega) y planea; bodega confirma línea por línea igual que
+  productos — la lista muestra SOLO lo que el origen tiene en su
+  inventario (`listarInventarioPromotor`, saldo > 0), topado a ese saldo
+  REAL, nunca al de bodega; un botón "Trasladar todo" marca el inventario
+  completo de una vez (y "Quitar todo" lo desmarca), y un origen sin
+  inventario muestra un aviso en vez de pedir destino — y planea; bodega
+  confirma línea por línea igual que
   un cargue normal (mismo componente de escaneo, misma lista combinada de
   "Cargues por entregar" en `app/bodega/cargues/`, con una insignia
   "Traslado" para distinguir la fila) — ahí nace el movimiento `TRASLADO`
