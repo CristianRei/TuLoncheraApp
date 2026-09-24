@@ -9,11 +9,15 @@
 -- haga falta.
 --
 -- Los promotores asignados van DENTRO del evento (`promotores`, jsonb:
--- [{promotor_id, promotor_nombre, meta_diaria}]) en vez de una tabla aparte:
--- reasignar o cambiar una meta reemplaza el conjunto completo, y así cada
--- subida es un solo upsert atómico — nunca un evento a medias ni hace falta
--- permitir DELETE. Sin FK hacia empresas/puntos, mismo criterio que 0012 (al
--- subir un evento la app sube antes su punto y su empresa).
+-- [{promotor_id, promotor_nombre}]) en vez de una tabla aparte: reasignar
+-- reemplaza el conjunto completo, y así cada subida es un solo upsert
+-- atómico — nunca un evento a medias ni hace falta permitir DELETE. Sin FK
+-- hacia empresas/puntos, mismo criterio que 0012 (al subir un evento la app
+-- sube antes su punto y su empresa).
+--
+-- `hora_inicio`/`hora_fin` ("HH:MM", hora de Colombia) y `meta_diaria` (del
+-- EVENTO: la comparte todo el equipo — si es de $ 1.000.000 y entre dos
+-- promotores venden $ 500.000, los dos van en 50 %).
 
 create table if not exists eventos (
   id uuid primary key,                    -- mismo UUID generado en el dispositivo de admin (R3)
@@ -26,10 +30,18 @@ create table if not exists eventos (
   creado_por uuid not null,
   creado_por_nombre text,
   promotores jsonb not null default '[]'::jsonb,
+  hora_inicio text,
+  hora_fin text,
+  meta_diaria bigint,
   ts_cliente timestamptz not null,
   dispositivo_id uuid not null,
   subido_ts timestamptz not null default now()
 );
+
+-- Por si alguien corrió una versión anterior de este archivo (sin horario ni meta).
+alter table eventos add column if not exists hora_inicio text;
+alter table eventos add column if not exists hora_fin text;
+alter table eventos add column if not exists meta_diaria bigint;
 
 alter table eventos enable row level security;
 

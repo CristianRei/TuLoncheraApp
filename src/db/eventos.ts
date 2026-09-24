@@ -24,15 +24,17 @@ interface FilaEvento {
   estado: EstadoEvento;
   motivo_cancelacion: string | null;
   serie_id: string | null;
+  hora_inicio: string | null;
+  hora_fin: string | null;
+  meta_diaria: number | null;
 }
 
 const COLUMNAS_EVENTO = `ev.id, ev.empresa_id, e.nombre as empresa_nombre, ev.punto_id, p.nombre as punto_nombre,
-   ev.fecha, ev.estado, ev.motivo_cancelacion, ev.serie_id`;
+   ev.fecha, ev.estado, ev.motivo_cancelacion, ev.serie_id, ev.hora_inicio, ev.hora_fin, ev.meta_diaria`;
 
 interface PromotoresDeEvento {
   ids: string[];
   nombres: string[];
-  metas: Record<string, number | null>;
 }
 
 async function resolverPromotores(
@@ -47,9 +49,8 @@ async function resolverPromotores(
     evento_id: string;
     promotor_id: string;
     promotor_nombre: string;
-    meta_diaria: number | null;
   }>(
-    `SELECT ep.evento_id, ep.promotor_id, u.nombre as promotor_nombre, ep.meta_diaria
+    `SELECT ep.evento_id, ep.promotor_id, u.nombre as promotor_nombre
      FROM evento_promotores ep
      JOIN usuarios u ON u.id = ep.promotor_id
      WHERE ep.evento_id IN (${marcadores})
@@ -57,17 +58,16 @@ async function resolverPromotores(
     eventoIds
   );
   for (const fila of filas) {
-    const actual = mapa.get(fila.evento_id) ?? { ids: [], nombres: [], metas: {} };
+    const actual = mapa.get(fila.evento_id) ?? { ids: [], nombres: [] };
     actual.ids.push(fila.promotor_id);
     actual.nombres.push(fila.promotor_nombre);
-    actual.metas[fila.promotor_id] = fila.meta_diaria;
     mapa.set(fila.evento_id, actual);
   }
   return mapa;
 }
 
 function vacioPromotoresDeEvento(): PromotoresDeEvento {
-  return { ids: [], nombres: [], metas: {} };
+  return { ids: [], nombres: [] };
 }
 
 async function aEvento(db: SQLiteDatabase, fila: FilaEvento): Promise<Evento> {
@@ -82,7 +82,9 @@ async function aEvento(db: SQLiteDatabase, fila: FilaEvento): Promise<Evento> {
     fecha: fila.fecha,
     promotorIds: propios.ids,
     promotorNombres: propios.nombres,
-    metaDiariaPorPromotor: propios.metas,
+    horaInicio: fila.hora_inicio,
+    horaFin: fila.hora_fin,
+    metaDiaria: fila.meta_diaria,
     estado: fila.estado,
     motivoCancelacion: fila.motivo_cancelacion,
     serieId: fila.serie_id,
@@ -105,7 +107,9 @@ async function aEventos(db: SQLiteDatabase, filas: FilaEvento[]): Promise<Evento
       fecha: fila.fecha,
       promotorIds: propios.ids,
       promotorNombres: propios.nombres,
-      metaDiariaPorPromotor: propios.metas,
+      horaInicio: fila.hora_inicio,
+      horaFin: fila.hora_fin,
+      metaDiaria: fila.meta_diaria,
       estado: fila.estado,
       motivoCancelacion: fila.motivo_cancelacion,
       serieId: fila.serie_id,
@@ -134,7 +138,7 @@ async function insertarEvento(
     promotorIds: string[];
     creadoPor: string;
     serieId?: string | null;
-  },
+  } & DetallesEvento,
   dispositivoId: string,
   sincronizar: boolean
 ): Promise<string> {
@@ -142,9 +146,22 @@ async function insertarEvento(
   const ahora = new Date().toISOString();
 
   await db.runAsync(
-    `INSERT INTO eventos (id, empresa_id, punto_id, fecha, estado, motivo_cancelacion, serie_id, creado_por, ts_cliente, dispositivo_id)
-     VALUES (?, ?, ?, ?, 'PLANEADO', NULL, ?, ?, ?, ?)`,
-    [id, datos.empresaId, datos.puntoId, datos.fecha, datos.serieId ?? null, datos.creadoPor, ahora, dispositivoId]
+    `INSERT INTO eventos (id, empresa_id, punto_id, fecha, estado, motivo_cancelacion, serie_id, creado_por, ts_cliente, dispositivo_id,
+                          hora_inicio, hora_fin, meta_diaria)
+     VALUES (?, ?, ?, ?, 'PLANEADO', NULL, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      id,
+      datos.empresaId,
+      datos.puntoId,
+      datos.fecha,
+      datos.serieId ?? null,
+      datos.creadoPor,
+      ahora,
+      dispositivoId,
+      datos.horaInicio ?? null,
+      datos.horaFin ?? null,
+      datos.metaDiaria ?? null,
+    ]
   );
   for (const promotorId of datos.promotorIds) {
     await db.runAsync('INSERT INTO evento_promotores (evento_id, promotor_id) VALUES (?, ?)', [
@@ -166,13 +183,25 @@ function encolarEvento(db: SQLiteDatabase, eventoId: string): Promise<void> {
 }
 
 /**
- * Crea un evento puntual (empresa + punto + fecha) con uno o varios promotores
- * asignados. `sincronizar: false` solo lo usa el seed de demo
- * (src/db/seedDemo.ts), para que sus eventos de prueba nunca suban.
+ * Horario y meta de un evento. El calendario exige horario al crear
+ * (`horaInicio` < `horaFin`, "HH:MM"); la meta es opcional y es del EVENTO:
+ * la comparten todos sus promotores (ver `Evento.metaDiaria`).
+ */
+export interface DetallesEvento {
+  horaInicio?: string | null;
+  horaFin?: string | null;
+  metaDiaria?: Pesos | null;
+}
+
+/**
+ * Crea un evento puntual (empresa + punto + fecha + horario) con uno o
+ * varios promotores asignados y, opcionalmente, su meta del día.
+ * `sincronizar: false` solo lo usa el seed de demo (src/db/seedDemo.ts),
+ * para que sus eventos de prueba nunca suban.
  */
 export async function crearEvento(
   db: SQLiteDatabase,
-  datos: { empresaId: string; puntoId: string; fecha: string; promotorIds: string[]; creadoPor: string },
+  datos: { empresaId: string; puntoId: string; fecha: string; promotorIds: string[]; creadoPor: string } & DetallesEvento,
   dispositivoId: string,
   opciones: { sincronizar?: boolean } = {}
 ): Promise<Evento> {
@@ -214,7 +243,7 @@ export async function crearSerieRecurrente(
     fechaDesde: string;
     fechaHasta: string;
     creadoPor: string;
-  },
+  } & DetallesEvento,
   dispositivoId: string
 ): Promise<Evento[]> {
   verificarFechaNoPasada(datos.fechaDesde);
@@ -239,6 +268,9 @@ export async function crearSerieRecurrente(
           promotorIds: datos.promotorIds,
           creadoPor: datos.creadoPor,
           serieId,
+          horaInicio: datos.horaInicio,
+          horaFin: datos.horaFin,
+          metaDiaria: datos.metaDiaria,
         },
         dispositivoId,
         true
@@ -418,20 +450,35 @@ export async function obtenerPuntoVigentePromotor(
 }
 
 /**
- * Fija (o borra, con `null`) la meta de venta del día para un promotor en un
- * evento puntual — independiente de la meta mensual (src/db/metas.ts).
- * "Editar" es volver a llamar esto, no hay historial de cambios (mismo
- * criterio que `establecerMeta`).
+ * Fija (o borra, con `null`) la meta de venta del día del EVENTO — la
+ * comparten todos sus promotores; independiente de la meta mensual
+ * (src/db/metas.ts). "Editar" es volver a llamar esto, no hay historial de
+ * cambios (mismo criterio que `establecerMeta`).
  */
 export async function establecerMetaDiaria(
   db: SQLiteDatabase,
-  datos: { eventoId: string; promotorId: string; montoObjetivo: number | null }
+  datos: { eventoId: string; montoObjetivo: number | null }
 ): Promise<void> {
   await db.withTransactionAsync(async () => {
-    await db.runAsync('UPDATE evento_promotores SET meta_diaria = ? WHERE evento_id = ? AND promotor_id = ?', [
-      datos.montoObjetivo,
+    await db.runAsync('UPDATE eventos SET meta_diaria = ? WHERE id = ?', [datos.montoObjetivo, datos.eventoId]);
+    await encolarEvento(db, datos.eventoId);
+  });
+}
+
+/** Corrige el horario de un evento que todavía no pasó ("HH:MM", inicio antes que fin). */
+export async function actualizarHorarioEvento(
+  db: SQLiteDatabase,
+  datos: { eventoId: string; horaInicio: string; horaFin: string }
+): Promise<void> {
+  const actual = await obtenerEvento(db, datos.eventoId);
+  if (!actual) throw new Error('Este evento ya no existe.');
+  verificarFechaNoPasada(actual.fecha);
+  if (datos.horaInicio >= datos.horaFin) throw new Error('La hora de fin debe ser después de la de inicio.');
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE eventos SET hora_inicio = ?, hora_fin = ? WHERE id = ?', [
+      datos.horaInicio,
+      datos.horaFin,
       datos.eventoId,
-      datos.promotorId,
     ]);
     await encolarEvento(db, datos.eventoId);
   });
@@ -457,7 +504,6 @@ export async function contarPromotoresConPuntoVigente(db: SQLiteDatabase): Promi
 export interface PromotorDeEventoParaSync {
   promotorId: string;
   promotorNombre: string;
-  metaDiaria: Pesos | null;
 }
 
 export interface EventoParaSync {
@@ -471,6 +517,9 @@ export interface EventoParaSync {
   creadoPor: string;
   creadoPorNombre: string | null;
   promotores: PromotorDeEventoParaSync[];
+  horaInicio: string | null;
+  horaFin: string | null;
+  metaDiaria: Pesos | null;
   tsCliente: string;
 }
 
@@ -486,10 +535,13 @@ export async function obtenerEventoParaSync(db: SQLiteDatabase, id: string): Pro
     serie_id: string | null;
     creado_por: string;
     creado_por_nombre: string | null;
+    hora_inicio: string | null;
+    hora_fin: string | null;
+    meta_diaria: number | null;
     ts_cliente: string;
   }>(
     `SELECT ev.id, ev.empresa_id, ev.punto_id, ev.fecha, ev.estado, ev.motivo_cancelacion, ev.serie_id,
-            ev.creado_por, u.nombre as creado_por_nombre, ev.ts_cliente
+            ev.creado_por, u.nombre as creado_por_nombre, ev.hora_inicio, ev.hora_fin, ev.meta_diaria, ev.ts_cliente
      FROM eventos ev
      LEFT JOIN usuarios u ON u.id = ev.creado_por
      WHERE ev.id = ?`,
@@ -510,8 +562,10 @@ export async function obtenerEventoParaSync(db: SQLiteDatabase, id: string): Pro
     promotores: propios.ids.map((promotorId, i) => ({
       promotorId,
       promotorNombre: propios.nombres[i],
-      metaDiaria: propios.metas[promotorId] ?? null,
     })),
+    horaInicio: fila.hora_inicio,
+    horaFin: fila.hora_fin,
+    metaDiaria: fila.meta_diaria,
     tsCliente: fila.ts_cliente,
   };
 }
@@ -535,7 +589,6 @@ export async function encolarEventosSinSubir(db: SQLiteDatabase): Promise<void> 
 interface PromotorDeEventoRemoto {
   promotor_id: string;
   promotor_nombre: string | null;
-  meta_diaria: number | null;
 }
 
 interface FilaEventoRemota {
@@ -549,6 +602,9 @@ interface FilaEventoRemota {
   creado_por: string;
   creado_por_nombre: string | null;
   promotores: PromotorDeEventoRemoto[] | null;
+  hora_inicio: string | null;
+  hora_fin: string | null;
+  meta_diaria: number | null;
   ts_cliente: string;
   dispositivo_id: string;
   subido_ts: string;
@@ -560,11 +616,11 @@ const TAMANO_PAGINA_EVENTOS = 500;
 /** Estado local de un evento en una sola cadena, para saber si una descarga cambió algo. */
 async function firmaEvento(db: SQLiteDatabase, eventoId: string): Promise<string> {
   const evento = await db.getFirstAsync<Record<string, unknown>>(
-    'SELECT empresa_id, punto_id, fecha, estado, motivo_cancelacion FROM eventos WHERE id = ?',
+    'SELECT empresa_id, punto_id, fecha, estado, motivo_cancelacion, hora_inicio, hora_fin, meta_diaria FROM eventos WHERE id = ?',
     [eventoId]
   );
   const promotores = await db.getAllAsync<Record<string, unknown>>(
-    'SELECT promotor_id, meta_diaria FROM evento_promotores WHERE evento_id = ? ORDER BY promotor_id',
+    'SELECT promotor_id FROM evento_promotores WHERE evento_id = ? ORDER BY promotor_id',
     [eventoId]
   );
   return JSON.stringify([evento, promotores]);
@@ -588,14 +644,11 @@ async function aplicarEventoRemoto(db: SQLiteDatabase, ev: FilaEventoRemota, dis
     { id: ev.creado_por, nombre: ev.creado_por_nombre, rol: 'ADMIN' },
     dispositivoId
   );
-  const metaPorPromotor = new Map<string, number | null>();
+  const promotorIds = new Set<string>();
   for (const p of ev.promotores ?? []) {
-    const promotorId = await resolverUsuarioLocalId(
-      db,
-      { id: p.promotor_id, nombre: p.promotor_nombre, rol: 'PROMOTOR' },
-      dispositivoId
+    promotorIds.add(
+      await resolverUsuarioLocalId(db, { id: p.promotor_id, nombre: p.promotor_nombre, rol: 'PROMOTOR' }, dispositivoId)
     );
-    metaPorPromotor.set(promotorId, p.meta_diaria ?? null);
   }
   // La serie es solo trazabilidad para el admin: no viaja, el evento baja sin ella.
   const serie = ev.serie_id
@@ -605,14 +658,18 @@ async function aplicarEventoRemoto(db: SQLiteDatabase, ev: FilaEventoRemota, dis
   const antes = await firmaEvento(db, ev.id);
   await db.withTransactionAsync(async () => {
     await db.runAsync(
-      `INSERT INTO eventos (id, empresa_id, punto_id, fecha, estado, motivo_cancelacion, serie_id, creado_por, ts_cliente, dispositivo_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO eventos (id, empresa_id, punto_id, fecha, estado, motivo_cancelacion, serie_id, creado_por, ts_cliente, dispositivo_id,
+                            hora_inicio, hora_fin, meta_diaria)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          empresa_id = excluded.empresa_id,
          punto_id = excluded.punto_id,
          fecha = excluded.fecha,
          estado = excluded.estado,
-         motivo_cancelacion = excluded.motivo_cancelacion`,
+         motivo_cancelacion = excluded.motivo_cancelacion,
+         hora_inicio = excluded.hora_inicio,
+         hora_fin = excluded.hora_fin,
+         meta_diaria = excluded.meta_diaria`,
       [
         ev.id,
         ev.empresa_id,
@@ -624,15 +681,14 @@ async function aplicarEventoRemoto(db: SQLiteDatabase, ev: FilaEventoRemota, dis
         creadoPor,
         new Date(ev.ts_cliente).toISOString(),
         ev.dispositivo_id,
+        ev.hora_inicio,
+        ev.hora_fin,
+        ev.meta_diaria,
       ]
     );
     await db.runAsync('DELETE FROM evento_promotores WHERE evento_id = ?', [ev.id]);
-    for (const [promotorId, meta] of metaPorPromotor) {
-      await db.runAsync('INSERT INTO evento_promotores (evento_id, promotor_id, meta_diaria) VALUES (?, ?, ?)', [
-        ev.id,
-        promotorId,
-        meta,
-      ]);
+    for (const promotorId of promotorIds) {
+      await db.runAsync('INSERT INTO evento_promotores (evento_id, promotor_id) VALUES (?, ?)', [ev.id, promotorId]);
     }
   });
   return antes !== (await firmaEvento(db, ev.id));

@@ -27,7 +27,7 @@ Supabase las migraciones pendientes (ver [`supabase/README.md`](supabase/README.
 ## Qué está hecho y qué falta
 
 ### Fase 1 — Base local ✅ Completa
-- [x] SQLite + sistema de migraciones versionado (0001 a 0031)
+- [x] SQLite + sistema de migraciones versionado (0001 a 0032)
 - [x] Catálogo de productos (alta, edición, baja lógica) — 123 productos reales cargados
 - [x] Categorías de producto administrables (lista cerrada, sin duplicados por mayúsculas/espacios) y marca con autocompletado
 - [x] Usuarios y roles (promotor, conductor, bodega, admin) con login por PIN (4 dígitos derivados de cédula, 6 manuales para admin)
@@ -99,7 +99,8 @@ Supabase las migraciones pendientes (ver [`supabase/README.md`](supabase/README.
 - [x] Gráfico circular (método de pago, categoría) y ranking de productos (mejor/peor, por ingresos o por margen)
 - [x] Exportar el resumen del período a Excel (una hoja por sección)
 - [x] Metas de venta mensuales por promotor/punto, con proyección de cierre de mes
-- [x] Meta de venta diaria por promotor y evento, con progreso en tiempo real
+- [x] Meta de venta diaria por evento (compartida por el equipo), con progreso en tiempo real y las ventas de los compañeros visibles para cada promotor
+- [x] Eventos con horario, y formulario del calendario con menús desplegables
 - [x] Filtro por día específico en el listado de Ventas del admin (además de hoy/rango)
 - [x] Sección Análisis: repetibilidad por punto, rendimiento por promotor, correlaciones y cruces
 - [ ] Reportes administrativos adicionales

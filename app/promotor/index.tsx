@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { formatearPesos } from '@/core/dinero';
+import { formatearRangoHoras } from '@/core/horas';
 import type { Evento, MetodoPago, Turno } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { resolverPreciosConDescuento, type PrecioConDescuento } from '@/db/descuentos';
@@ -307,6 +308,7 @@ export default function HomePromotor() {
               <Ionicons name="location-outline" size={12} color={COLORES.textoSobreOscuro} />
               <Text style={styles.chipEventoTexto} numberOfLines={1}>
                 {eventoHoy.empresaNombre} · {eventoHoy.puntoNombre}
+                {eventoHoy.horaInicio ? ` · ${formatearRangoHoras(eventoHoy.horaInicio, eventoHoy.horaFin)}` : ''}
               </Text>
             </View>
           )}

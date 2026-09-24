@@ -495,12 +495,15 @@ async function subirFila(
         creado_por: evento.creadoPor,
         creado_por_nombre: evento.creadoPorNombre,
         // Los promotores viajan dentro del evento (supabase/migraciones/0014):
-        // reasignar o cambiar una meta reemplaza el conjunto completo.
+        // reasignar reemplaza el conjunto completo.
         promotores: evento.promotores.map((p) => ({
           promotor_id: p.promotorId,
           promotor_nombre: p.promotorNombre,
-          meta_diaria: p.metaDiaria,
         })),
+        hora_inicio: evento.horaInicio,
+        hora_fin: evento.horaFin,
+        // La meta es del evento: la comparte todo el equipo (migración local 0032).
+        meta_diaria: evento.metaDiaria,
         ts_cliente: evento.tsCliente,
         dispositivo_id: dispositivoId,
       });

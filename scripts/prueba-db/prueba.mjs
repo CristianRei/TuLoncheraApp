@@ -433,10 +433,10 @@ console.log('\n== G. Consultas de pantallas (cierre de jornada, meta diaria, men
     const empresa = await crearEmpresa(dbA, { nombre: 'Empresa Prueba' }, dispA);
     const punto = await crearPunto(dbA, { empresaId: empresa.id, nombre: 'Norte' }, dispA);
     evento = await crearEvento(dbA, { empresaId: empresa.id, puntoId: punto.id, fecha: fechaHoyBogota(), promotorIds: [promotor.id], creadoPor: admin.id }, dispA);
-    await establecerMetaDiaria(dbA, { eventoId: evento.id, promotorId: promotor.id, montoObjetivo: 1800000 });
+    await establecerMetaDiaria(dbA, { eventoId: evento.id, montoObjetivo: 1800000 });
   });
   await paso('progreso de la meta diaria del promotor', async () => {
-    const p = (await obtenerProgresoMetasDiarias(dbA)).find((x) => x.promotorId === promotor.id);
+    const p = (await obtenerProgresoMetasDiarias(dbA)).find((x) => x.promotorIds.includes(promotor.id));
     assert.ok(p, 'no aparece el promotor');
     assert.equal(p.metaDiaria, 1800000);
     assert.equal(typeof p.totalVendidoHoy, 'number');
@@ -848,12 +848,12 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
     laura = await crearPersona(dbAdm, { nombre: 'Laura Gómez', rol: 'PROMOTOR', cedula: '52123456' }, dAdm, adminK.id);
     falabella = await crearEmpresa(dbAdm, { nombre: 'Falabella' }, dAdm);
     norte = await crearPunto(dbAdm, { empresaId: falabella.id, nombre: 'Norte' }, dAdm);
-    evento = await crearEvento(dbAdm, { empresaId: falabella.id, puntoId: norte.id, fecha: hoy, promotorIds: [laura.id, cristianAdm.id], creadoPor: adminK.id }, dAdm);
-    eventoManana = await crearEvento(dbAdm, { empresaId: falabella.id, puntoId: norte.id, fecha: manana, promotorIds: [laura.id], creadoPor: adminK.id }, dAdm);
+    evento = await crearEvento(dbAdm, { empresaId: falabella.id, puntoId: norte.id, fecha: hoy, promotorIds: [laura.id, cristianAdm.id], creadoPor: adminK.id, horaInicio: '08:00', horaFin: '16:00' }, dAdm);
+    eventoManana = await crearEvento(dbAdm, { empresaId: falabella.id, puntoId: norte.id, fecha: manana, promotorIds: [laura.id], creadoPor: adminK.id, horaInicio: '09:00', horaFin: '17:30', metaDiaria: 700000 }, dAdm);
     assert.equal(await tareas('eventos'), 2);
   });
   await paso('fijar la meta diaria encola el evento otra vez', async () => {
-    await establecerMetaDiaria(dbAdm, { eventoId: evento.id, promotorId: laura.id, montoObjetivo: 1800000 });
+    await establecerMetaDiaria(dbAdm, { eventoId: evento.id, montoObjetivo: 1800000 });
     assert.equal(await tareas('eventos'), 3);
   });
   let eventoDemo;
@@ -880,8 +880,8 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
     }
     assert.deepEqual([...new Set(problemas)], []);
     const remoto = nube.tablas.get('eventos').get(evento.id);
-    const meta = Object.fromEntries(remoto.promotores.map((p) => [p.promotor_nombre, p.meta_diaria]));
-    assert.deepEqual(meta, { 'Laura Gómez': 1800000, Cristian: null });
+    assert.deepEqual(remoto.promotores.map((p) => p.promotor_nombre).sort(), ['Cristian', 'Laura Gómez']);
+    assert.deepEqual([remoto.hora_inicio, remoto.hora_fin, remoto.meta_diaria], ['08:00', '16:00', 1800000]);
     assert.equal(remoto.creado_por_nombre, 'Admin');
     const demoRemoto = nube.tablas.get('eventos').get(eventoDemo.id);
     assert.ok(nube.tablas.get('puntos').has(demoRemoto.punto_id), 'el punto de demo no subió con su evento');
@@ -895,7 +895,10 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
     assert.deepEqual(propios.map((e) => e.fecha).sort(), [hoy, hoy, manana].sort());
     const deHoy = propios.find((e) => e.id === evento.id);
     assert.equal(deHoy.puntoNombre, 'Norte');
-    assert.equal(deHoy.metaDiariaPorPromotor[laura.id], 1800000);
+    assert.equal(deHoy.metaDiaria, 1800000);
+    assert.deepEqual([deHoy.horaInicio, deHoy.horaFin], ['08:00', '16:00']);
+    const deManana = propios.find((e) => e.id === eventoManana.id);
+    assert.deepEqual([deManana.horaInicio, deManana.horaFin, deManana.metaDiaria], ['09:00', '17:30', 700000]);
     assert.ok(avisos > 0, 'no avisó a las pantallas abiertas');
     const vigente = await obtenerPuntoVigentePromotor(dbPro, laura.id);
     assert.ok([evento.id, eventoDemo.id].includes(vigente?.id), 'sin punto vigente: la venta quedaría sin punto');
@@ -922,6 +925,8 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
     assert.deepEqual((await listarEventosPromotor(dbPro, cristianPro.id, rango)).map((e) => e.id), []);
     const cancelado = (await listarEventosPromotor(dbPro, laura.id, rango)).find((e) => e.id === eventoManana.id);
     assert.deepEqual([cancelado.estado, cancelado.motivoCancelacion], ['CANCELADO', 'La empresa cerró']);
+    // La meta es del evento: quitar a un promotor ya no la borra (antes vivía por promotor).
+    assert.equal((await listarEventosPromotor(dbPro, laura.id, rango)).find((e) => e.id === evento.id).metaDiaria, 1800000);
   });
   dejarDeOir();
   await paso('una serie recurrente sube todas sus ocurrencias (la serie no viaja: bajan sin serie_id)', async () => {
@@ -946,7 +951,7 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
     const ahoraIso = new Date().toISOString();
     await nube.from('empresas').upsert({ id: e2, nombre: 'Éxito', direccion: null, sector: null, contacto: null, ts_cliente: ahoraIso, dispositivo_id: dAdm });
     await nube.from('puntos').upsert({ id: p2, empresa_id: e2, nombre: 'Centro', direccion: null, activo: true, ts_cliente: ahoraIso, dispositivo_id: dAdm });
-    await nube.from('eventos').upsert({ id: ev2, empresa_id: e2, punto_id: p2, fecha: manana, estado: 'PLANEADO', motivo_cancelacion: null, serie_id: null, creado_por: adminK.id, creado_por_nombre: 'Admin', promotores: [{ promotor_id: laura.id, promotor_nombre: laura.nombre, meta_diaria: 900000 }], ts_cliente: ahoraIso, dispositivo_id: dAdm });
+    await nube.from('eventos').upsert({ id: ev2, empresa_id: e2, punto_id: p2, fecha: manana, estado: 'PLANEADO', motivo_cancelacion: null, serie_id: null, creado_por: adminK.id, creado_por_nombre: 'Admin', promotores: [{ promotor_id: laura.id, promotor_nombre: laura.nombre }], hora_inicio: '10:00', hora_fin: '14:00', meta_diaria: 900000, ts_cliente: ahoraIso, dispositivo_id: dAdm });
     const cambios = await conNube(dbPro, () => descargarEventosNuevos(dbPro));
     assert.ok(cambios >= 1);
     const f = await dbPro.getFirstAsync(`SELECT p.nombre FROM eventos ev JOIN puntos p ON p.id = ev.punto_id WHERE ev.id = ?`, [ev2]);
@@ -957,7 +962,7 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
     globalThis.__supabase = nube;
     const cancelar = suscribirCambiosRemotos(['movimientos', 'eventos'], () => { avisado++; });
     await new Promise((r) => setTimeout(r, 0));
-    await establecerMetaDiaria(dbAdm, { eventoId: evento.id, promotorId: laura.id, montoObjetivo: 2500000 });
+    await establecerMetaDiaria(dbAdm, { eventoId: evento.id, montoObjetivo: 2500000 });
     await conNube(dbAdm, () => drenarColaSync());
     cancelar();
     assert.ok(avisado > 0);
@@ -1216,6 +1221,121 @@ console.log('\n== M. Descuentos por promotor: admin los asigna, el celular cobra
     globalThis.__supabase = { from: () => ({ select: () => ({ returns: async () => { throw new Error('Network request failed'); } }) }) };
     assert.equal(await descargarDescuentosNuevos(dbPro), 0);
     assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM descuentos')).n, antes);
+  });
+}
+
+console.log('\n== N. Meta del día del EQUIPO y ventas de los compañeros de evento ==');
+{
+  const { crearEmpresa } = await imp('db/empresas.ts');
+  const { crearPunto } = await imp('db/puntos.ts');
+  const { crearEvento } = await imp('db/eventos.ts');
+  const { crearPersona } = await imp('db/personal.ts');
+  const { iniciarTurno } = await imp('db/turnos.ts');
+  const { registrarVenta, listarVentasEquipoHoy, listarVentasTurno } = await imp('db/ventas.ts');
+  const { obtenerProgresoMetaDelPromotor, obtenerProgresoMetasDiarias } = await imp('db/metasDiarias.ts');
+  const { descargarVentasNuevas } = await imp('db/bajadaOperativa.ts');
+  const { sincronizarDatosRemotos } = await imp('sync/bajada.ts');
+  const { fechaHoyBogota, calcularRangoDiaBogota } = await imp('core/analitica/index.ts');
+
+  await paso('migración 0032: la meta que estaba por promotor pasa al evento (la mayor), sin perder eventos', async () => {
+    const dbM = crearDb();
+    await aplicar(dbM, migs.filter((m) => m.version <= 31));
+    const dM = await getDispositivoId(dbM);
+    await sembrarUsuariosDePrueba(dbM, dM);
+    const adm = await dbM.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+    const cri = await dbM.getFirstAsync(`SELECT id FROM usuarios WHERE pin='8509'`);
+    const emp = await crearEmpresa(dbM, { nombre: 'E' }, dM, { sincronizar: false });
+    const pun = await crearPunto(dbM, { empresaId: emp.id, nombre: 'P' }, dM, { sincronizar: false });
+    const ev = randomUUID();
+    await dbM.runAsync(`INSERT INTO eventos (id, empresa_id, punto_id, fecha, estado, creado_por, ts_cliente, dispositivo_id) VALUES (?, ?, ?, '2026-09-24', 'PLANEADO', ?, ?, ?)`, [ev, emp.id, pun.id, adm.id, new Date().toISOString(), dM]);
+    await dbM.runAsync(`INSERT INTO evento_promotores (evento_id, promotor_id, meta_diaria) VALUES (?, ?, 1800000)`, [ev, cri.id]);
+    await aplicar(dbM, migs.filter((m) => m.version >= 32));
+    const f = await dbM.getFirstAsync('SELECT meta_diaria, hora_inicio FROM eventos WHERE id = ?', [ev]);
+    assert.deepEqual([f.meta_diaria, f.hora_inicio], [1800000, null]);
+  });
+
+  const nube = crearFake();
+  const dbAdm = crearDb(), dbAna = crearDb(), dbBeto = crearDb();
+  for (const d of [dbAdm, dbAna, dbBeto]) await aplicar(d, migs);
+  const dAdm = await getDispositivoId(dbAdm);
+  await sembrarUsuariosDePrueba(dbAdm, dAdm);
+  const adminN = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+  const conNube = (db, fn) => { globalThis.__db = db; globalThis.__supabase = nube; return fn(); };
+  const hoy = fechaHoyBogota();
+
+  let ana, beto, carla, evento, otroPunto;
+  await paso('admin planea un evento de hoy para Ana y Beto, de 8 a 4, con meta de $ 1.000.000 (del equipo)', async () => {
+    ana = await crearPersona(dbAdm, { nombre: 'Ana Ruiz', rol: 'PROMOTOR', cedula: '1010101011' }, dAdm, adminN.id);
+    beto = await crearPersona(dbAdm, { nombre: 'Beto Díaz', rol: 'PROMOTOR', cedula: '1010101022' }, dAdm, adminN.id);
+    carla = await crearPersona(dbAdm, { nombre: 'Carla Paz', rol: 'PROMOTOR', cedula: '1010101033' }, dAdm, adminN.id);
+    const emp = await crearEmpresa(dbAdm, { nombre: 'Éxito' }, dAdm);
+    const punto = await crearPunto(dbAdm, { empresaId: emp.id, nombre: 'Centro' }, dAdm);
+    otroPunto = await crearPunto(dbAdm, { empresaId: emp.id, nombre: 'Norte' }, dAdm);
+    evento = await crearEvento(dbAdm, { empresaId: emp.id, puntoId: punto.id, fecha: hoy, promotorIds: [ana.id, beto.id], creadoPor: adminN.id, horaInicio: '08:00', horaFin: '16:00', metaDiaria: 1000000 }, dAdm);
+    await crearEvento(dbAdm, { empresaId: emp.id, puntoId: otroPunto.id, fecha: hoy, promotorIds: [carla.id], creadoPor: adminN.id, horaInicio: '08:00', horaFin: '16:00', metaDiaria: 400000 }, dAdm);
+    await conNube(dbAdm, () => drenarColaSync());
+  });
+
+  // Id de CADA base (como en la app): el `getDispositivoId` del arnés guarda
+  // en memoria el del primer dispositivo, y todos los recibos chocarían.
+  const { getDispositivoId: idDeEsteDispositivo } = await import(pathToFileURL(`${RAIZ}/scripts/prueba-db/stubs/dispositivo.mjs`).href);
+  const vender = async (db, persona, monto) => {
+    const disp = await idDeEsteDispositivo(db);
+    if (!(await db.getFirstAsync('SELECT id FROM turnos WHERE promotor_id = ? AND hora_fin IS NULL', [persona.id]))) {
+      await iniciarTurno(db, { promotorId: persona.id, selfieUri: 'file:///s.jpg', latitud: 1, longitud: 1 }, disp);
+    }
+    const tl001 = await db.getFirstAsync(`SELECT id FROM productos WHERE sku = 'TL001'`);
+    await registrarVenta(db, { promotorId: persona.id, promotorNombre: persona.nombre, items: [{ productoId: tl001.id, productoNombre: 'TL001', cantidad: 1, precioUnitario: monto }], metodoPago: 'EFECTIVO' }, disp);
+  };
+  const sesion = (p) => ({ id: p.id, nombre: p.nombre, rol: 'PROMOTOR' });
+
+  await paso('cada uno en su celular: reciben el evento y venden (Ana $ 300.000, Beto $ 200.000)', async () => {
+    await conNube(dbAna, () => sincronizarDatosRemotos(dbAna, sesion(ana)));
+    await conNube(dbBeto, () => sincronizarDatosRemotos(dbBeto, sesion(beto)));
+    await vender(dbAna, ana, 300000);
+    await vender(dbBeto, beto, 200000);
+    await conNube(dbAna, () => drenarColaSync());
+    await conNube(dbBeto, () => drenarColaSync());
+    // Carla vende en OTRO punto: no es del equipo, no debe llegarle a Ana.
+    const dbCarla = crearDb();
+    await aplicar(dbCarla, migs);
+    await conNube(dbCarla, () => sincronizarDatosRemotos(dbCarla, sesion(carla)));
+    await vender(dbCarla, carla, 999000);
+    await conNube(dbCarla, () => drenarColaSync());
+  });
+  await paso('los dos ven la misma meta del equipo: $ 500.000 de $ 1.000.000 = 50 %', async () => {
+    await conNube(dbAna, () => sincronizarDatosRemotos(dbAna, sesion(ana)));
+    await conNube(dbBeto, () => sincronizarDatosRemotos(dbBeto, sesion(beto)));
+    for (const [db, p] of [[dbAna, ana], [dbBeto, beto]]) {
+      const progreso = await obtenerProgresoMetaDelPromotor(db, p.id);
+      assert.deepEqual([progreso.totalVendidoHoy, progreso.metaDiaria, progreso.progresoPct], [500000, 1000000, 50], p.nombre);
+    }
+  });
+  await paso('Ana ve las ventas de todo el equipo, pero no las de Carla (otro punto)', async () => {
+    const equipo = await listarVentasEquipoHoy(dbAna, [ana.id, beto.id], calcularRangoDiaBogota(hoy));
+    assert.deepEqual(equipo.map((v) => v.total).sort((a, b) => a - b), [200000, 300000]);
+    assert.equal((await dbAna.getFirstAsync('SELECT count(*) n FROM ventas WHERE total = 999000')).n, 0);
+  });
+  await paso('"Mis ventas" del turno de Ana siguen siendo solo las suyas (su arqueo no cambia)', async () => {
+    const turno = await dbAna.getFirstAsync('SELECT hora_inicio, hora_fin FROM turnos WHERE promotor_id = ?', [ana.id]);
+    const propias = await listarVentasTurno(dbAna, ana.id, { horaInicio: turno.hora_inicio, horaFin: turno.hora_fin });
+    assert.deepEqual(propias.map((v) => v.total), [300000]);
+  });
+  await paso('un promotor solo (sin compañeros) no baja ventas de nadie', async () => {
+    const antes = (await dbAna.getFirstAsync('SELECT count(*) n FROM ventas')).n;
+    const dbCarla2 = crearDb();
+    await aplicar(dbCarla2, migs);
+    await conNube(dbCarla2, () => sincronizarDatosRemotos(dbCarla2, sesion(carla)));
+    assert.equal((await dbCarla2.getFirstAsync('SELECT count(*) n FROM ventas')).n, 0);
+    assert.equal((await dbAna.getFirstAsync('SELECT count(*) n FROM ventas')).n, antes);
+  });
+  await paso('el admin ve UN progreso por evento, con todo el equipo', async () => {
+    await conNube(dbAdm, () => descargarVentasNuevas(dbAdm));
+    const filas = await obtenerProgresoMetasDiarias(dbAdm);
+    const deEquipo = filas.find((f) => f.eventoId === evento.id);
+    assert.deepEqual(deEquipo.promotorIds.slice().sort(), [ana.id, beto.id].sort());
+    assert.deepEqual([deEquipo.totalVendidoHoy, deEquipo.progresoPct], [500000, 50]);
+    assert.equal(filas.find((f) => f.promotorIds.includes(carla.id)).progresoPct, Math.round((999000 / 400000) * 100));
   });
 }
 

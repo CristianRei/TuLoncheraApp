@@ -9,12 +9,14 @@ export default function PromotorLayout() {
   const esPromotor = usuario?.rol === 'PROMOTOR';
 
   // Lo que bodega le entrega (RECARGA) llega solo a su inventario, los
-  // eventos que admin le planea llegan a su calendario, y un descuento que le
-  // asignan cambia sus precios al instante — ver src/ui/useSincronizacionEnVivo.ts.
+  // eventos que admin le planea llegan a su calendario, un descuento que le
+  // asignan cambia sus precios al instante, y lo que venden sus compañeros de
+  // evento suma a la meta compartida — ver src/ui/useSincronizacionEnVivo.ts.
   useSincronizacionEnVivo(esPromotor ? usuario.id : null, esPromotor ? 'PROMOTOR' : null, usuario?.nombre ?? '', [
     'movimientos',
     'eventos',
     'descuentos',
+    'ventas',
   ]);
 
   return (

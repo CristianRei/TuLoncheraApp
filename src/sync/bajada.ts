@@ -10,7 +10,7 @@ import {
 import { descargarCategoriasNuevas } from '@/db/categorias';
 import { descargarDescuentosNuevos } from '@/db/descuentos';
 import { descargarEmpresasNuevas } from '@/db/empresas';
-import { descargarEventosNuevos } from '@/db/eventos';
+import { descargarEventosNuevos, obtenerPuntoVigentePromotor } from '@/db/eventos';
 import { descargarProductosNuevos } from '@/db/productos';
 import { descargarPuntosNuevos } from '@/db/puntos';
 import { descargarUsuariosNuevos } from '@/db/usuarios';
@@ -68,6 +68,13 @@ async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesio
     cambios += await descargarMovimientosNuevos(db, { tipo: 'BODEGA' });
   } else if (sesion.rol === 'PROMOTOR') {
     cambios += await descargarMovimientosNuevos(db, { tipo: 'PROMOTOR', usuarioId: sesion.id });
+    // Si hoy comparte evento con otros promotores, baja las ventas de todo el
+    // equipo en ese punto: la meta del día es compartida (src/db/metasDiarias.ts)
+    // y cada uno ve lo que venden sus compañeros en "Ventas del turno".
+    const evento = await obtenerPuntoVigentePromotor(db, sesion.id);
+    if (evento && evento.promotorIds.length > 1) {
+      cambios += await descargarVentasNuevas(db, { tipo: 'EQUIPO', puntoId: evento.puntoId, fecha: evento.fecha });
+    }
   }
   return cambios;
 }

@@ -60,7 +60,7 @@ Términos del negocio. Úsalos tal cual en código, tablas, variables y UI.
 | **Bodega** | Rol operativo que alista recargas y recibe devoluciones. |
 | **Cliente** | Persona natural que un promotor registra en campo (nombre, teléfono, dirección, ciudad, empresa, nota). No es un actor del sistema, no inicia sesión — solo se le puede asignar la factura de una venta. |
 | **Categoría** | Clasificación de producto (ej. Galletas, Lácteos). Lista cerrada y administrable por admin, nunca texto libre — para que el filtro del dashboard no se rompa en variantes ("Galleta" vs "galleta"). |
-| **Meta** | Objetivo de venta que un admin le asigna a un promotor o a un punto. Hay dos escalas independientes: **meta diaria** (por promotor, en cada evento/jornada — ej. $1.800.000 o $2.500.000 para hoy) y **meta mensual** (por promotor o por punto, contra el mes calendario). Ambas se comparan contra las ventas reales del período correspondiente, nunca contra un número inventado. |
+| **Meta** | Objetivo de venta que un admin le asigna a un promotor o a un punto. Hay dos escalas independientes: **meta diaria** (por EVENTO, compartida por todo su equipo de promotores — ej. $1.000.000 para hoy: si entre los dos venden $500.000, los dos van en 50 %) y **meta mensual** (por promotor o por punto, contra el mes calendario). Ambas se comparan contra las ventas reales del período correspondiente, nunca contra un número inventado. |
 
 ---
 
@@ -259,6 +259,7 @@ tulonchera/
       calendario/                    ← TEMPORADAS_2026 (Navidad, Semana Santa, vacaciones, fechas especiales)
       descuentos/                   ← aplicarDescuento, elegirMayorDescuento (nunca se suman) + sus tests
       dinero/                        ← formatearPesos / parsearPesos
+      horas/                          ← parsearHora / formatearHora / formatearRangoHoras ("HH:MM", horario de eventos y descuentos) + tests
       errores/                        ← mensajeDeError: extrae un mensaje legible de un Error de JS o de un PostgrestError de supabase-js (objeto plano, no `instanceof Error`)
       eventos/                        ← calcularOcurrencias (series recurrentes del calendario) + property test
       inventario/                      ← calcularSaldosPorProducto + su property test
@@ -266,7 +267,7 @@ tulonchera/
       seguridadPin/                      ← backoff/bloqueo de PIN
       tipos/                                ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0031, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`; la 0030 agrega DESBLOQUEO_PIN + columna `modo` a `notificaciones`; la 0031 agrega `promotor_id` a `descuentos`)
+      migraciones/                ← 0001 a 0032, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`; la 0030 agrega DESBLOQUEO_PIN + columna `modo` a `notificaciones`; la 0031 agrega `promotor_id` a `descuentos`; la 0032 agrega horario y meta diaria a `eventos`)
       arqueos.ts                   ← registra y lee el arqueo de caja de un turno (una fila por turno)
       arqueosRemotos.ts             ← lectura desde Supabase, para cuando el turno no se abrió en este dispositivo
       cargues.ts                   ← planear/reducir/entregar cargue (cabecera + líneas)
@@ -306,6 +307,7 @@ tulonchera/
       useSincronizacionEnVivo.ts           ← hook de layout: descarga al entrar, al recibir un aviso Realtime, y cada 45 s de respaldo
       useVersionDatos.ts                    ← `useRecargarConDatosNuevos(fn)`: una pantalla se recarga sola cuando llegan datos nuevos de Supabase
       ModalConfirmacion.tsx               ← reemplaza Alert.alert para confirmaciones de 2 botones (Alert.alert no tiene UI en React Native Web)
+      SelectorDesplegable.tsx              ← menú desplegable de admin (uno o varios, con buscador si hay muchas opciones); se despliega en el mismo lugar, no en otro Modal
       BarraMetaDiaria.tsx                  ← barra animada de cumplimiento de la meta DIARIA, de rojo a verde según el avance (Ventas del turno del promotor)
       CalendarioRango.tsx                  ← calendario de mes, reusado para "Rango personalizado" (dashboard), fecha específica (Ventas) y un solo día
       calendarioGrilla.ts                   ← grilla de mes compartida por CalendarioRango/calendario de eventos
@@ -411,22 +413,27 @@ puntos            (id, empresa_id, nombre, direccion[opcional], activo)
                     Sur). Gestión en app/admin/empresas/.
 eventos           (id, empresa_id, punto_id, fecha, estado[PLANEADO|EN_CURSO|
                    CERRADO|CANCELADO], motivo_cancelacion[opcional],
-                   serie_id[opcional], creado_por, ts_cliente, dispositivo_id)
+                   serie_id[opcional], hora_inicio, hora_fin, meta_diaria[opcional],
+                   creado_por, ts_cliente, dispositivo_id)
                   ← desde la 0014, jornada real con fecha planeada (antes era
                     solo "asignación vigente sin fecha" — ver ADR 0005, luego
                     corregido por la 0014). El punto vigente del promotor se
                     resuelve por fecha (evento de hoy), no por estado manual.
                     Calendario: app/admin/calendario/, app/promotor/calendario.tsx.
-evento_promotores (evento_id, promotor_id, meta_diaria[opcional])  ← N-a-N, en uso
+                    Desde la 0032: `hora_inicio`/`hora_fin` ("HH:MM", hora de
+                    Colombia; obligatorio al crear desde el calendario, NULL en
+                    eventos viejos) y `meta_diaria` (Pesos) — la meta de venta
+                    del día es del EVENTO y la comparte todo su equipo: se
+                    compara contra lo que venden ENTRE TODOS sus promotores ese
+                    día (si es de $1.000.000 y entre dos venden $500.000, los
+                    dos van en 50 %; decisión del negocio, 2026-09-24).
+                    Independiente de la meta MENSUAL (tabla `metas`).
+evento_promotores (evento_id, promotor_id, meta_diaria[MUERTA])  ← N-a-N, en uso
                   desde la 0014. Reemplaza la columna promotor_id directa — un
                   evento puede tener varios promotores (lo usual es uno solo).
-                  `meta_diaria` (Pesos, desde la 0023) es la meta de venta de
-                  ESE día para ESE promotor en ESE evento — ver glosario
-                  "Meta" y app/admin/notificaciones/ (pestaña Mensajes).
-                  Independiente de la meta
-                  MENSUAL (tabla `metas`, más abajo): un promotor puede tener
-                  las dos al mismo tiempo, un promotor puede cumplir la del
-                  día y no la del mes o viceversa.
+                  `meta_diaria` (0023) era la meta POR PROMOTOR; la 0032 la
+                  pasó a `eventos.meta_diaria` (la mayor del evento) y la
+                  columna quedó sin uso, siempre se ignora.
 series_recurrencia (id, frecuencia[DIAS|SEMANAS|MESES|ANIOS], intervalo,
                    fecha_desde, fecha_hasta, ts_cliente, dispositivo_id)
                   ← en uso desde la 0014. Solo trazabilidad de una serie
@@ -957,7 +964,15 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   reemplazó por completo la pantalla vieja "Asignar punto a promotor"
   (eliminada). Admin planea eventos (empresa + punto + fecha, uno o varios
   promotores por evento, series recurrentes) en una vista de calendario
-  mensual; el promotor ve en su propio calendario dónde le toca cada día.
+  mensual; el promotor ve en su propio calendario dónde le toca cada día,
+  a qué hora, su meta ("Tu meta" o "Meta del equipo") y con quién. El
+  formulario "Nuevo evento" (botón en el dorado de la marca) usa menús
+  desplegables para empresa, punto y promotores (`src/ui/SelectorDesplegable.tsx`,
+  con buscador cuando son muchos), horario obligatorio ("Desde las – Hasta
+  las", `src/core/horas`) y la meta del día en pesos (opcional; con varios
+  promotores avisa que es del equipo). En el detalle del evento se corrigen
+  el horario y la meta. El recuadro del evento de hoy en la pantalla de
+  venta del promotor muestra también el horario.
   Cancelación en caliente con motivo obligatorio, nunca se borra un evento.
   El "punto vigente" del promotor (usado al vender y al resolver
   descuentos) se resuelve por fecha real —
@@ -1187,11 +1202,18 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   de la meta DIARIA (`src/ui/BarraMetaDiaria.tsx`): se llena con animación y
   cambia de rojo a verde (pasando por naranja y ámbar) según el porcentaje,
   con "Te faltan $X" o "¡Meta cumplida!". Mide TODAS las ventas del día en
-  Bogotá (misma cifra que "Cierre de jornada", `obtenerProgresoMetasDiarias`),
-  no solo las del turno — por eso puede no coincidir con el "Total vendido"
-  del turno si hubo ventas antes. Sin meta asignada hoy, solo un aviso
-  discreto. Se actualiza sola si admin cambia la meta con la pantalla
-  abierta.
+  Bogotá de TODO el equipo del evento (misma cifra que "Cierre de jornada",
+  `obtenerProgresoMetaDelPromotor`), no solo las del turno — por eso puede no
+  coincidir con el "Total vendido" del turno. Sin meta asignada hoy, solo un
+  aviso discreto. Si el evento de hoy tiene varios promotores, la pantalla
+  tiene dos pestañas: "Mis ventas" y "Todo el equipo" (las ventas de hoy de
+  todos, con quién vendió cada una y el total por persona; las de los
+  compañeros solo se consultan). Para eso el celular del promotor baja las
+  ventas de HOY en el punto de su evento (`descargarVentasNuevas` con ámbito
+  EQUIPO, por punto y no por persona: el punto tiene el mismo id en todos
+  los dispositivos), con Realtime; nunca entran en "Mis ventas" ni en su
+  arqueo. Todo se actualiza solo si admin cambia la meta o un compañero
+  vende.
 - **Dashboard: gráfico circular, ranking de productos, exportar informe y
   metas de venta** (`app/admin/dashboard/`, `src/ui/graficas/GraficoCircular.tsx`,
   `src/db/metas.ts`, migración 0021): "Por método de pago" ahora es una
@@ -1272,9 +1294,11 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   `app/bodega/notificaciones.tsx`, `src/db/eventos.ts`, `src/db/metasDiarias.ts`,
   `src/db/mensajes.ts`, `src/sync/push.ts`, `src/core/errores/`, migración
   0023, `supabase/migraciones/0003_mensajes.sql`): al planear o editar un
-  evento en el Calendario, admin puede fijar una meta de venta DIARIA por
-  promotor asignado (`evento_promotores.meta_diaria`) — distinta de la meta
-  MENSUAL (`metas`, más arriba). `app/admin/notificaciones/` es UNA pantalla
+  evento en el Calendario, admin puede fijar la meta de venta DIARIA del
+  evento (`eventos.meta_diaria`, compartida por todo su equipo desde la
+  0032) — distinta de la meta MENSUAL (`metas`, más arriba). "Enviar
+  progreso" manda un mensaje por evento a todos sus promotores, con el
+  avance del equipo. `app/admin/notificaciones/` es UNA pantalla
   con dos pestañas — fusión solo visual (UX/UI, a pedido del usuario), las
   tablas de datos siguen 100% separadas: "Alertas del sistema" (lo que antes
   era el módulo "Notificaciones" solo, ver más abajo) y "Mensajes" (antes el

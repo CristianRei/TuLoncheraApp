@@ -239,6 +239,29 @@ export async function listarVentasTurno(
   return filas.map(aVenta);
 }
 
+/**
+ * Ventas de HOY de todos los promotores de un evento (incluido quien
+ * consulta) — el equipo comparte la meta del día. En el celular de un
+ * promotor, las de sus compañeros llegan de Supabase (`descargarVentasNuevas`
+ * con ámbito EQUIPO). Más reciente primero; incluye anuladas (se muestran
+ * marcadas, igual que en "Mis ventas").
+ */
+export async function listarVentasEquipoHoy(
+  db: SQLiteDatabase,
+  promotorIds: string[],
+  rango: { desde: string; hasta: string }
+): Promise<Venta[]> {
+  if (promotorIds.length === 0) return [];
+  const filas = await db.getAllAsync<FilaVenta>(
+    `SELECT ${COLUMNAS_VENTA}
+     ${JOIN_VENTA}
+     WHERE v.promotor_id IN (${promotorIds.map(() => '?').join(', ')}) AND v.ts_cliente BETWEEN ? AND ?
+     ORDER BY v.ts_cliente DESC`,
+    [...promotorIds, rango.desde, rango.hasta]
+  );
+  return filas.map(aVenta);
+}
+
 export async function obtenerVenta(
   db: SQLiteDatabase,
   id: string

@@ -19,7 +19,7 @@ import { existeConteoHoy } from '@/db/conteos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { generarPdfCierreTurno } from '@/db/exportarCierreTurno';
 import { listarInventarioPromotor } from '@/db/inventario';
-import { obtenerProgresoMetasDiarias, type ProgresoMetaDiaria } from '@/db/metasDiarias';
+import { obtenerProgresoMetaDelPromotor, type ProgresoMetaDiaria } from '@/db/metasDiarias';
 import { finalizarTurno, obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { formatearPesos, parsearPesos } from '@/core/dinero';
 import type { Evento, Turno } from '@/core/tipos';
@@ -51,14 +51,14 @@ export default function CierreJornada() {
       setTurno(turnoAbierto);
       if (!turnoAbierto) return;
 
-      const [evento, resumenVentas, metasDiarias, yaConto] = await Promise.all([
+      const [evento, resumenVentas, metaDelEvento, yaConto] = await Promise.all([
         obtenerEventoDeHoyPromotor(db, promotorId),
         obtenerResumenVentas(
           db,
           { desde: turnoAbierto.horaInicio, hasta: new Date().toISOString() },
           { promotorId }
         ),
-        obtenerProgresoMetasDiarias(db),
+        obtenerProgresoMetaDelPromotor(db, promotorId),
         existeConteoHoy(db, promotorId),
       ]);
 
@@ -70,7 +70,7 @@ export default function CierreJornada() {
         totalLibranza: porMetodo('LIBRANZA'),
         efectivoTeorico: porMetodo('EFECTIVO'),
       });
-      setMeta(metasDiarias.find((m) => m.promotorId === promotorId) ?? null);
+      setMeta(metaDelEvento);
       setSinConteoHoy(!yaConto);
     } finally {
       setCargando(false);
@@ -179,7 +179,9 @@ export default function CierreJornada() {
         <ScrollView contentContainerStyle={styles.scroll}>
           {meta && (
             <View style={styles.tarjeta}>
-              <Text style={styles.tarjetaTitulo}>Meta del día</Text>
+              <Text style={styles.tarjetaTitulo}>
+                {meta.promotorIds.length > 1 ? 'Meta del día (entre todo el equipo)' : 'Meta del día'}
+              </Text>
               <Text style={styles.metaPct}>{meta.progresoPct}%</Text>
               <Text style={styles.metaDetalle}>
                 {formatearPesos(meta.totalVendidoHoy)} de {formatearPesos(meta.metaDiaria)} · {meta.puntoNombre}

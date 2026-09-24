@@ -132,13 +132,16 @@ export interface Evento {
   fecha: string;
   promotorIds: string[];
   promotorNombres: string[];
+  /** Horario "HH:MM" (hora de Colombia) — `null` solo en eventos creados antes de la migración 0032. */
+  horaInicio: string | null;
+  horaFin: string | null;
   /**
-   * Meta de venta del día para ese promotor en ese evento (ej. $1.800.000),
-   * distinta de la meta mensual (ver `Meta` más abajo) — un promotor puede
-   * tener las dos a la vez. `null` = sin meta diaria asignada. Indexado por
-   * promotorId, igual orden/cantidad que `promotorIds`.
+   * Meta de venta del día del EVENTO (ej. $ 1.000.000), compartida por todos
+   * sus promotores: se compara contra lo que venden entre todos ese día
+   * (migración 0032). Distinta de la meta mensual (ver `Meta` más abajo).
+   * `null` = sin meta diaria.
    */
-  metaDiariaPorPromotor: Record<string, number | null>;
+  metaDiaria: Pesos | null;
   estado: EstadoEvento;
   motivoCancelacion: string | null;
   serieId: string | null;

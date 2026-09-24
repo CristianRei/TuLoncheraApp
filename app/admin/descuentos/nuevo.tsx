@@ -16,6 +16,7 @@ import {
 
 import { fechaHoyBogota } from '@/core/analitica';
 import { parsearPesos } from '@/core/dinero';
+import { parsearHora } from '@/core/horas';
 import type { Producto, Punto, TipoDescuento, UsuarioSesion } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { crearDescuento } from '@/db/descuentos';
@@ -38,16 +39,6 @@ function formatearFechaCorta(iso: string | null): string {
 
 function formatearFechaHora(iso: string): string {
   return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit' });
-}
-
-/** "8", "8:00", "08:00", "16:30" → "HH:MM"; `null` si no es una hora válida. */
-function parsearHora(texto: string): string | null {
-  const m = texto.trim().match(/^(\d{1,2})(?::(\d{2}))?$/);
-  if (!m) return null;
-  const horas = Number(m[1]);
-  const minutos = m[2] === undefined ? 0 : Number(m[2]);
-  if (horas > 23 || minutos > 59) return null;
-  return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
 }
 
 /**
