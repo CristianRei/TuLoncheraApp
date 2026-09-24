@@ -160,10 +160,11 @@ export default function Login() {
           await registrarIntentoFallido(db, dispositivoId, modo);
           if (cancelado) return;
           setError('Código no encontrado');
-          setPin('');
           setIntentoFallido((n) => n + 1);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           await refrescarEstadoIntentos(dispositivoId, modo);
+          setVerificando(false);
+          setPin('');
           return;
         }
 
