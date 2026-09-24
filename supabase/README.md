@@ -29,6 +29,15 @@ corre una vez en orden:
    idempotente: correrla una sola vez).
 5. `migraciones/0012_empresas_puntos.sql` — empresas y puntos (sedes) para
    la bajada al celular del promotor/bodega. Idempotente.
+6. `migraciones/0013_push_desde_servidor.sql` — activa `pg_net` y crea el
+   trigger que envía las notificaciones push desde Supabase (la app ya no
+   llama a Expo). Idempotente. Si `create extension` falla por permisos,
+   activar **pg_net** en Database → Extensions y volver a correrlo. Para ver
+   qué respondió Expo: `select created, status_code, content from
+   net._http_response order by created desc limit 10;`
+7. `migraciones/0014_eventos.sql` — eventos del calendario (con promotores y
+   meta diaria) para el celular del promotor, con Realtime. Idempotente;
+   después de 0012.
 
 Todo se valida contra un Postgres real en memoria con `npm run test:sql`.
 

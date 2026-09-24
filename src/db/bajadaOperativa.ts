@@ -98,9 +98,9 @@ async function aplicarVentaRemota(
     itemsLocales.push({ productoId, item });
   }
 
-  // Los puntos los crea admin; si este dispositivo no lo tiene (todavía no
-  // sincronizan empresas/puntos) la venta se guarda sin punto en vez de
-  // romper la llave foránea.
+  // Los puntos los crea admin, así que en su dispositivo existen con el mismo
+  // id; si aun así no está (un punto que nunca subió), la venta se guarda sin
+  // punto en vez de romper la llave foránea.
   const punto = venta.punto_id
     ? await db.getFirstAsync<{ id: string }>('SELECT id FROM puntos WHERE id = ?', [venta.punto_id])
     : null;

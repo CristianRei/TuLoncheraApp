@@ -53,13 +53,13 @@ function crearFake() {
   const canales = [];
   const t = (n) => { if (!tablas.has(n)) tablas.set(n, new Map()); return tablas.get(n); };
   const PADRES = { venta_items: ['ventas', 'venta_id'], cargue_lineas: ['cargues', 'cargue_id'], conteo_lineas: ['conteos', 'conteo_id'] };
-  const CON_SUBIDO = new Set(['ventas', 'movimientos', 'cargues', 'conteos']);
+  const CON_SUBIDO = new Set(['ventas', 'movimientos', 'cargues', 'conteos', 'eventos']);
 
   function avisar(nombre) {
     for (const c of canales) for (const h of c.handlers) if (h.filtro.table === nombre) h.cb({ table: nombre });
   }
   function guardar(nombre, r) {
-    const k = r.id ?? `${r.venta_id ?? r.conteo_id}:${r.producto_id}`;
+    const k = r.id ?? `${r.venta_id ?? r.conteo_id ?? r.mensaje_id}:${r.producto_id ?? r.destinatario_id}`;
     const previo = t(nombre).get(k);
     const fila = { ...(previo ?? {}), ...r };
     if (nombre === 'cargue_lineas' && previo?.estado === 'ENTREGADA' && fila.estado !== 'ENTREGADA') {
@@ -118,6 +118,7 @@ function crearFake() {
         for (const r of Array.isArray(rows) ? rows : [rows]) { guardar(nombre, r); capturas.push({ tabla: nombre, fila: r }); }
         return { error: null };
       };
+      consulta.insert = consulta.upsert;
       consulta.delete = () => ({ eq: async (col, val) => { for (const [k, r] of t(nombre)) if (r[col] === val) t(nombre).delete(k); return { error: null }; } });
       return consulta;
     },
@@ -180,7 +181,7 @@ await paso('DESPUES de la 0025, la tarea vieja de turnos se conserva', async () 
   assert.equal(f.n, 1);
 });
 await paso('DESPUES de la 0025, se puede encolar cualquier tabla', async () => {
-  for (const tabla of ['turnos','comprobantes_venta','ventas','movimientos','lotes','cargues','traslados','conteos','arqueos_caja','usuarios','productos','categorias','intentos_pin_fallidos','desbloqueos_pin','logins_exitosos_pin'])
+  for (const tabla of ['turnos','comprobantes_venta','ventas','movimientos','lotes','cargues','traslados','conteos','arqueos_caja','usuarios','productos','categorias','empresas','puntos','eventos','intentos_pin_fallidos','desbloqueos_pin','logins_exitosos_pin'])
     await encolarSync(dbA, { tabla, entidadId: 'x', tipoTarea: 'FILA' });
 });
 await dbA.runAsync('DELETE FROM _sync_pendiente');
@@ -791,6 +792,189 @@ console.log('\n== J. Empresas y puntos: admin los crea, el celular del promotor 
     await sincronizarDatosRemotos(dbPro, sesionPromotor);
     assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM puntos')).n, antes);
   });
+}
+
+console.log('\n== K. Eventos del calendario: admin los planea, el celular del promotor los recibe ==');
+{
+  const { crearEmpresa } = await imp('db/empresas.ts');
+  const { crearPunto } = await imp('db/puntos.ts');
+  const {
+    crearEvento, crearSerieRecurrente, reasignarEvento, cancelarEvento, establecerMetaDiaria,
+    listarEventosPromotor, obtenerPuntoVigentePromotor, encolarEventosSinSubir, descargarEventosNuevos,
+  } = await imp('db/eventos.ts');
+  const { crearPersona } = await imp('db/personal.ts');
+  const { sincronizarDatosRemotos } = await imp('sync/bajada.ts');
+  const { suscribirDatosActualizados } = await imp('sync/eventosDatos.ts');
+  const { suscribirCambiosRemotos } = await imp('sync/realtime.ts');
+  const { fechaHoyBogota } = await imp('core/analitica/index.ts');
+
+  const nube = crearFake();
+  const dbAdm = crearDb(), dbPro = crearDb();
+  for (const d of [dbAdm, dbPro]) await aplicar(d, migs);
+  const dAdm = await getDispositivoId(dbAdm);
+  const dPro = 'c0c0c0c0-0000-4000-8000-000000000000';
+  // Los dos arrancan como en `__DEV__`: cada uno con SUS usuarios de prueba (ids distintos).
+  await sembrarUsuariosDePrueba(dbAdm, dAdm);
+  await sembrarUsuariosDePrueba(dbPro, dPro);
+  const adminK = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+  const cristianAdm = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='8509'`);
+  const cristianPro = await dbPro.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+  const conNube = (db, fn) => { globalThis.__db = db; globalThis.__supabase = nube; return fn(); };
+  const tareas = async (tabla) => (await dbAdm.getFirstAsync(`SELECT count(*) n FROM _sync_pendiente WHERE tabla = ?`, [tabla])).n;
+  const hoy = fechaHoyBogota();
+  const manana = fechaHoyBogota(new Date(Date.now() + 24 * 3600 * 1000));
+  const rango = { desde: hoy, hasta: manana };
+
+  let laura, falabella, norte, evento, eventoManana;
+  await paso('admin contrata a Laura y planea el evento de hoy (Laura + su Cristian): se encola en la misma transacción', async () => {
+    laura = await crearPersona(dbAdm, { nombre: 'Laura Gómez', rol: 'PROMOTOR', cedula: '52123456' }, dAdm, adminK.id);
+    falabella = await crearEmpresa(dbAdm, { nombre: 'Falabella' }, dAdm);
+    norte = await crearPunto(dbAdm, { empresaId: falabella.id, nombre: 'Norte' }, dAdm);
+    evento = await crearEvento(dbAdm, { empresaId: falabella.id, puntoId: norte.id, fecha: hoy, promotorIds: [laura.id, cristianAdm.id], creadoPor: adminK.id }, dAdm);
+    eventoManana = await crearEvento(dbAdm, { empresaId: falabella.id, puntoId: norte.id, fecha: manana, promotorIds: [laura.id], creadoPor: adminK.id }, dAdm);
+    assert.equal(await tareas('eventos'), 2);
+  });
+  await paso('fijar la meta diaria encola el evento otra vez', async () => {
+    await establecerMetaDiaria(dbAdm, { eventoId: evento.id, promotorId: laura.id, montoObjetivo: 1800000 });
+    assert.equal(await tareas('eventos'), 3);
+  });
+  let eventoDemo;
+  await paso('el seed de demo (sincronizar: false) NO encola, pero el respaldo lo encola una sola vez', async () => {
+    const demo = await crearEmpresa(dbAdm, { nombre: 'Demo SA' }, dAdm, { sincronizar: false });
+    const puntoDemo = await crearPunto(dbAdm, { empresaId: demo.id, nombre: 'Demo' }, dAdm, { sincronizar: false });
+    eventoDemo = await crearEvento(dbAdm, { empresaId: demo.id, puntoId: puntoDemo.id, fecha: hoy, promotorIds: [laura.id], creadoPor: adminK.id }, dAdm, { sincronizar: false });
+    assert.equal(await tareas('eventos'), 3);
+    await encolarEventosSinSubir(dbAdm);
+    await encolarEventosSinSubir(dbAdm);
+    assert.equal(await tareas('eventos'), 4);
+  });
+  await paso('subir: sin pendientes, columnas de 0014 y promotores con su meta; el punto que nunca subió sube con su evento', async () => {
+    await conNube(dbAdm, () => drenarColaSync());
+    const pend = await dbAdm.getAllAsync('SELECT tabla, ultimo_error FROM _sync_pendiente WHERE completado_ts IS NULL');
+    assert.deepEqual(pend, []);
+    const esquema = esquemaSupabase();
+    const cols = esquema.get('eventos');
+    assert.ok(cols, 'falta la tabla eventos en supabase/migraciones');
+    const problemas = [];
+    for (const { fila } of nube.capturas.filter((c) => c.tabla === 'eventos')) {
+      for (const k of Object.keys(fila)) if (!cols.has(k)) problemas.push(`eventos.${k} no existe en Supabase`);
+      for (const [c, req] of cols) if (req && !(c in fila)) problemas.push(`eventos.${c} es obligatoria y no se envía`);
+    }
+    assert.deepEqual([...new Set(problemas)], []);
+    const remoto = nube.tablas.get('eventos').get(evento.id);
+    const meta = Object.fromEntries(remoto.promotores.map((p) => [p.promotor_nombre, p.meta_diaria]));
+    assert.deepEqual(meta, { 'Laura Gómez': 1800000, Cristian: null });
+    assert.equal(remoto.creado_por_nombre, 'Admin');
+    const demoRemoto = nube.tablas.get('eventos').get(eventoDemo.id);
+    assert.ok(nube.tablas.get('puntos').has(demoRemoto.punto_id), 'el punto de demo no subió con su evento');
+    assert.ok(nube.tablas.get('empresas').has(demoRemoto.empresa_id), 'la empresa de demo no subió con su evento');
+  });
+  let avisos = 0;
+  const dejarDeOir = suscribirDatosActualizados(() => { avisos++; });
+  await paso('el celular de Laura recibe su calendario, su punto vigente y su meta del día', async () => {
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, { id: laura.id, nombre: laura.nombre, rol: 'PROMOTOR' }));
+    const propios = await listarEventosPromotor(dbPro, laura.id, rango);
+    assert.deepEqual(propios.map((e) => e.fecha).sort(), [hoy, hoy, manana].sort());
+    const deHoy = propios.find((e) => e.id === evento.id);
+    assert.equal(deHoy.puntoNombre, 'Norte');
+    assert.equal(deHoy.metaDiariaPorPromotor[laura.id], 1800000);
+    assert.ok(avisos > 0, 'no avisó a las pantallas abiertas');
+    const vigente = await obtenerPuntoVigentePromotor(dbPro, laura.id);
+    assert.ok([evento.id, eventoDemo.id].includes(vigente?.id), 'sin punto vigente: la venta quedaría sin punto');
+    assert.deepEqual(await dbPro.getAllAsync('PRAGMA foreign_key_check'), []);
+  });
+  await paso('"Cristian" de prueba (id distinto en cada dispositivo) se traduce por nombre al Cristian local', async () => {
+    const suyos = await listarEventosPromotor(dbPro, cristianPro.id, rango);
+    assert.deepEqual(suyos.map((e) => e.id), [evento.id]);
+  });
+  await paso('descargar otra vez no cambia nada ni vuelve a avisar', async () => {
+    const antes = avisos;
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, { id: laura.id, nombre: laura.nombre, rol: 'PROMOTOR' }));
+    assert.equal(avisos, antes);
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM eventos')).n, 3);
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM evento_promotores WHERE evento_id = ?', [evento.id])).n, 2);
+  });
+  await paso('admin quita a Cristian y cancela el de mañana: el celular lo refleja (y avisa)', async () => {
+    await reasignarEvento(dbAdm, { eventoId: evento.id, promotorIds: [laura.id] });
+    await cancelarEvento(dbAdm, { eventoId: eventoManana.id, motivo: 'La empresa cerró' }, dAdm, adminK.id);
+    await conNube(dbAdm, () => drenarColaSync());
+    const antes = avisos;
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, { id: laura.id, nombre: laura.nombre, rol: 'PROMOTOR' }));
+    assert.ok(avisos > antes);
+    assert.deepEqual((await listarEventosPromotor(dbPro, cristianPro.id, rango)).map((e) => e.id), []);
+    const cancelado = (await listarEventosPromotor(dbPro, laura.id, rango)).find((e) => e.id === eventoManana.id);
+    assert.deepEqual([cancelado.estado, cancelado.motivoCancelacion], ['CANCELADO', 'La empresa cerró']);
+  });
+  dejarDeOir();
+  await paso('una serie recurrente sube todas sus ocurrencias (la serie no viaja: bajan sin serie_id)', async () => {
+    const serie = await crearSerieRecurrente(dbAdm, { empresaId: falabella.id, puntoId: norte.id, promotorIds: [laura.id], frecuencia: 'DIAS', intervalo: 1, fechaDesde: manana, fechaHasta: fechaHoyBogota(new Date(Date.now() + 3 * 24 * 3600 * 1000)), creadoPor: adminK.id }, dAdm);
+    await conNube(dbAdm, () => drenarColaSync());
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, { id: laura.id, nombre: laura.nombre, rol: 'PROMOTOR' }));
+    const ids = serie.map((e) => e.id);
+    const locales = await dbPro.getAllAsync(`SELECT serie_id FROM eventos WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+    assert.equal(locales.length, ids.length);
+    assert.ok(locales.every((f) => f.serie_id === null));
+  });
+  await paso('una edición propia aún sin subir no se pisa con la copia remota (admin y promotor en la misma base)', async () => {
+    await dbPro.runAsync(`UPDATE eventos SET estado = 'EN_CURSO' WHERE id = ?`, [evento.id]);
+    await dbPro.runAsync(`INSERT INTO _sync_pendiente (id, tabla, entidad_id, tipo_tarea, creado_ts) VALUES (?, 'eventos', ?, 'FILA', ?)`, [randomUUID(), evento.id, new Date().toISOString()]);
+    await nube.from('eventos').upsert({ ...nube.tablas.get('eventos').get(evento.id) });
+    await conNube(dbPro, () => descargarEventosNuevos(dbPro));
+    assert.equal((await dbPro.getFirstAsync('SELECT estado FROM eventos WHERE id = ?', [evento.id])).estado, 'EN_CURSO');
+    await dbPro.runAsync(`DELETE FROM _sync_pendiente WHERE entidad_id = ?`, [evento.id]);
+  });
+  await paso('un evento cuyo punto llegó después de la descarga de puntos se aplica igual (vuelve a pedir los puntos)', async () => {
+    const e2 = randomUUID(), p2 = randomUUID(), ev2 = randomUUID();
+    const ahoraIso = new Date().toISOString();
+    await nube.from('empresas').upsert({ id: e2, nombre: 'Éxito', direccion: null, sector: null, contacto: null, ts_cliente: ahoraIso, dispositivo_id: dAdm });
+    await nube.from('puntos').upsert({ id: p2, empresa_id: e2, nombre: 'Centro', direccion: null, activo: true, ts_cliente: ahoraIso, dispositivo_id: dAdm });
+    await nube.from('eventos').upsert({ id: ev2, empresa_id: e2, punto_id: p2, fecha: manana, estado: 'PLANEADO', motivo_cancelacion: null, serie_id: null, creado_por: adminK.id, creado_por_nombre: 'Admin', promotores: [{ promotor_id: laura.id, promotor_nombre: laura.nombre, meta_diaria: 900000 }], ts_cliente: ahoraIso, dispositivo_id: dAdm });
+    const cambios = await conNube(dbPro, () => descargarEventosNuevos(dbPro));
+    assert.ok(cambios >= 1);
+    const f = await dbPro.getFirstAsync(`SELECT p.nombre FROM eventos ev JOIN puntos p ON p.id = ev.punto_id WHERE ev.id = ?`, [ev2]);
+    assert.equal(f?.nombre, 'Centro');
+  });
+  await paso('Realtime avisa al celular cuando admin sube un evento', async () => {
+    let avisado = 0;
+    globalThis.__supabase = nube;
+    const cancelar = suscribirCambiosRemotos(['movimientos', 'eventos'], () => { avisado++; });
+    await new Promise((r) => setTimeout(r, 0));
+    await establecerMetaDiaria(dbAdm, { eventoId: evento.id, promotorId: laura.id, montoObjetivo: 2500000 });
+    await conNube(dbAdm, () => drenarColaSync());
+    cancelar();
+    assert.ok(avisado > 0);
+  });
+  await paso('sin red: no lanza y no toca los eventos locales', async () => {
+    const antes = (await dbPro.getFirstAsync('SELECT count(*) n FROM eventos')).n;
+    globalThis.__db = dbPro;
+    globalThis.__supabase = { from: () => ({ select: () => ({ returns: async () => { throw new Error('Network request failed'); } }) }) };
+    assert.equal(await descargarEventosNuevos(dbPro), 0);
+    await sincronizarDatosRemotos(dbPro, { id: laura.id, nombre: laura.nombre, rol: 'PROMOTOR' });
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM eventos')).n, antes);
+  });
+}
+
+console.log('\n== L. Mensajes: el admin solo guarda el mensaje; el push lo envía Supabase ==');
+{
+  const { enviarMensajes } = await imp('db/mensajes.ts');
+  const nube = crearFake();
+  globalThis.__supabase = nube;
+  const fetchOriginal = globalThis.fetch;
+  let llamadasFetch = 0;
+  globalThis.fetch = async () => { llamadasFetch++; return new Response('{}'); };
+  try {
+    await paso('enviar a dos promotores guarda mensaje + destinatarios y NO llama a Expo desde el dispositivo', async () => {
+      const [a, b] = [randomUUID(), randomUUID()];
+      await enviarMensajes([{ cuerpo: 'Ánimo', tipo: 'MANUAL', destinatarios: [{ id: a, nombre: 'A' }, { id: b, nombre: 'B' }] }], { id: randomUUID(), nombre: 'Admin' });
+      assert.equal(llamadasFetch, 0, 'el dispositivo sigue llamando a Expo (CORS lo bloquea en el navegador)');
+      assert.equal(nube.capturas.filter((c) => c.tabla === 'mensajes').length, 1);
+      assert.deepEqual(nube.capturas.filter((c) => c.tabla === 'mensaje_destinatarios').map((c) => c.fila.destinatario_id).sort(), [a, b].sort());
+      const esquema = esquemaSupabase();
+      for (const { tabla, fila } of nube.capturas) for (const k of Object.keys(fila)) assert.ok(esquema.get(tabla)?.has(k), `${tabla}.${k} no existe en Supabase`);
+    });
+  } finally {
+    globalThis.fetch = fetchOriginal;
+  }
 }
 
 console.log(fallos === 0 ? '\nTODO OK' : `\n${fallos} PRUEBA(S) FALLARON`);

@@ -92,6 +92,122 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   });
 }
 
+console.log('\n== 0013 (push enviado desde Supabase) encima de 0012, en ambos proyectos ==');
+// PGlite no trae pg_net: se reemplaza por un `net.http_post` falso que anota
+// cada llamada, con la misma firma que el real. El esquema `net` no se le
+// comparte a `authenticated` (igual que en Supabase): si el trigger no fuera
+// SECURITY DEFINER, el insert de la app fallaría.
+const sql0013 = leer('0013_push_desde_servidor.sql');
+const sql0013SinExtension = sql0013.replace(/create extension if not exists pg_net[^;]*;/i, '');
+async function prepararPgNetFalso(db) {
+  await db.exec(`
+    create schema if not exists extensions;
+    create schema if not exists net;
+    create table if not exists net._llamadas (n serial primary key, url text, body jsonb, headers jsonb);
+    create or replace function net.http_post(
+      url text, body jsonb default '{}'::jsonb, params jsonb default '{}'::jsonb,
+      headers jsonb default '{"Content-Type": "application/json"}'::jsonb, timeout_milliseconds integer default 5000
+    ) returns bigint language sql as $$ insert into net._llamadas (url, body, headers) values (url, body, headers) returning n::bigint $$;
+    revoke all on schema net from public;
+  `);
+}
+const llamadasPush = async (db) => (await db.query(`select url, body from net._llamadas order by n`)).rows;
+await paso('0013 activa pg_net en el proyecto real (la línea que el arnés reemplaza existe)', async () => {
+  assert.notEqual(sql0013SinExtension, sql0013, 'falta create extension if not exists pg_net');
+});
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  const U = () => crypto.randomUUID();
+  const ahora = new Date().toISOString();
+  await paso(`0013 aplica sin error y es idempotente (proyecto ${nombre})`, async () => {
+    await prepararPgNetFalso(db);
+    await db.exec(sql0013SinExtension);
+    await db.exec(sql0013SinExtension);
+  });
+  await paso(`un mensaje a varios destinatarios = UNA llamada a Expo con sus tokens activos, sin repetir (proyecto ${nombre})`, async () => {
+    await db.exec('truncate net._llamadas');
+    const [u1, u2, u3, u4, u5] = [U(), U(), U(), U(), U()];
+    const m = U();
+    await db.exec('set role authenticated');
+    try {
+      const token = `insert into push_tokens (usuario_id, dispositivo_id, expo_push_token, rol, activo) values ($1,$2,$3,'PROMOTOR',$4)`;
+      await db.query(token, [u1, U(), 'ExponentPushToken[uno]', true]);
+      await db.query(token, [u2, U(), 'ExponentPushToken[dos]', true]);
+      await db.query(token, [u3, U(), 'ExponentPushToken[inactivo]', false]);
+      await db.query(token, [u4, U(), 'ExponentPushToken[uno]', true]); // mismo celular que u1
+      await db.query(`insert into mensajes (id, cuerpo, tipo, creado_por, creado_por_nombre, ts_cliente) values ($1,'Hola equipo','MANUAL',$2,'Admin',$3)`, [m, U(), ahora]);
+      // Igual que la app: todos los destinatarios en un solo insert (u5 no tiene token).
+      await db.query(`insert into mensaje_destinatarios (mensaje_id, destinatario_id) values ($1,$2),($1,$3),($1,$4),($1,$5),($1,$6)`, [m, u1, u2, u3, u4, u5]);
+    } finally { await db.exec('reset role'); }
+    const llamadas = await llamadasPush(db);
+    assert.equal(llamadas.length, 1);
+    assert.equal(llamadas[0].url, 'https://exp.host/--/api/v2/push/send');
+    assert.deepEqual([...llamadas[0].body.to].sort(), ['ExponentPushToken[dos]', 'ExponentPushToken[uno]']);
+    assert.equal(llamadas[0].body.title, 'Mensaje del administrador');
+    assert.equal(llamadas[0].body.body, 'Hola equipo');
+  });
+  await paso(`progreso de meta usa su propio título; sin tokens no se llama a Expo (proyecto ${nombre})`, async () => {
+    await db.exec('truncate net._llamadas');
+    const u = U(), m = U(), m2 = U();
+    await db.exec('set role authenticated');
+    try {
+      await db.query(`insert into push_tokens (usuario_id, dispositivo_id, expo_push_token, rol) values ($1,$2,'ExponentPushToken[meta]','PROMOTOR')`, [u, U()]);
+      await db.query(`insert into mensajes (id, cuerpo, tipo, creado_por, creado_por_nombre, ts_cliente) values ($1,'Vas en 50%','META_PROGRESO',$2,'Admin',$3)`, [m, U(), ahora]);
+      await db.query(`insert into mensaje_destinatarios (mensaje_id, destinatario_id) values ($1,$2)`, [m, u]);
+      await db.query(`insert into mensajes (id, cuerpo, tipo, creado_por, creado_por_nombre, ts_cliente) values ($1,'Nadie','MANUAL',$2,'Admin',$3)`, [m2, U(), ahora]);
+      await db.query(`insert into mensaje_destinatarios (mensaje_id, destinatario_id) values ($1,$2)`, [m2, U()]);
+    } finally { await db.exec('reset role'); }
+    const llamadas = await llamadasPush(db);
+    assert.equal(llamadas.length, 1);
+    assert.equal(llamadas[0].body.title, 'Progreso de tu meta');
+    assert.deepEqual(llamadas[0].body.to, ['ExponentPushToken[meta]']);
+  });
+  await paso(`150 destinatarios se parten en lotes de 100 tokens (proyecto ${nombre})`, async () => {
+    await db.exec('truncate net._llamadas');
+    const m = U();
+    const ids = Array.from({ length: 150 }, U);
+    for (const [i, id] of ids.entries())
+      await db.query(`insert into push_tokens (usuario_id, dispositivo_id, expo_push_token, rol) values ($1,$2,$3,'PROMOTOR')`, [id, U(), `ExponentPushToken[t${i}]`]);
+    await db.query(`insert into mensajes (id, cuerpo, tipo, creado_por, creado_por_nombre, ts_cliente) values ($1,'Todos','MANUAL',$2,'Admin',$3)`, [m, U(), ahora]);
+    await db.query(`insert into mensaje_destinatarios (mensaje_id, destinatario_id) select $1::uuid, unnest($2::uuid[])`, [m, ids]);
+    const llamadas = await llamadasPush(db);
+    assert.deepEqual(llamadas.map((l) => l.body.to.length), [100, 50]);
+  });
+}
+
+console.log('\n== 0014 (eventos del calendario) encima de 0013, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  const U = () => crypto.randomUUID();
+  const ahora = new Date().toISOString();
+  await paso(`0014 aplica sin error y es idempotente (proyecto ${nombre})`, async () => {
+    await db.exec(leer('0014_eventos.sql'));
+    await db.exec(leer('0014_eventos.sql'));
+  });
+  await paso(`como usuario autenticado: subir un evento con promotores, reasignarlo y cancelarlo (upsert); subido_ts avanza (proyecto ${nombre})`, async () => {
+    await db.exec('set role authenticated');
+    try {
+      const id = U(), p1 = U(), p2 = U(), disp = U();
+      const sql = `insert into eventos (id, empresa_id, punto_id, fecha, estado, motivo_cancelacion, creado_por, creado_por_nombre, promotores, ts_cliente, dispositivo_id)
+                   values ($1,$2,$3,'2026-09-24',$4,$5,$6,'Admin',$7::jsonb,$8,$6)
+                   on conflict (id) do update set estado = excluded.estado, motivo_cancelacion = excluded.motivo_cancelacion, promotores = excluded.promotores`;
+      const [e, p] = [U(), U()];
+      await db.query(sql, [id, e, p, 'PLANEADO', null, disp, JSON.stringify([{ promotor_id: p1, promotor_nombre: 'Laura', meta_diaria: 1800000 }, { promotor_id: p2, promotor_nombre: 'Pedro', meta_diaria: null }]), ahora]);
+      const antes = (await db.query(`select subido_ts from eventos where id=$1`, [id])).rows[0].subido_ts;
+      await new Promise((r) => setTimeout(r, 15));
+      await db.query(sql, [id, e, p, 'CANCELADO', 'Lluvia', disp, JSON.stringify([{ promotor_id: p1, promotor_nombre: 'Laura', meta_diaria: 1800000 }]), ahora]);
+      const f = (await db.query(`select estado, motivo_cancelacion, fecha::text as fecha, promotores, subido_ts from eventos where id=$1`, [id])).rows[0];
+      assert.deepEqual([f.estado, f.motivo_cancelacion, f.fecha], ['CANCELADO', 'Lluvia', '2026-09-24']);
+      assert.deepEqual(f.promotores, [{ promotor_id: p1, promotor_nombre: 'Laura', meta_diaria: 1800000 }]);
+      assert.ok(new Date(f.subido_ts) > new Date(antes), 'subido_ts no cambió al actualizar');
+    } finally { await db.exec('reset role'); }
+  });
+  await paso(`Realtime habilitado en eventos y sin política de DELETE (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime'`);
+    assert.ok(r.rows.some((x) => x.tablename === 'eventos'), 'no está eventos');
+    const d = await db.query(`select 1 from pg_policies where tablename = 'eventos' and cmd = 'DELETE'`);
+    assert.equal(d.rows.length, 0);
+  });
+}
+
 for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   console.log(`\n== Comportamiento (proyecto ${nombre}) ==`);
   const U = () => crypto.randomUUID();

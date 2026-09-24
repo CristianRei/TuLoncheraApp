@@ -80,9 +80,13 @@ export default function HomePromotor() {
     }, [usuario, cargarTurno, cargarInventario])
   );
   // Se recarga sola cuando llega algo nuevo de Supabase (ej. bodega le
-  // entregó un cargue) — ver src/ui/useVersionDatos.ts.
+  // entregó un cargue, o admin le asignó el evento de hoy) — ver
+  // src/ui/useVersionDatos.ts.
   useRecargarConDatosNuevos(() => {
-    if (usuario) cargarInventario(usuario.id);
+    if (usuario) {
+      cargarTurno(usuario.id);
+      cargarInventario(usuario.id);
+    }
   });
 
   if (!usuario) return null;

@@ -9,6 +9,7 @@ import { obtenerCargue } from '@/db/cargues';
 import { obtenerConteo } from '@/db/conteos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { obtenerEmpresaParaSync } from '@/db/empresas';
+import { obtenerEventoParaSync } from '@/db/eventos';
 import { obtenerLoteParaSync } from '@/db/lotes';
 import { skuPorProductoId } from '@/db/mapeoRemoto';
 import { obtenerMovimientoParaSync } from '@/db/movimientos';
@@ -32,6 +33,52 @@ interface TareaPendiente {
 }
 
 let corriendo = false;
+
+/**
+ * Puntos ya subidos en esta sesión de la app por la vía de `eventos` — un
+ * evento sube antes su punto (y la empresa), pero una serie de 50 eventos en
+ * el mismo punto no necesita subirlo 50 veces. Se reinicia al abrir la app:
+ * volver a subirlo una vez es idempotente.
+ */
+const puntosSubidosPorEventos = new Set<string>();
+
+type ClienteSupabase = Awaited<ReturnType<typeof getSupabaseClient>>;
+
+async function subirEmpresa(db: SQLiteDatabase, supabase: ClienteSupabase, empresaId: string, dispositivoId: string) {
+  const empresa = await obtenerEmpresaParaSync(db, empresaId);
+  if (!empresa) return;
+  const { error } = await supabase.from('empresas').upsert({
+    id: empresa.id,
+    nombre: empresa.nombre,
+    direccion: empresa.direccion,
+    sector: empresa.sector,
+    contacto: empresa.contacto,
+    ts_cliente: empresa.tsCliente,
+    dispositivo_id: dispositivoId,
+  });
+  if (error) throw error;
+}
+
+/**
+ * Sube un punto con su empresa primero (idempotente): una empresa creada antes
+ * de que sincronizaran nunca se encoló, y sin ella el otro dispositivo no
+ * puede insertar el punto (FK local puntos.empresa_id).
+ */
+async function subirPunto(db: SQLiteDatabase, supabase: ClienteSupabase, puntoId: string, dispositivoId: string) {
+  const punto = await obtenerPuntoParaSync(db, puntoId);
+  if (!punto) return;
+  await subirEmpresa(db, supabase, punto.empresaId, dispositivoId);
+  const { error } = await supabase.from('puntos').upsert({
+    id: punto.id,
+    empresa_id: punto.empresaId,
+    nombre: punto.nombre,
+    direccion: punto.direccion,
+    activo: punto.activo,
+    ts_cliente: punto.tsCliente,
+    dispositivo_id: dispositivoId,
+  });
+  if (error) throw error;
+}
 
 /**
  * Drena `_sync_pendiente` hacia Supabase: por cada tarea, sube la fila de
@@ -413,47 +460,43 @@ async function subirFila(
     }
 
     case 'empresas': {
-      const empresa = await obtenerEmpresaParaSync(db, tarea.entidad_id);
-      if (!empresa) return;
-      const { error } = await supabase.from('empresas').upsert({
-        id: empresa.id,
-        nombre: empresa.nombre,
-        direccion: empresa.direccion,
-        sector: empresa.sector,
-        contacto: empresa.contacto,
-        ts_cliente: empresa.tsCliente,
-        dispositivo_id: dispositivoId,
-      });
-      if (error) throw error;
+      await subirEmpresa(db, supabase, tarea.entidad_id, dispositivoId);
       return;
     }
 
     case 'puntos': {
-      const punto = await obtenerPuntoParaSync(db, tarea.entidad_id);
-      if (!punto) return;
-      // Su empresa sube primero (idempotente): una empresa creada antes de que
-      // sincronizaran nunca se encoló, y sin ella el otro dispositivo no puede
-      // insertar el punto (FK local puntos.empresa_id).
-      const empresa = await obtenerEmpresaParaSync(db, punto.empresaId);
-      if (empresa) {
-        const { error: errorEmpresa } = await supabase.from('empresas').upsert({
-          id: empresa.id,
-          nombre: empresa.nombre,
-          direccion: empresa.direccion,
-          sector: empresa.sector,
-          contacto: empresa.contacto,
-          ts_cliente: empresa.tsCliente,
-          dispositivo_id: dispositivoId,
-        });
-        if (errorEmpresa) throw errorEmpresa;
+      await subirPunto(db, supabase, tarea.entidad_id, dispositivoId);
+      return;
+    }
+
+    case 'eventos': {
+      const evento = await obtenerEventoParaSync(db, tarea.entidad_id);
+      if (!evento) return;
+      // Su punto (y empresa) primero: sin ellos el celular no puede guardar el
+      // evento (FK local). Cubre puntos que nunca se encolaron, como los de
+      // la demo en `__DEV__`.
+      if (!puntosSubidosPorEventos.has(evento.puntoId)) {
+        await subirPunto(db, supabase, evento.puntoId, dispositivoId);
+        puntosSubidosPorEventos.add(evento.puntoId);
       }
-      const { error } = await supabase.from('puntos').upsert({
-        id: punto.id,
-        empresa_id: punto.empresaId,
-        nombre: punto.nombre,
-        direccion: punto.direccion,
-        activo: punto.activo,
-        ts_cliente: punto.tsCliente,
+      const { error } = await supabase.from('eventos').upsert({
+        id: evento.id,
+        empresa_id: evento.empresaId,
+        punto_id: evento.puntoId,
+        fecha: evento.fecha,
+        estado: evento.estado,
+        motivo_cancelacion: evento.motivoCancelacion,
+        serie_id: evento.serieId,
+        creado_por: evento.creadoPor,
+        creado_por_nombre: evento.creadoPorNombre,
+        // Los promotores viajan dentro del evento (supabase/migraciones/0014):
+        // reasignar o cambiar una meta reemplaza el conjunto completo.
+        promotores: evento.promotores.map((p) => ({
+          promotor_id: p.promotorId,
+          promotor_nombre: p.promotorNombre,
+          meta_diaria: p.metaDiaria,
+        })),
+        ts_cliente: evento.tsCliente,
         dispositivo_id: dispositivoId,
       });
       if (error) throw error;

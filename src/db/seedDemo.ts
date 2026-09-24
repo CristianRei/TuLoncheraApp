@@ -188,7 +188,8 @@ export async function sembrarDatosDemo(
         promotorIds: [promotores[i].id],
         creadoPor: adminId,
       },
-      dispositivoId
+      dispositivoId,
+      { sincronizar: false }
     );
   }
 

@@ -9,6 +9,7 @@ import {
 } from '@/db/bajadaOperativa';
 import { descargarCategoriasNuevas } from '@/db/categorias';
 import { descargarEmpresasNuevas } from '@/db/empresas';
+import { descargarEventosNuevos } from '@/db/eventos';
 import { descargarProductosNuevos } from '@/db/productos';
 import { descargarPuntosNuevos } from '@/db/puntos';
 import { descargarUsuariosNuevos } from '@/db/usuarios';
@@ -27,18 +28,22 @@ import { notificarDatosActualizados } from './eventosDatos';
  * local" de las categorías. Si las categorías no se pudieron descargar
  * (`null`, ej. sin red) los productos se omiten: sin ese mapa les borrarían
  * la categoría. Igual con empresas antes que puntos (`puntos.empresa_id` es
- * FK): si las empresas fallan, los puntos se omiten.
+ * FK): si las empresas fallan, los puntos se omiten; y los eventos del
+ * calendario van al final (referencian personal, empresa y punto). Devuelve
+ * cuántos eventos cambiaron, para que el calendario abierto se refresque.
  *
  * Nunca se llama desde el dispositivo de admin: esa base local ya es la
  * fuente de verdad de todas estas tablas (él es quien las crea), y
  * descargarlas ahí podría pisar una edición propia recién hecha que todavía
  * no subió — ver la nota en cada función individual.
  */
-export async function descargarDatosDeAdmin(db: SQLiteDatabase): Promise<void> {
+export async function descargarDatosDeAdmin(db: SQLiteDatabase): Promise<number> {
   await descargarUsuariosNuevos(db);
   const categorias = await descargarCategoriasNuevas(db);
   if (categorias) await descargarProductosNuevos(db, categorias);
-  if (await descargarEmpresasNuevas(db)) await descargarPuntosNuevos(db);
+  if (!(await descargarEmpresasNuevas(db))) return 0;
+  if (!(await descargarPuntosNuevos(db))) return 0;
+  return descargarEventosNuevos(db);
 }
 
 async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesion): Promise<number> {
@@ -84,8 +89,9 @@ export function sincronizarDatosRemotos(db: SQLiteDatabase, sesion: UsuarioSesio
     try {
       do {
         repetirSincronizacion = false;
-        if (sesion.rol !== 'ADMIN') await descargarDatosDeAdmin(db);
-        const cambios = await descargarDatosOperativos(db, sesion);
+        let cambios = 0;
+        if (sesion.rol !== 'ADMIN') cambios += await descargarDatosDeAdmin(db);
+        cambios += await descargarDatosOperativos(db, sesion);
         if (cambios > 0) notificarDatosActualizados();
       } while (repetirSincronizacion);
     } finally {
@@ -107,7 +113,7 @@ export async function descargarDatosDeAdminConLimite(db: SQLiteDatabase, limiteM
     temporizador = setTimeout(resolver, limiteMs);
   });
   try {
-    await Promise.race([descargarDatosDeAdmin(db), limite]);
+    await Promise.race([descargarDatosDeAdmin(db).then(() => undefined), limite]);
   } finally {
     if (temporizador) clearTimeout(temporizador);
   }

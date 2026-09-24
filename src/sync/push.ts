@@ -64,34 +64,3 @@ export async function registrarPushToken(usuario: UsuarioSesion, dispositivoId: 
     console.log('[push] no se pudo registrar el token:', mensajeDeError(error));
   }
 }
-
-interface MensajePush {
-  to: string;
-  title: string;
-  body: string;
-}
-
-const TAMANO_LOTE_PUSH = 100; // límite recomendado por Expo por request
-
-/**
- * Envía notificaciones push llamando DIRECTO al servicio de Expo desde el
- * dispositivo del admin (sin servidor propio, mismo espíritu que el resto de
- * la sincronización — ver ADR 0006 y CLAUDE.md sección 5). Best-effort: si
- * un lote falla, no revienta el envío completo de los demás. No confirma
- * entrega real (eso lo maneja el SO del destinatario) — ver src/db/mensajes.ts
- * para dónde queda el registro de que el mensaje se envió.
- */
-export async function enviarNotificacionesPush(mensajes: MensajePush[]): Promise<void> {
-  for (let i = 0; i < mensajes.length; i += TAMANO_LOTE_PUSH) {
-    const lote = mensajes.slice(i, i + TAMANO_LOTE_PUSH);
-    try {
-      await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(lote),
-      });
-    } catch (error) {
-      console.log('[push] no se pudo enviar un lote de notificaciones:', mensajeDeError(error));
-    }
-  }
-}

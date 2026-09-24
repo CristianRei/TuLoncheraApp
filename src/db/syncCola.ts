@@ -16,6 +16,7 @@ export type TablaSync =
   | 'categorias'
   | 'empresas'
   | 'puntos'
+  | 'eventos'
   | 'intentos_pin_fallidos'
   | 'desbloqueos_pin'
   | 'logins_exitosos_pin';

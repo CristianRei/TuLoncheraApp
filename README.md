@@ -16,8 +16,10 @@ contraria (Supabase → celular) cubre **personal/PINs**, **catálogo**
 (productos/categorías, sin fotos) y los **datos operativos** — el admin ve las
 ventas de los promotores, bodega ve los cargues que admin planea, y lo que
 bodega entrega llega al inventario del promotor — con **Realtime** de Supabase
-para que se vea al instante, además de empresas y puntos. Falta bajar
-eventos y descuentos (ver CLAUDE.md sección 11). Las pantallas abiertas se
+para que se vea al instante, además de empresas, puntos y los **eventos del
+calendario** (con la meta diaria). Falta bajar descuentos (ver CLAUDE.md
+sección 11). Las notificaciones push las envía Supabase, no el celular del
+admin. Las pantallas abiertas se
 actualizan solas cuando llega algo nuevo. La sincronización de ventas ya se
 confirmó con dispositivos reales; antes de probar lo demás hay que aplicar en
 Supabase las migraciones pendientes (ver [`supabase/README.md`](supabase/README.md)).
@@ -80,12 +82,13 @@ Supabase las migraciones pendientes (ver [`supabase/README.md`](supabase/README.
 - [x] Visibilidad en tiempo real (Realtime de Supabase) para ventas, cargues
   y movimientos
 - [x] Empresas y puntos bajan al celular del promotor/bodega
-- [ ] Bajar el resto de lo que crea admin (eventos con meta
-  diaria, descuentos) — todavía no llega al celular del promotor/bodega. Ver
+- [x] Eventos del calendario (con meta diaria) bajan al celular del promotor,
+  al instante (Realtime)
+- [ ] Bajar descuentos — todavía no llegan al celular del promotor. Ver
   CLAUDE.md sección 11
 - [ ] Fotos de producto (dónde almacenarlas y cómo viajan)
-- [ ] Mensajes push desde el admin en el computador: hoy no llegan (el
-  navegador bloquea la llamada al servicio de Expo — ver CLAUDE.md sección 11)
+- [x] Mensajes push enviados desde Supabase (funciona también con el admin en
+  el computador) — falta aplicar `0013` en Supabase y probarlo
 - [ ] Probar el resto de la sincronización con dispositivos reales (las
   ventas ya se confirmaron; lo demás, solo en laboratorio con `test:db`/`test:sql`)
 - [ ] Panel web

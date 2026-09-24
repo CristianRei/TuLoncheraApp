@@ -11,6 +11,7 @@ import type { EstadoIntentosPin, Rol } from '@/core/tipos';
 import { mensajeDeError } from '@/core/errores';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
+import { encolarEventosSinSubir } from '@/db/eventos';
 import {
   aplicarDesbloqueoRemoto,
   contarFallosConsecutivos,
@@ -231,9 +232,11 @@ export default function Login() {
           encolarPersonalSinSubir(db).catch((errorEncolado) =>
             console.log('[personal] no se pudo encolar personal existente:', errorEncolado)
           );
-          encolarEmpresasYPuntosSinSubir(db).catch((errorEncolado) =>
-            console.log('[puntos] no se pudo encolar empresas/puntos existentes:', errorEncolado)
-          );
+          encolarEmpresasYPuntosSinSubir(db)
+            .then(() => encolarEventosSinSubir(db))
+            .catch((errorEncolado) =>
+              console.log('[puntos] no se pudo encolar empresas/puntos/eventos existentes:', errorEncolado)
+            );
         }
         // Nunca bloquea el login (R5): si falla (sin red, permiso negado,
         // Expo Go sin soporte de push remoto) la persona simplemente no

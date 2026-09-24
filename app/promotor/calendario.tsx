@@ -11,6 +11,7 @@ import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 function colorEstado(estado: Evento['estado']): string {
   if (estado === 'CANCELADO') return COLORES.error;
@@ -56,9 +57,9 @@ export default function CalendarioPromotor() {
 
   const hoyClave = aClaveFecha(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
 
-  const cargar = useCallback(async () => {
+  const cargar = useCallback(async (silencioso = false) => {
     if (!usuario) return;
-    setCargando(true);
+    if (!silencioso) setCargando(true);
     try {
       const db = await getDb();
       const desde = aClaveFecha(mesVisible.anio, mesVisible.mes, 1);
@@ -75,6 +76,9 @@ export default function CalendarioPromotor() {
       cargar();
     }, [cargar])
   );
+  // Un evento que admin planea o cambia llega solo, sin parpadeo de carga —
+  // ver src/ui/useVersionDatos.ts.
+  useRecargarConDatosNuevos(() => cargar(true));
 
   if (!usuario) return null;
 

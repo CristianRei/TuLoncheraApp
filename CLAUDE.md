@@ -27,13 +27,15 @@ dirección contraria (BAJADA, Supabase → celular) ya cubre personal/PINs,
 catálogo (productos/categorías) y los datos OPERATIVOS: el admin ve las
 ventas de los promotores, bodega ve los cargues que admin planea, y una
 RECARGA hecha en bodega llega al inventario del promotor — con Realtime, casi
-al instante (ver sección 10 y 11) — y también empresas y puntos (sedes).
-Eventos (calendario, meta diaria) y descuentos siguen sin bajar todavía. La
-sincronización de ventas entre celular y computador ya la confirmó el usuario
-con dispositivos reales (2026-09-23); el resto está probado con SQLite y
-Postgres reales de laboratorio (`npm run test:db`, `npm run test:sql`). En
-el Supabase real ya están aplicadas 0009 y 0010; faltan 0011 (traslados) y
-0012 (empresas/puntos) — ver sección 11.
+al instante (ver sección 10 y 11) — y también empresas y puntos (sedes) y
+los eventos del calendario (con la meta diaria). Descuentos siguen sin bajar
+todavía. Las notificaciones push las envía Supabase (trigger con `pg_net`),
+no el dispositivo del admin. La sincronización de ventas entre celular y
+computador ya la confirmó el usuario con dispositivos reales (2026-09-23); el
+resto está probado con SQLite y Postgres reales de laboratorio (`npm run
+test:db`, `npm run test:sql`). En el Supabase real ya están aplicadas 0009 y
+0010; faltan 0011 (traslados), 0012 (empresas/puntos), 0013 (push desde el
+servidor) y 0014 (eventos) — ver sección 11.
 
 ---
 
@@ -163,8 +165,8 @@ pasa por una única función**, nunca `if (rol === 'admin')` disperso por la UI.
 | Móvil | React Native + Expo, TypeScript, `expo-router` |
 | Escáner | `expo-camera` (`CameraView` + `onBarcodeScanned`) |
 | Datos | `expo-sqlite` (fuente de verdad local, siempre) |
-| Backend | **Supabase, parcial** — de celular a Supabase (subida) sincronizan turnos, comprobantes de transferencia, mensajes/push (sección 10 "Mensajes") y el motor completo de inventario/ventas (ventas, movimientos, lotes, cargues, conteos, arqueos de caja). De Supabase a celular (bajada) sincronizan personal/PINs y catálogo (productos/categorías, sin fotos — sección 11) y los datos operativos (ventas → admin; cargues → bodega y admin; movimientos de inventario → bodega, admin y el promotor dueño), orquestado por `src/sync/bajada.ts`, con **Realtime** de Supabase (`src/sync/realtime.ts`) para que el cambio llegue al instante. Empresas y puntos también bajan (admin → Promotor/Bodega, `supabase/migraciones/0012_empresas_puntos.sql`). Eventos y descuentos no sincronizan en ninguna dirección todavía. |
-| Notificaciones push | `expo-notifications` + `expo-device`, llamando directo al servicio de Expo Push desde el dispositivo del admin (`src/sync/push.ts`) — sin servidor propio. Ver sección 10 "Mensajes" para el porqué y el modelo de datos. |
+| Backend | **Supabase, parcial** — de celular a Supabase (subida) sincronizan turnos, comprobantes de transferencia, mensajes/push (sección 10 "Mensajes") y el motor completo de inventario/ventas (ventas, movimientos, lotes, cargues, conteos, arqueos de caja). De Supabase a celular (bajada) sincronizan personal/PINs y catálogo (productos/categorías, sin fotos — sección 11) y los datos operativos (ventas → admin; cargues → bodega y admin; movimientos de inventario → bodega, admin y el promotor dueño), orquestado por `src/sync/bajada.ts`, con **Realtime** de Supabase (`src/sync/realtime.ts`) para que el cambio llegue al instante. Empresas y puntos también bajan (admin → Promotor/Bodega, `supabase/migraciones/0012_empresas_puntos.sql`), y los eventos del calendario con sus promotores y meta diaria (`0014_eventos.sql`, con Realtime). Descuentos no sincronizan en ninguna dirección todavía. |
+| Notificaciones push | `expo-notifications` + `expo-device` para registrar el token de cada celular (`src/sync/push.ts`). El envío lo hace **Supabase**: un trigger sobre `mensaje_destinatarios` llama al servicio de Expo Push con `pg_net` (`supabase/migraciones/0013_push_desde_servidor.sql`) — sin servidor propio, y funciona también con el admin en el navegador (antes el dispositivo del admin llamaba a Expo directo y CORS lo bloqueaba en web). Ver sección 10 "Mensajes". |
 | Panel admin | **No existe todavía.** Por ahora, pantallas de admin dentro de la misma app móvil. |
 | Build/distribución | EAS Build (`eas.json`) — perfil `preview` genera un `.apk` Android de distribución interna (compartir directo, sin Play Store); `production` genera el `.aab` para Play Store. Requiere cuenta de Expo (`npx eas-cli login`), proyecto vinculado en `@ooojulians-team/tulonchera`. Publicar en Play Store exige además cuenta de Google Play Developer (~$25 USD pago único); iOS no está configurado en `eas.json` todavía — para probar en iPhone sin pagar, usar Expo Go con el dev server (`npx expo start`), igual que en Android. |
 
@@ -276,7 +278,7 @@ tulonchera/
       conteos.ts                        ← conteo de cierre
       descuentos.ts                      ← reglas de descuento + resolución del vigente
       empresas.ts / puntos.ts             ← empresas cliente y sus puntos; suben al crearse y Promotor/Bodega los descargan (`descargarEmpresasNuevas`/`descargarPuntosNuevos`)
-      eventos.ts                           ← calendario de eventos + punto vigente del promotor (por fecha) + meta diaria por (evento, promotor)
+      eventos.ts                           ← calendario de eventos + punto vigente del promotor (por fecha) + meta diaria por (evento, promotor); suben al cambiar y Promotor/Bodega los descargan (`descargarEventosNuevos`)
       mensajes.ts                           ← enviarMensajes/descargarMensajesNuevos/listarMensajesRecibidos/marcarMensajeLeido — mensajes push, ver sección 10 "Mensajes"
       metas.ts                               ← metas de venta MENSUALES por promotor/punto + progreso real
       metasDiarias.ts                         ← progreso de la meta DIARIA por promotor con evento asignado (distinta escala que metas.ts)
@@ -289,7 +291,7 @@ tulonchera/
       bajadaOperativa.ts                             ← descarga ventas / movimientos / cargues desde Supabase a la base local (cursor + traducción de ids)
       mapeoRemoto.ts                                  ← traduce ids entre dispositivos por clave natural: producto por sku, persona por id/nombre, ubicación por (tipo, responsable)
     sync/                       ← cliente Supabase, motor de sync en background (ver ADR 0006); credenciales se validan perezosamente (`requerirCredenciales`), nunca al importar el módulo
-      push.ts                     ← registrarPushToken (permiso + token de Expo Push, tras login) y enviarNotificacionesPush (POST directo al servicio de Expo)
+      push.ts                     ← registrarPushToken (permiso + token de Expo Push, tras login); el envío lo hace Supabase (0013), no la app
       bajada.ts                   ← `descargarDatosDeAdmin` (personal → categorías → productos, en el orden que exigen las FK locales; solo Promotor/Bodega, nunca admin) y `sincronizarDatosRemotos` (una vuelta completa según el rol: además los datos operativos, sin solaparse, y avisa a las pantallas)
       realtime.ts                 ← `suscribirCambiosRemotos`: canal Realtime de Supabase (postgres_changes) que solo AVISA que una tabla cambió
       eventosDatos.ts             ← bus interno "llegaron datos nuevos a la base local" (sin React; el hook está en src/ui/useVersionDatos.ts)
@@ -543,8 +545,9 @@ traslado_lineas   (id UUID PK, traslado_id, producto_id, cantidad_planeada,
                     bodega.
 _sync_pendiente   (id UUID PK, tabla[turnos|comprobantes_venta|ventas|
                    movimientos|lotes|cargues|traslados|conteos|arqueos_caja|
-                   usuarios|productos|categorias|intentos_pin_fallidos|
-                   desbloqueos_pin|logins_exitosos_pin], entidad_id,
+                   usuarios|productos|categorias|empresas|puntos|eventos|
+                   intentos_pin_fallidos|desbloqueos_pin|logins_exitosos_pin],
+                   entidad_id,
                    tipo_tarea[FILA|FOTO], intentos,
                    ultimo_error[opcional], creado_ts, completado_ts[opcional])
                   ← en uso desde la 0016 (ver ADR 0006). Cola de subida a
@@ -695,8 +698,8 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
 por R7, ver sección 11), Fase 5 con tres rebanadas de SUBIDA construidas
 (turnos/comprobantes, mensajes push, y el motor de inventario/ventas
 completo) y la BAJADA ya construida para personal/PINs, catálogo y datos
-operativos (ventas, cargues, movimientos) con Realtime, y empresas/puntos
-— ver más abajo; faltan eventos y descuentos —, Fase 6 bastante avanzada
+operativos (ventas, cargues, movimientos) con Realtime, empresas/puntos y
+eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastante avanzada
 (dashboard, análisis, categorías, metas de venta diaria y mensual).**
 
 | Fase | Alcance | Estado |
@@ -705,7 +708,7 @@ operativos (ventas, cargues, movimientos) con Realtime, y empresas/puntos
 | 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | ✅ Recarga, saldos y conteo de cierre listos. Falta solo la aprobación de descuadres de R7 (bloqueada por el umbral sin definir, ver sección 11) |
 | 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | ✅ Venta, recibo interno, comprobante de transferencia, clientes finales, asignación de factura a cliente, y arqueo de caja al cerrar turno — completa |
 | 4 | Bodega: cargue por escáner en dos pasos, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega, entrada de inventario, y cargue en dos pasos (admin planea/bodega entrega por escáner) listos; falta niveles objetivo y alertas de vencimiento por producto próximo a vencer (sí existe notificación de cargue a revisar) |
-| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 SUBIDA (celular → Supabase) completa para turnos, comprobantes de transferencia, mensajes push y todo el motor de inventario/ventas (ventas/venta_items/movimientos/lotes/cargues/conteos/arqueos_caja). BAJADA (Supabase → celular) construida para personal/PINs, catálogo (productos/categorías, sin fotos) y datos operativos (ventas → admin, cargues → bodega/admin, movimientos → bodega/admin/promotor) — falta empresas/puntos, eventos (con meta diaria), descuentos y conteos hacia admin. **Realtime** construido (ventas, cargues, movimientos): el admin ve una venta nueva sin refrescar, bodega ve un cargue apenas se planea. Sin panel web todavía. Nada probado contra un Supabase real ni dispositivos reales |
+| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 SUBIDA (celular → Supabase) completa para turnos, comprobantes de transferencia, mensajes push y todo el motor de inventario/ventas (ventas/venta_items/movimientos/lotes/cargues/conteos/arqueos_caja). BAJADA (Supabase → celular) construida para personal/PINs, catálogo (productos/categorías, sin fotos) y datos operativos (ventas → admin, cargues → bodega/admin, movimientos → bodega/admin/promotor) , empresas/puntos y eventos (con meta diaria) — falta descuentos y conteos hacia admin. **Realtime** construido (ventas, cargues, movimientos, eventos): el admin ve una venta nueva sin refrescar, bodega ve un cargue apenas se planea, el promotor ve un evento nuevo en su calendario. Push enviado desde Supabase. Sin panel web todavía. Solo las ventas se han probado con dispositivos reales |
 | 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido (filtros, puntos, descuentos, categorías, gráfico circular, ranking de productos, exportar informe, metas de venta mensual con proyección de cierre) + meta de venta DIARIA por evento, y sección Análisis (repetibilidad/rendimiento/cruces) listos; recomendador de recarga sigue sin construir |
 
 ### Qué existe hoy, concretamente
@@ -917,10 +920,10 @@ operativos (ventas, cargues, movimientos) con Realtime, y empresas/puntos
   en todos los dispositivos. Subir un punto sube también su empresa
   (idempotente). Las creadas antes de sincronizar se encolan una vez al
   entrar el admin (`encolarEmpresasYPuntosSinSubir`, solo fuera de
-  `__DEV__`); las del seed de demo nunca suben (`sincronizar: false`). Por
-  sí solo esto no cambia nada visible en el celular: lo aprovecha la bajada
-  de eventos (calendario del promotor, punto vigente, meta diaria) y de
-  descuentos, que siguen pendientes.
+  `__DEV__`); las del seed de demo nunca suben (`sincronizar: false`) salvo
+  que un evento las use (subir un evento sube antes su punto y empresa). Lo
+  aprovecha la bajada de eventos (ver "Calendario de eventos") y, cuando
+  exista, la de descuentos.
 - **Calendario de eventos** (`app/admin/calendario/`,
   `app/promotor/calendario.tsx`, `src/db/eventos.ts`, migración 0014):
   reemplazó por completo la pantalla vieja "Asignar punto a promotor"
@@ -931,7 +934,22 @@ operativos (ventas, cargues, movimientos) con Realtime, y empresas/puntos
   El "punto vigente" del promotor (usado al vender y al resolver
   descuentos) se resuelve por fecha real —
   `obtenerPuntoVigentePromotor` busca el evento de hoy — ya no depende de
-  un estado manual `EN_CURSO`.
+  un estado manual `EN_CURSO`. **Sincroniza** (desde 2026-09-23,
+  `supabase/migraciones/0014_eventos.sql`): cada cambio del admin (crear,
+  serie, reasignar, cancelar, estado, meta diaria) encola el evento COMPLETO
+  en la misma transacción; en Supabase los promotores viajan dentro del
+  evento (`promotores` jsonb con `meta_diaria`), así cada subida es un solo
+  upsert y no hace falta permitir DELETE. Subir un evento sube antes su
+  punto y empresa (una vez por sesión). Promotor/Bodega los descargan en
+  `descargarDatosDeAdmin` después de personal/empresas/puntos
+  (`descargarEventosNuevos`, cursor `subido_ts`, upsert por id, promotores
+  reemplazados completos y traducidos por id o (rol, nombre) — así el
+  "Cristian" de prueba de otro dispositivo cae en el Cristian local), con
+  Realtime en `app/promotor/_layout.tsx`: el calendario y la pantalla de
+  venta del promotor se actualizan solos. Con esto el promotor resuelve su
+  punto vigente en SU celular, y la venta llega al admin con punto. La
+  serie recurrente no viaja (el evento baja con `serie_id` NULL, es solo
+  trazabilidad del admin). Una edición propia aún sin subir no se pisa.
 - **Turnos** (`app/promotor/index.tsx` → `PantallaIniciarTurno`,
   `app/admin/turnos/`, `src/db/turnos.ts`, migración 0015): antes de poder
   vender, el promotor hace check-in diario (selfie + ubicación GPS,
@@ -989,11 +1007,9 @@ operativos (ventas, cargues, movimientos) con Realtime, y empresas/puntos
   movimientos de otro dispositivo lleguen algún día a SU base local, puede
   consultarlas directo en Supabase. **Solo dirección de subida** (celular →
   Supabase, igual que antes): la dirección contraria — que el celular del
-  promotor/bodega reciba lo que el admin crea (usuarios/PINs, catálogo,
-  categorías, empresas/puntos, eventos, descuentos) — sigue sin construir,
-  ver sección 11 "Preguntas abiertas" y la nota en la tabla de Fase 5 más
-  arriba; es un mecanismo distinto (bajada, no subida) y ya hay un primer
-  ejemplo de cómo se vería (`descargarMensajesNuevos`, `src/db/mensajes.ts`).
+  promotor/bodega reciba lo que el admin crea — se construyó después como
+  mecanismo aparte (bajada, no subida): ver los bullets "Sincronización de
+  bajada" más abajo; descuentos siguen sin bajar (sección 11).
   `ubicaciones` tampoco sincroniza (`usuarios`, `productos` y `categorias`
   sí, en la dirección de bajada — ver el bullet de "Sincronización de
   bajada" más abajo; las tablas remotas de ventas/movimientos NO se
@@ -1189,10 +1205,17 @@ operativos (ventas, cargues, movimientos) con Realtime, y empresas/puntos
   notificación push a Promotor o Bodega (texto libre, selección individual
   dentro del rol) o, con un botón, el progreso de la meta del día de cada
   promotor que tenga una asignada hoy (`"Ánimo, vas en un X% de tu meta de
-  hoy..."`, `src/db/metasDiarias.ts`). El envío llama DIRECTO al servicio de
-  Expo Push desde el dispositivo del admin (`src/sync/push.ts`) — sin
-  servidor propio, mismo espíritu que el resto de la sincronización (ADR
-  0006). El mensaje se guarda en Supabase (`mensajes` + `mensaje_destinatarios`,
+  hoy..."`, `src/db/metasDiarias.ts`). El admin solo guarda el mensaje en
+  Supabase; **el push lo envía Supabase** con un trigger por sentencia sobre
+  `mensaje_destinatarios` que llama a Expo Push vía `pg_net` (un envío por
+  mensaje con todos los tokens activos en `to`, lotes de 100, título según
+  el tipo) — `supabase/migraciones/0013_push_desde_servidor.sql`. Antes lo
+  enviaba el dispositivo del admin con `fetch` directo a Expo, y desde el
+  navegador CORS lo bloqueaba siempre (en silencio): ningún mensaje enviado
+  desde el computador llegaba. Sin servidor propio, mismo espíritu que el
+  resto de la sincronización (ADR 0006). Las respuestas de Expo quedan unas
+  horas en `net._http_response` (diagnóstico). El mensaje se guarda en
+  Supabase (`mensajes` + `mensaje_destinatarios`,
   fan-out uno por destinatario) porque tiene que viajar entre dispositivos;
   cada destinatario descarga un espejo local (`mensajes_recibidos`) para
   poder revisar sus notificaciones sin conexión, en una pantalla nueva
@@ -1201,11 +1224,11 @@ operativos (ventas, cargues, movimientos) con Realtime, y empresas/puntos
   personal" arriba). **Limitación importante de plataforma:** las push
   notifications remotas NO funcionan en Expo Go desde el SDK 53 de Expo —
   hace falta el `.apk` de `eas build --profile preview` (o un development
-  build) para probarlas de verdad; ver sección 5. Antes de que esto sirva de
-  verdad hay que correr `supabase/migraciones/0003_mensajes.sql` a mano en
-  el dashboard de Supabase (igual que 0001) — sin eso, el envío falla con un
-  error visible ("no se encontró la tabla…") pero no rompe el resto de la
-  app.
+  build) para probarlas de verdad; ver sección 5 (en iPhone, Expo Go sí las
+  recibe). Requiere `0009` (tablas de mensajes) y `0013` (el envío) aplicadas
+  en Supabase. En `__DEV__` los usuarios de prueba tienen un id distinto en
+  cada dispositivo: para probar mensajes entre dos dispositivos, usar a
+  alguien contratado en "Gestionar personal" (mismo id en todos).
 - **Validación de credenciales de Supabase, perezosa en vez de al
   arrancar** (`src/sync/config.ts`, `src/sync/supabaseClient.ts`): antes,
   si faltaba `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_ANON_KEY` en
@@ -1320,7 +1343,7 @@ operativos (ventas, cargues, movimientos) con Realtime, y empresas/puntos
   mensajes (su ausencia daba "Could not find the table 'public.mensajes'").
 
 Lo que falta de cada fase (aprobación de descuadres R7, niveles objetivo,
-alertas de vencimiento, bajada de eventos/descuentos, panel
+alertas de vencimiento, bajada de descuentos, panel
 web, recomendador de recarga) sigue sin construirse — no asumir que existe.
 
 ### Decisiones registradas (`docs/03-decisiones/`, [índice completo](docs/03-decisiones/README.md))
@@ -1380,14 +1403,13 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [x] ~~BAJADA de empresas y puntos~~ — **construida el 2026-09-23**
       (Bloque 3, sección 10 bullet "Empresas y puntos",
       `supabase/migraciones/0012_empresas_puntos.sql`).
-- [ ] **Sigue faltando la BAJADA de eventos del calendario (incluida la
-      meta diaria) y descuentos** — un evento planeado por admin no le llega
-      al celular del promotor: no ve su calendario ni se resuelve su punto
-      vigente (y por tanto tampoco descuentos ni meta diaria) desde SU
-      celular; y una venta llega al admin SIN punto. Empresas y puntos ya
-      bajan (Bloque 3), así que el siguiente paso (Bloque 4) es eventos +
-      `evento_promotores`, agregados a `descargarDatosDeAdmin` después de
-      puntos; luego descuentos (Bloque 5). También pendiente: conteos
+- [x] ~~BAJADA de eventos del calendario (con promotores y meta diaria)~~
+      — **construida el 2026-09-23** (Bloque 4, sección 10 bullet
+      "Calendario de eventos", `supabase/migraciones/0014_eventos.sql`).
+- [ ] **Sigue faltando la BAJADA de descuentos** (Bloque 5): una regla
+      creada por admin no se aplica en el celular del promotor. Mismo
+      patrón que eventos (los descuentos por punto ya pueden resolverse:
+      el promotor tiene su punto vigente). También pendiente: conteos
       de cierre hacia admin (hoy el admin no ve los conteos hechos en el
       celular; las líneas ya suben con `producto_sku`), lotes en movimientos,
       y fotos de comprobante/selfie de ventas descargadas.
@@ -1418,18 +1440,23 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
       en cualquier orden respecto a ella). Crea `empresas`/`puntos` remotas.
       Sin esto, cada empresa/punto nuevo queda pendiente en la cola
       (`app/admin/sync/`) y no llega al celular.
-- [ ] **Mensajes/notificaciones push no llegan** (reportado 2026-09-23, admin
-      en el computador → promotor en el celular). Dos causas, ambas
-      verificadas: (1) **CORS** — `enviarNotificacionesPush`
-      (`src/sync/push.ts`) llama a `https://exp.host/--/api/v2/push/send`
-      desde el dispositivo del admin, y ese servicio no devuelve
-      `Access-Control-Allow-Origin`: desde el navegador (admin en web) el
-      `fetch` se bloquea siempre, y el error se traga en silencio (solo
-      `console.log`), así que la UI dice "enviado". Desde un celular admin sí
-      funcionaría (React Native no aplica CORS). Arreglo propuesto, pendiente
-      de confirmar con el usuario: mover el envío a Supabase con un trigger
-      sobre `mensaje_destinatarios` que llame a Expo Push vía `pg_net` — sin
-      servidor propio, funciona desde cualquier dispositivo admin. (2) En
+- [ ] **Correr `supabase/migraciones/0013_push_desde_servidor.sql`**
+      (idempotente). Activa `pg_net` y crea el trigger que envía el push.
+      Sin esto, los mensajes se guardan pero NINGÚN push sale (la app ya no
+      llama a Expo). Si la línea `create extension` falla por permisos,
+      activar `pg_net` en Database → Extensions y volver a correrla.
+- [ ] **Correr `supabase/migraciones/0014_eventos.sql`** (idempotente,
+      después de 0012). Sin esto, los eventos quedan pendientes en la cola
+      (`app/admin/sync/`) y no llegan al celular del promotor.
+- [ ] **Mensajes/notificaciones push no llegaban** (reportado 2026-09-23,
+      admin en el computador → promotor en el celular) — **arreglado en
+      código el 2026-09-23, falta aplicar 0013 y probarlo**. Dos causas:
+      (1) **CORS** — la app del admin llamaba a
+      `https://exp.host/--/api/v2/push/send` directo, y ese servicio no
+      devuelve `Access-Control-Allow-Origin`: desde el navegador el `fetch`
+      se bloqueaba siempre y el error se tragaba en silencio. Ahora envía
+      Supabase (trigger + `pg_net`, `0013_push_desde_servidor.sql`); la app
+      solo guarda el mensaje. (2) En
       `__DEV__` los usuarios de prueba (`seed.ts`) tienen un id distinto en
       cada dispositivo: el "Cristian" del computador no es el mismo registro
       que el del celular, así que el mensaje se guarda para el id del
@@ -1499,7 +1526,7 @@ etiqueta no funciona.
 
 - No escribir columnas de stock. Ver R1.
 - No usar `AUTOINCREMENT` como clave primaria de tablas de dominio. Ver R3.
-- No asumir que TODO sincroniza: eventos, descuentos y `ubicaciones`
+- No asumir que TODO sincroniza: descuentos y `ubicaciones`
   siguen 100% locales, y las fotos de producto tampoco viajan
   (ver sección 10 y 11 para qué sí sincroniza y en qué dirección). No
   extender la sincronización a otras tablas sin decidirlo explícitamente

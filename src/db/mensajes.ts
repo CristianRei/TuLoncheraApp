@@ -3,13 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { mensajeDeError } from '@/core/errores';
 import type { MensajeRecibido, TipoMensaje } from '@/core/tipos';
-import { enviarNotificacionesPush } from '@/sync/push';
 import { getSupabaseClient } from '@/sync/supabaseClient';
-
-const TITULOS_PUSH: Record<TipoMensaje, string> = {
-  MANUAL: 'Mensaje del administrador',
-  META_PROGRESO: 'Progreso de tu meta',
-};
 
 export interface EnvioMensaje {
   cuerpo: string;
@@ -18,15 +12,13 @@ export interface EnvioMensaje {
   destinatarios: { id: string; nombre: string }[];
 }
 
-interface FilaPushToken {
-  usuario_id: string;
-  expo_push_token: string;
-}
-
 /**
  * Crea uno o varios mensajes en Supabase (fan-out a `mensaje_destinatarios`,
- * uno por persona) y dispara el push real a través del servicio de Expo —
- * ver src/sync/push.ts. Requiere conexión (el admin está enviando algo a
+ * uno por persona). La notificación push NO la envía este dispositivo: la
+ * envía Supabase con un trigger apenas se guardan los destinatarios
+ * (supabase/migraciones/0013_push_desde_servidor.sql) — desde el navegador
+ * la llamada directa a Expo la bloqueaba CORS, y ningún mensaje enviado desde
+ * el computador llegaba. Requiere conexión (el admin está enviando algo a
  * otro dispositivo, no tiene sentido encolar esto para "después" como el
  * resto de la sincronización, R5 no aplica a una acción explícitamente
  * en línea). Si falla, el admin ve el error y puede reintentar — no hay cola.
@@ -37,10 +29,6 @@ export async function enviarMensajes(
 ): Promise<void> {
   const supabase = await getSupabaseClient();
   const ahora = new Date().toISOString();
-
-  const todosLosDestinatarios = new Set<string>();
-  const cuerpoPorDestinatario = new Map<string, string>();
-  const tipoPorDestinatario = new Map<string, TipoMensaje>();
 
   for (const envio of envios) {
     const id = Crypto.randomUUID();
@@ -58,31 +46,7 @@ export async function enviarMensajes(
       envio.destinatarios.map((d) => ({ mensaje_id: id, destinatario_id: d.id }))
     );
     if (errorDestinatarios) throw errorDestinatarios;
-
-    for (const destinatario of envio.destinatarios) {
-      todosLosDestinatarios.add(destinatario.id);
-      cuerpoPorDestinatario.set(destinatario.id, envio.cuerpo);
-      tipoPorDestinatario.set(destinatario.id, envio.tipo);
-    }
   }
-
-  if (todosLosDestinatarios.size === 0) return;
-
-  const { data: tokens, error: errorTokens } = await supabase
-    .from('push_tokens')
-    .select('usuario_id, expo_push_token')
-    .in('usuario_id', [...todosLosDestinatarios])
-    .eq('activo', true)
-    .returns<FilaPushToken[]>();
-  if (errorTokens) throw errorTokens;
-
-  await enviarNotificacionesPush(
-    tokens.map((t) => ({
-      to: t.expo_push_token,
-      title: TITULOS_PUSH[tipoPorDestinatario.get(t.usuario_id) ?? 'MANUAL'],
-      body: cuerpoPorDestinatario.get(t.usuario_id) ?? '',
-    }))
-  );
 }
 
 interface FilaMensajeRemoto {

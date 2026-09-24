@@ -148,9 +148,11 @@ interface FilaPuntoRemota {
  * una FK local real. Upsert por id, igual que empresas (siempre los crea el
  * admin, mismo id en todos los dispositivos). Un punto cuya empresa no llegó
  * se omite (su propio try/catch) sin frenar a los demás. Nunca se llama desde
- * el dispositivo de admin. Pull completo, best-effort.
+ * el dispositivo de admin. Pull completo, best-effort: devuelve `false` si no
+ * se pudo descargar — el llamador NO debe descargar eventos en ese caso
+ * (fallarían por la FK `eventos.punto_id`).
  */
-export async function descargarPuntosNuevos(db: SQLiteDatabase): Promise<void> {
+export async function descargarPuntosNuevos(db: SQLiteDatabase): Promise<boolean> {
   try {
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
@@ -175,7 +177,9 @@ export async function descargarPuntosNuevos(db: SQLiteDatabase): Promise<void> {
         console.log(`[puntos] no se pudo aplicar "${fila.nombre}":`, mensajeDeError(errorFila));
       }
     }
+    return true;
   } catch (error) {
     console.log('[puntos] no se pudieron descargar puntos nuevos:', mensajeDeError(error));
+    return false;
   }
 }
