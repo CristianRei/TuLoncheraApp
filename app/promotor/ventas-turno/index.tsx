@@ -6,10 +6,13 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { formatearPesos } from '@/core/dinero';
 import type { MetodoPago, Venta } from '@/core/tipos';
 import { getDb } from '@/db/client';
+import { obtenerProgresoMetasDiarias, type ProgresoMetaDiaria } from '@/db/metasDiarias';
 import { obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { listarVentasTurno } from '@/db/ventas';
+import { BarraMetaDiaria } from '@/ui/BarraMetaDiaria';
 import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 const ICONO_METODO: Record<MetodoPago, keyof typeof Ionicons.glyphMap> = {
   EFECTIVO: 'cash-outline',
@@ -32,6 +35,7 @@ export default function VentasTurno() {
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [cargando, setCargando] = useState(true);
   const [sinTurno, setSinTurno] = useState(false);
+  const [meta, setMeta] = useState<ProgresoMetaDiaria | null>(null);
 
   const cargar = useCallback(async (promotorId: string) => {
     setCargando(true);
@@ -50,11 +54,27 @@ export default function VentasTurno() {
     }
   }, []);
 
+  // La meta es del DÍA (todas las ventas de hoy en Bogotá), no solo del turno
+  // — misma cifra que "Cierre de jornada" (src/db/metasDiarias.ts).
+  const cargarMeta = useCallback(async (promotorId: string) => {
+    const db = await getDb();
+    const metas = await obtenerProgresoMetasDiarias(db);
+    setMeta(metas.find((m) => m.promotorId === promotorId) ?? null);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      if (usuario) cargar(usuario.id);
-    }, [usuario, cargar])
+      if (usuario) {
+        cargar(usuario.id);
+        cargarMeta(usuario.id);
+      }
+    }, [usuario, cargar, cargarMeta])
   );
+  // Si admin le asigna o cambia la meta de hoy con la pantalla abierta, la
+  // barra se actualiza sola — ver src/ui/useVersionDatos.ts.
+  useRecargarConDatosNuevos(() => {
+    if (usuario) cargarMeta(usuario.id);
+  });
 
   if (!usuario) return null;
 
@@ -143,6 +163,12 @@ export default function VentasTurno() {
           )}
         />
       )}
+
+      {!cargando && (
+        <View style={styles.panelMeta}>
+          <BarraMetaDiaria meta={meta} />
+        </View>
+      )}
     </View>
   );
 }
@@ -220,6 +246,21 @@ const styles = StyleSheet.create({
   lista: {
     padding: 16,
     gap: 10,
+  },
+  // Fija al final de la pantalla (fuera de la lista): siempre a la vista,
+  // aunque haya muchas ventas.
+  panelMeta: {
+    backgroundColor: COLORES.superficie,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 28,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: -3 },
+    elevation: 8,
   },
   tarjeta: {
     flexDirection: 'row',

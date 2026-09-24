@@ -223,7 +223,7 @@ tulonchera/
       conteo-cierre.tsx             ← conteo de cierre: teórico vs. contado por producto
       cierre-jornada.tsx             ← resumen del día + meta diaria + arqueo de caja; el botón "Cerrar turno" vive aquí, se puede abrir/cerrar en cualquier momento
       notificaciones.tsx             ← mensajes que el admin le envió como notificación push (solo lectura, marca leído al abrir)
-      ventas-turno/                    ← listado + detalle de las ventas del turno abierto (con cliente asignado)
+      ventas-turno/                    ← listado + detalle de las ventas del turno abierto (con cliente asignado); abajo, fija, la barra de la meta del día
       clientes/                         ← alta y listado de clientes finales; también funciona en "modo selección" (?paraVentaId=) para asignar cliente a una venta ya cerrada
     admin/
       _layout.tsx                 ← en pantalla ancha monta BarraSuperiorAdmin + SidebarAdmin fijo; en celular no monta nada (cada pantalla sigue con su propio encabezado)
@@ -307,6 +307,7 @@ tulonchera/
       useSincronizacionEnVivo.ts           ← hook de layout: descarga al entrar, al recibir un aviso Realtime, y cada 45 s de respaldo
       useVersionDatos.ts                    ← `useRecargarConDatosNuevos(fn)`: una pantalla se recarga sola cuando llegan datos nuevos de Supabase
       ModalConfirmacion.tsx               ← reemplaza Alert.alert para confirmaciones de 2 botones (Alert.alert no tiene UI en React Native Web)
+      BarraMetaDiaria.tsx                  ← barra animada de cumplimiento de la meta DIARIA, de rojo a verde según el avance (Ventas del turno del promotor)
       CalendarioRango.tsx                  ← calendario de mes, reusado para "Rango personalizado" (dashboard), fecha específica (Ventas) y un solo día
       calendarioGrilla.ts                   ← grilla de mes compartida por CalendarioRango/calendario de eventos
       FormularioProducto.tsx                 ← nombre/precio/código + selector de categoría ("+ Nueva" inline) + marca con autocompletado
@@ -1119,7 +1120,16 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   en `src/db/ventas.ts`): el promotor ve, desde el menú de su pantalla de
   venta, el listado de sus propias ventas del turno abierto (con total y
   cantidad) y el detalle de cada una (productos, cantidades, método de
-  pago, comprobante si fue transferencia, y el cliente asignado).
+  pago, comprobante si fue transferencia, y el cliente asignado). Al final
+  de la pantalla, fija aunque la lista sea larga, una barra de cumplimiento
+  de la meta DIARIA (`src/ui/BarraMetaDiaria.tsx`): se llena con animación y
+  cambia de rojo a verde (pasando por naranja y ámbar) según el porcentaje,
+  con "Te faltan $X" o "¡Meta cumplida!". Mide TODAS las ventas del día en
+  Bogotá (misma cifra que "Cierre de jornada", `obtenerProgresoMetasDiarias`),
+  no solo las del turno — por eso puede no coincidir con el "Total vendido"
+  del turno si hubo ventas antes. Sin meta asignada hoy, solo un aviso
+  discreto. Se actualiza sola si admin cambia la meta con la pantalla
+  abierta.
 - **Dashboard: gráfico circular, ranking de productos, exportar informe y
   metas de venta** (`app/admin/dashboard/`, `src/ui/graficas/GraficoCircular.tsx`,
   `src/db/metas.ts`, migración 0021): "Por método de pago" ahora es una
