@@ -3,9 +3,10 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Cargue } from '@/core/tipos';
+import type { Cargue, Traslado } from '@/core/tipos';
 import { listarCarguesPendientes } from '@/db/cargues';
 import { getDb } from '@/db/client';
+import { listarTrasladosPendientes } from '@/db/traslados';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -15,9 +16,13 @@ function formatearFecha(ts: string): string {
   return new Date(ts).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
 }
 
+type ItemPendiente =
+  | { tipo: 'CARGUE'; cargue: Cargue }
+  | { tipo: 'TRASLADO'; traslado: Traslado };
+
 export default function CarguesPendientesBodega() {
   const usuario = useRequiereSesion(['BODEGA']);
-  const [cargues, setCargues] = useState<Cargue[]>([]);
+  const [items, setItems] = useState<ItemPendiente[]>([]);
   const [cargando, setCargando] = useState(true);
   const insets = useSafeAreaInsets();
 
@@ -25,7 +30,19 @@ export default function CarguesPendientesBodega() {
     setCargando(true);
     try {
       const db = await getDb();
-      setCargues(await listarCarguesPendientes(db));
+      const [cargues, traslados] = await Promise.all([
+        listarCarguesPendientes(db),
+        listarTrasladosPendientes(db),
+      ]);
+      const combinados: ItemPendiente[] = [
+        ...cargues.map((cargue): ItemPendiente => ({ tipo: 'CARGUE', cargue })),
+        ...traslados.map((traslado): ItemPendiente => ({ tipo: 'TRASLADO', traslado })),
+      ].sort((a, b) => {
+        const tsA = a.tipo === 'CARGUE' ? a.cargue.tsCliente : a.traslado.tsCliente;
+        const tsB = b.tipo === 'CARGUE' ? b.cargue.tsCliente : b.traslado.tsCliente;
+        return tsA.localeCompare(tsB);
+      });
+      setItems(combinados);
     } finally {
       setCargando(false);
     }
@@ -55,24 +72,43 @@ export default function CarguesPendientesBodega() {
         <View style={styles.centrado}>
           <ActivityIndicator size="large" color={COLORES.oscuro} />
         </View>
-      ) : cargues.length === 0 ? (
+      ) : items.length === 0 ? (
         <View style={styles.centrado}>
-          <Text style={styles.vacio}>No hay cargues pendientes por entregar.</Text>
+          <Text style={styles.vacio}>No hay cargues ni traslados pendientes.</Text>
         </View>
       ) : (
         <ContenedorAncho anchoMaximo={640} llenarAlto>
           <FlatList
-            data={cargues}
-            keyExtractor={(c) => c.id}
+            data={items}
+            keyExtractor={(item) => (item.tipo === 'CARGUE' ? item.cargue.id : item.traslado.id)}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
               <Pressable
                 style={styles.fila}
-                onPress={() => router.push(`/bodega/cargues/${item.id}`)}
+                onPress={() =>
+                  router.push(
+                    item.tipo === 'CARGUE'
+                      ? `/bodega/cargues/${item.cargue.id}`
+                      : `/bodega/cargues/traslado/${item.traslado.id}`
+                  )
+                }
               >
                 <View style={styles.filaTexto}>
-                  <Text style={styles.filaPromotor}>{item.promotorNombre}</Text>
-                  <Text style={styles.filaDetalle}>{formatearFecha(item.tsCliente)}</Text>
+                  <View style={styles.filaTituloFila}>
+                    <Text style={styles.filaPromotor}>
+                      {item.tipo === 'CARGUE'
+                        ? item.cargue.promotorNombre
+                        : `${item.traslado.promotorOrigenNombre} → ${item.traslado.promotorDestinoNombre}`}
+                    </Text>
+                    {item.tipo === 'TRASLADO' && (
+                      <View style={styles.insigniaTraslado}>
+                        <Text style={styles.insigniaTrasladoTexto}>Traslado</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={styles.filaDetalle}>
+                    {formatearFecha(item.tipo === 'CARGUE' ? item.cargue.tsCliente : item.traslado.tsCliente)}
+                  </Text>
                 </View>
                 <Text style={styles.filaFlecha}>›</Text>
               </Pressable>
@@ -102,7 +138,15 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   filaTexto: { gap: 2 },
+  filaTituloFila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   filaPromotor: { fontSize: 15, fontWeight: '700', color: '#333' },
+  insigniaTraslado: {
+    backgroundColor: '#FFF3E8',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  insigniaTrasladoTexto: { fontSize: 10, fontWeight: '700', color: '#B5651D' },
   filaDetalle: { fontSize: 12, color: '#888' },
   filaFlecha: { fontSize: 20, color: COLORES.oscuro },
 });

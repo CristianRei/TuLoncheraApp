@@ -8,6 +8,7 @@ export type TablaSync =
   | 'movimientos'
   | 'lotes'
   | 'cargues'
+  | 'traslados'
   | 'conteos'
   | 'arqueos_caja'
   | 'usuarios'

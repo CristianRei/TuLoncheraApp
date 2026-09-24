@@ -3,12 +3,17 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Cargue, Producto, UsuarioSesion } from '@/core/tipos';
+import type { Cargue, Producto, Traslado, UsuarioSesion } from '@/core/tipos';
 import { crearCargue, listarCargues, StockInsuficienteError } from '@/db/cargues';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { obtenerSaldosBodega } from '@/db/inventario';
+import { obtenerSaldosBodega, obtenerSaldosPromotor } from '@/db/inventario';
 import { listarProductos } from '@/db/productos';
+import {
+  crearTraslado,
+  listarTraslados,
+  StockInsuficienteError as StockInsuficienteTrasladoError,
+} from '@/db/traslados';
 import { listarPromotores } from '@/db/usuarios';
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
@@ -29,7 +34,7 @@ function formatearFecha(ts: string): string {
 
 export default function PantallaCargue() {
   const usuario = useRequiereSesion(['ADMIN']);
-  const [pestana, setPestana] = useState<'nuevo' | 'planeados'>('nuevo');
+  const [pestana, setPestana] = useState<'nuevo' | 'planeados' | 'traslado'>('nuevo');
   const [promotores, setPromotores] = useState<UsuarioSesion[]>([]);
   const [promotor, setPromotor] = useState<UsuarioSesion | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -39,21 +44,36 @@ export default function PantallaCargue() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [cargues, setCargues] = useState<Cargue[]>([]);
+
+  // Traslado entre promotores: primero se elige origen, luego destino, y
+  // recién ahí aparece el selector de productos (topado al inventario del
+  // origen, nunca al de bodega) — mismo flujo de "elegir promotor" del
+  // cargue normal, con un paso extra.
+  const [promotorOrigen, setPromotorOrigen] = useState<UsuarioSesion | null>(null);
+  const [promotorDestino, setPromotorDestino] = useState<UsuarioSesion | null>(null);
+  const [disponiblesOrigen, setDisponiblesOrigen] = useState<Record<string, number>>({});
+  const [cantidadesTraslado, setCantidadesTraslado] = useState<Record<string, number>>({});
+  const [busquedaTraslado, setBusquedaTraslado] = useState('');
+  const [guardandoTraslado, setGuardandoTraslado] = useState(false);
+  const [traslados, setTraslados] = useState<Traslado[]>([]);
+
   const insets = useSafeAreaInsets();
   const anchaPantalla = useEsPantallaAncha();
 
   const cargarBase = useCallback(async () => {
     const db = await getDb();
-    const [listaPromotores, listaProductos, saldosBodega, listaCargues] = await Promise.all([
+    const [listaPromotores, listaProductos, saldosBodega, listaCargues, listaTraslados] = await Promise.all([
       listarPromotores(db),
       listarProductos(db),
       obtenerSaldosBodega(db),
       listarCargues(db),
+      listarTraslados(db),
     ]);
     setPromotores(listaPromotores);
     setProductos(listaProductos);
     setDisponibles(Object.fromEntries(saldosBodega));
     setCargues(listaCargues);
+    setTraslados(listaTraslados);
     setCargando(false);
   }, []);
 
@@ -113,6 +133,70 @@ export default function PantallaCargue() {
     }
   }
 
+  async function elegirPromotorOrigen(elegido: UsuarioSesion) {
+    setPromotorOrigen(elegido);
+    const db = await getDb();
+    const saldos = await obtenerSaldosPromotor(db, elegido.id);
+    setDisponiblesOrigen(Object.fromEntries(saldos));
+  }
+
+  function cerrarTraslado() {
+    setPromotorOrigen(null);
+    setPromotorDestino(null);
+    setCantidadesTraslado({});
+    setBusquedaTraslado('');
+  }
+
+  function cambiarCantidadTraslado(productoId: string, delta: number) {
+    setCantidadesTraslado((actual) => {
+      const disponible = disponiblesOrigen[productoId] ?? 0;
+      const nueva = Math.min(disponible, Math.max(0, (actual[productoId] ?? 0) + delta));
+      return { ...actual, [productoId]: nueva };
+    });
+  }
+
+  const totalUnidadesTraslado = Object.values(cantidadesTraslado).reduce((suma, c) => suma + c, 0);
+
+  async function confirmarTraslado() {
+    if (!promotorOrigen || !promotorDestino || totalUnidadesTraslado === 0) return;
+    setGuardandoTraslado(true);
+    try {
+      const db = await getDb();
+      const dispositivoId = await getDispositivoId(db);
+      const items = Object.entries(cantidadesTraslado)
+        .filter(([, cantidad]) => cantidad > 0)
+        .map(([productoId, cantidad]) => ({ productoId, cantidad }));
+
+      await crearTraslado(
+        db,
+        {
+          promotorOrigenId: promotorOrigen.id,
+          promotorOrigenNombre: promotorOrigen.nombre,
+          promotorDestinoId: promotorDestino.id,
+          promotorDestinoNombre: promotorDestino.nombre,
+          items,
+          creadoPor: usuarioActual.id,
+        },
+        dispositivoId
+      );
+
+      Alert.alert(
+        'Traslado planeado',
+        `Bodega ya puede confirmar el traslado de ${promotorOrigen.nombre} a ${promotorDestino.nombre}.`
+      );
+      cerrarTraslado();
+      await cargarBase();
+    } catch (error) {
+      if (error instanceof StockInsuficienteTrasladoError) {
+        Alert.alert('Stock insuficiente', error.message);
+      } else {
+        throw error;
+      }
+    } finally {
+      setGuardandoTraslado(false);
+    }
+  }
+
   return (
     <View style={styles.contenedor}>
       <View
@@ -122,20 +206,40 @@ export default function PantallaCargue() {
         ]}
       >
         <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          {(!anchaPantalla || promotor) && (
-            <Pressable onPress={() => (promotor ? setPromotor(null) : router.back())}>
+          {(!anchaPantalla || promotor || promotorOrigen) && (
+            <Pressable
+              onPress={() => {
+                if (promotor) setPromotor(null);
+                else if (promotorDestino) setPromotorDestino(null);
+                else if (promotorOrigen) cerrarTraslado();
+                else router.back();
+              }}
+            >
               <Text style={anchaPantalla ? styles.volverAncho : styles.volver}>
-                ‹ {promotor ? 'Elegir otro promotor' : 'Admin'}
+                ‹{' '}
+                {promotor
+                  ? 'Elegir otro promotor'
+                  : promotorDestino
+                    ? 'Elegir otro destino'
+                    : promotorOrigen
+                      ? 'Elegir otro origen'
+                      : 'Admin'}
               </Text>
             </Pressable>
           )}
           <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>
-            {promotor ? `Cargue para ${promotor.nombre}` : 'Cargue a promotor'}
+            {promotor
+              ? `Cargue para ${promotor.nombre}`
+              : promotorOrigen && promotorDestino
+                ? `Traslado de ${promotorOrigen.nombre} a ${promotorDestino.nombre}`
+                : promotorOrigen
+                  ? `Traslado desde ${promotorOrigen.nombre}`
+                  : 'Cargue a promotor'}
           </Text>
         </ContenedorAncho>
       </View>
 
-      {!promotor && (
+      {!promotor && !promotorOrigen && (
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.pestanas}>
             <Pressable
@@ -152,6 +256,14 @@ export default function PantallaCargue() {
             >
               <Text style={[styles.pestanaTexto, pestana === 'planeados' && styles.pestanaTextoActiva]}>
                 Cargues planeados
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[styles.pestana, pestana === 'traslado' && styles.pestanaActiva]}
+              onPress={() => setPestana('traslado')}
+            >
+              <Text style={[styles.pestanaTexto, pestana === 'traslado' && styles.pestanaTextoActiva]}>
+                Traslado entre promotores
               </Text>
             </Pressable>
           </View>
@@ -193,6 +305,51 @@ export default function PantallaCargue() {
             </Pressable>
           </View>
         </ContenedorAncho>
+      ) : promotorOrigen && promotorDestino ? (
+        <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <SelectorProductosConCantidad
+            productos={productos}
+            cantidades={cantidadesTraslado}
+            disponibles={disponiblesOrigen}
+            onCambiarCantidad={cambiarCantidadTraslado}
+            busqueda={busquedaTraslado}
+            onCambiarBusqueda={setBusquedaTraslado}
+            colorAcento={COLORES.oscuro}
+          />
+
+          <View style={styles.pie}>
+            <Pressable
+              style={[
+                styles.botonConfirmar,
+                (totalUnidadesTraslado === 0 || guardandoTraslado) && styles.botonDeshabilitado,
+              ]}
+              disabled={totalUnidadesTraslado === 0 || guardandoTraslado}
+              onPress={confirmarTraslado}
+            >
+              {guardandoTraslado ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.botonConfirmarTexto}>
+                  Planear traslado{totalUnidadesTraslado > 0 ? ` (${totalUnidadesTraslado} unidades)` : ''}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        </ContenedorAncho>
+      ) : promotorOrigen ? (
+        <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <FlatList
+            data={promotores.filter((p) => p.id !== promotorOrigen.id)}
+            keyExtractor={(p) => p.id}
+            contentContainerStyle={styles.lista}
+            renderItem={({ item }) => (
+              <Pressable style={styles.filaPromotor} onPress={() => setPromotorDestino(item)}>
+                <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
+                <Text style={styles.filaPromotorFlecha}>›</Text>
+              </Pressable>
+            )}
+          />
+        </ContenedorAncho>
       ) : pestana === 'nuevo' ? (
         promotores.length === 0 ? (
           <View style={styles.centrado}>
@@ -213,23 +370,79 @@ export default function PantallaCargue() {
             />
           </ContenedorAncho>
         )
-      ) : cargues.length === 0 ? (
+      ) : pestana === 'traslado' ? (
+        promotores.length < 2 ? (
+          <View style={styles.centrado}>
+            <Text style={styles.vacio}>Hace falta al menos dos promotores activos para trasladar entre ellos.</Text>
+          </View>
+        ) : (
+          <ContenedorAncho anchoMaximo={720} llenarAlto>
+            <FlatList
+              data={promotores}
+              keyExtractor={(p) => p.id}
+              contentContainerStyle={styles.lista}
+              renderItem={({ item }) => (
+                <Pressable style={styles.filaPromotor} onPress={() => elegirPromotorOrigen(item)}>
+                  <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
+                  <Text style={styles.filaPromotorFlecha}>›</Text>
+                </Pressable>
+              )}
+            />
+          </ContenedorAncho>
+        )
+      ) : pestana === 'planeados' ? (
+        cargues.length === 0 ? (
+          <View style={styles.centrado}>
+            <Text style={styles.vacio}>Todavía no se ha planeado ningún cargue.</Text>
+          </View>
+        ) : (
+          <ContenedorAncho anchoMaximo={720} llenarAlto>
+            <FlatList
+              data={cargues}
+              keyExtractor={(c) => c.id}
+              contentContainerStyle={styles.lista}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.filaCargue}
+                  onPress={() => router.push(`/admin/cargue/${item.id}`)}
+                >
+                  <View style={styles.filaCargueTexto}>
+                    <Text style={styles.filaPromotorNombre}>{item.promotorNombre}</Text>
+                    <Text style={styles.filaCargueDetalle}>{formatearFecha(item.tsCliente)}</Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.badgeEstado,
+                      item.estado === 'ENTREGADO' && styles.badgeEstadoEntregado,
+                    ]}
+                  >
+                    {ETIQUETAS_ESTADO[item.estado]}
+                  </Text>
+                  <Text style={styles.filaPromotorFlecha}>›</Text>
+                </Pressable>
+              )}
+            />
+          </ContenedorAncho>
+        )
+      ) : traslados.length === 0 ? (
         <View style={styles.centrado}>
-          <Text style={styles.vacio}>Todavía no se ha planeado ningún cargue.</Text>
+          <Text style={styles.vacio}>Todavía no se ha planeado ningún traslado.</Text>
         </View>
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
-            data={cargues}
-            keyExtractor={(c) => c.id}
+            data={traslados}
+            keyExtractor={(t) => t.id}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
               <Pressable
                 style={styles.filaCargue}
-                onPress={() => router.push(`/admin/cargue/${item.id}`)}
+                onPress={() => router.push(`/admin/cargue/traslado/${item.id}`)}
               >
                 <View style={styles.filaCargueTexto}>
-                  <Text style={styles.filaPromotorNombre}>{item.promotorNombre}</Text>
+                  <Text style={styles.filaPromotorNombre}>
+                    {item.promotorOrigenNombre} → {item.promotorDestinoNombre}
+                  </Text>
                   <Text style={styles.filaCargueDetalle}>{formatearFecha(item.tsCliente)}</Text>
                 </View>
                 <Text

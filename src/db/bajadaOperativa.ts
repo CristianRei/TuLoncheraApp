@@ -471,3 +471,182 @@ export async function descargarCarguesNuevos(db: SQLiteDatabase): Promise<number
   }
   return cambios;
 }
+
+// ---------------------------------------------------------------------------
+// Traslados entre promotores (para bodega, que confirma, y admin)
+// ---------------------------------------------------------------------------
+
+interface FilaTrasladoRemota {
+  id: string;
+  promotor_origen_id: string;
+  promotor_origen_nombre: string;
+  promotor_destino_id: string;
+  promotor_destino_nombre: string;
+  estado: string;
+  creado_por: string | null;
+  ts_cliente: string;
+  dispositivo_id: string;
+  subido_ts: string;
+}
+
+interface FilaTrasladoLineaRemota {
+  id: string;
+  traslado_id: string;
+  producto_id: string;
+  producto_sku: string | null;
+  producto_nombre: string;
+  cantidad_planeada: number;
+  cantidad_entregada: number;
+  estado: string;
+  motivo_revision: string | null;
+  ts_cliente: string;
+  dispositivo_id: string;
+}
+
+async function firmaTraslado(db: SQLiteDatabase, trasladoId: string): Promise<string> {
+  const cabecera = await db.getFirstAsync<{ estado: string }>('SELECT estado FROM traslados WHERE id = ?', [trasladoId]);
+  const lineas = await db.getAllAsync<{ id: string; estado: string; cantidad_planeada: number; cantidad_entregada: number }>(
+    'SELECT id, estado, cantidad_planeada, cantidad_entregada FROM traslado_lineas WHERE traslado_id = ? ORDER BY id',
+    [trasladoId]
+  );
+  return JSON.stringify([cabecera?.estado ?? null, lineas]);
+}
+
+async function aplicarTrasladoRemoto(
+  db: SQLiteDatabase,
+  traslado: FilaTrasladoRemota,
+  lineas: FilaTrasladoLineaRemota[],
+  dispositivoId: string
+): Promise<boolean> {
+  // Mismo criterio que cargues: si hay cambios propios sin subir todavía,
+  // no se pisan con la copia remota — se aplican en la próxima descarga.
+  const pendiente = await db.getFirstAsync<{ id: string }>(
+    "SELECT id FROM _sync_pendiente WHERE tabla = 'traslados' AND entidad_id = ? AND completado_ts IS NULL LIMIT 1",
+    [traslado.id]
+  );
+  if (pendiente) return false;
+
+  const promotorOrigenId = await resolverUsuarioLocalId(
+    db,
+    { id: traslado.promotor_origen_id, nombre: traslado.promotor_origen_nombre, rol: 'PROMOTOR' },
+    dispositivoId
+  );
+  const promotorDestinoId = await resolverUsuarioLocalId(
+    db,
+    { id: traslado.promotor_destino_id, nombre: traslado.promotor_destino_nombre, rol: 'PROMOTOR' },
+    dispositivoId
+  );
+  const creadoPor = traslado.creado_por
+    ? await resolverUsuarioLocalId(db, { id: traslado.creado_por, nombre: null, rol: 'ADMIN' }, dispositivoId)
+    : promotorOrigenId;
+
+  const lineasLocales: { productoId: string; linea: FilaTrasladoLineaRemota }[] = [];
+  for (const linea of lineas) {
+    const productoId = await resolverProductoLocalId(db, { id: linea.producto_id, sku: linea.producto_sku, nombre: linea.producto_nombre });
+    if (!productoId) {
+      console.log(`[traslados] línea omitida: producto "${linea.producto_nombre}" no existe en este dispositivo`);
+      continue;
+    }
+    lineasLocales.push({ productoId, linea });
+  }
+
+  const antes = await firmaTraslado(db, traslado.id);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      `INSERT INTO traslados (id, promotor_origen_id, promotor_destino_id, estado, creado_por, ts_cliente, dispositivo_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         estado = CASE WHEN traslados.estado = 'ENTREGADO' THEN traslados.estado ELSE excluded.estado END`,
+      [traslado.id, promotorOrigenId, promotorDestinoId, traslado.estado, creadoPor, traslado.ts_cliente, traslado.dispositivo_id]
+    );
+    for (const { productoId, linea } of lineasLocales) {
+      // Una línea ya ENTREGADA aquí (su TRASLADO ya se generó) no retrocede.
+      await db.runAsync(
+        `INSERT INTO traslado_lineas (id, traslado_id, producto_id, cantidad_planeada, cantidad_entregada, estado, motivo_revision, ts_cliente, dispositivo_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET
+           cantidad_planeada = excluded.cantidad_planeada,
+           cantidad_entregada = CASE WHEN traslado_lineas.estado = 'ENTREGADA' THEN traslado_lineas.cantidad_entregada ELSE excluded.cantidad_entregada END,
+           estado = CASE WHEN traslado_lineas.estado = 'ENTREGADA' THEN traslado_lineas.estado ELSE excluded.estado END,
+           motivo_revision = CASE WHEN traslado_lineas.estado = 'ENTREGADA' THEN traslado_lineas.motivo_revision ELSE excluded.motivo_revision END`,
+        [
+          linea.id,
+          traslado.id,
+          productoId,
+          linea.cantidad_planeada,
+          linea.cantidad_entregada,
+          linea.estado,
+          linea.motivo_revision,
+          linea.ts_cliente,
+          linea.dispositivo_id,
+        ]
+      );
+    }
+    // Admin quitó una línea que aún estaba pendiente. Solo si Supabase ya
+    // tiene las líneas de este traslado (si la cabecera llegó antes que
+    // ellas, no se borra nada).
+    if (lineas.length > 0) {
+      const idsRemotos = lineas.map((l) => l.id);
+      await db.runAsync(
+        `DELETE FROM traslado_lineas WHERE traslado_id = ? AND estado = 'PENDIENTE'
+           AND id NOT IN (${idsRemotos.map(() => '?').join(', ')})`,
+        [traslado.id, ...idsRemotos]
+      );
+    }
+  });
+  return antes !== (await firmaTraslado(db, traslado.id));
+}
+
+/** Trae de Supabase los traslados (y su estado de entrega) — para que bodega vea lo que admin planeó, y admin vea lo que bodega confirmó. */
+export async function descargarTrasladosNuevos(db: SQLiteDatabase): Promise<number> {
+  let cambios = 0;
+  try {
+    const supabase = await getSupabaseClient();
+    const dispositivoId = await getDispositivoId(db);
+    let cursorGuardado = await leerCursor(db, 'traslados');
+    let desde = conSolape(cursorGuardado);
+
+    for (;;) {
+      let consulta = supabase.from('traslados').select('*');
+      if (desde) consulta = consulta.gt('subido_ts', desde);
+      const { data: traslados, error } = await consulta
+        .order('subido_ts', { ascending: true })
+        .limit(TAMANO_PAGINA)
+        .returns<FilaTrasladoRemota[]>();
+      if (error) throw error;
+      if (!traslados || traslados.length === 0) break;
+
+      const lineas: FilaTrasladoLineaRemota[] = [];
+      for (const lote of enLotes(traslados.map((t) => t.id))) {
+        const { data, error: errorLineas } = await supabase
+          .from('traslado_lineas')
+          .select('*')
+          .in('traslado_id', lote)
+          .returns<FilaTrasladoLineaRemota[]>();
+        if (errorLineas) throw errorLineas;
+        lineas.push(...(data ?? []));
+      }
+
+      for (const traslado of traslados) {
+        try {
+          const cambio = await aplicarTrasladoRemoto(
+            db,
+            traslado,
+            lineas.filter((l) => l.traslado_id === traslado.id),
+            dispositivoId
+          );
+          if (cambio) cambios++;
+        } catch (errorTraslado) {
+          console.log('[traslados] no se pudo aplicar un traslado:', mensajeDeError(errorTraslado));
+        }
+        cursorGuardado = mayor(cursorGuardado, traslado.subido_ts);
+      }
+      if (cursorGuardado) await guardarCursor(db, 'traslados', cursorGuardado);
+      desde = traslados[traslados.length - 1].subido_ts;
+      if (traslados.length < TAMANO_PAGINA) break;
+    }
+  } catch (error) {
+    console.log('[traslados] no se pudieron descargar traslados nuevos:', mensajeDeError(error));
+  }
+  return cambios;
+}

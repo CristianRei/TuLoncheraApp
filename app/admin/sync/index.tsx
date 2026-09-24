@@ -18,6 +18,7 @@ const ETIQUETA_TABLA: Record<TablaSync, string> = {
   movimientos: 'Movimiento',
   lotes: 'Lote',
   cargues: 'Cargue',
+  traslados: 'Traslado entre promotores',
   conteos: 'Conteo',
   arqueos_caja: 'Arqueo de caja',
   usuarios: 'Personal',

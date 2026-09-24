@@ -87,13 +87,18 @@ idempotente: reintentar una subida nunca duplica.
 ### R4 — El saldo pertenece al promotor hasta que se venda o lo retire un admin
 
 Desde que se le hace la recarga, el producto está en el inventario del promotor sin
-importar dónde duerma físicamente (bodega, camión o su casa). Solo hay dos salidas:
+importar dónde duerma físicamente (bodega, camión o su casa). Solo hay tres salidas:
 
 - `VENTA` — la ejecuta el promotor
 - `RETIRO_ADMIN` — solo administración, con motivo obligatorio
+- `TRASLADO` — inventario que pasa directo a OTRO promotor (sin pasar por
+  bodega), solo administración: admin planea, bodega confirma línea por
+  línea (mismo patrón de dos pasos que `RECARGA`, ver sección 10 "Traslado
+  de inventario entre promotores")
 
-`RETIRO_ADMIN` es la única puerta por la que se podría encubrir un faltante. Debe
-quedar siempre registrada con usuario, motivo y timestamp.
+`RETIRO_ADMIN` y `TRASLADO` son las únicas puertas por las que se podría encubrir
+un faltante. Deben quedar siempre registradas con usuario, motivo/destino y
+timestamp.
 
 ### R5 — La app debe funcionar sin conexión, siempre
 
@@ -517,9 +522,28 @@ cargue_lineas     (id UUID PK, cargue_id, producto_id, cantidad_planeada,
                     línea por línea — ahí nace el RECARGA real. REVISAR si la
                     cantidad física no alcanza lo planeado, con motivo
                     obligatorio, sin bloquear las demás líneas del cargue.
+traslados         (id UUID PK, promotor_origen_id, promotor_destino_id,
+                   estado[PLANEADO|ENTREGADO|CANCELADO], creado_por,
+                   ts_cliente, dispositivo_id)
+traslado_lineas   (id UUID PK, traslado_id, producto_id, cantidad_planeada,
+                   cantidad_entregada, estado[PENDIENTE|ENTREGADA|REVISAR],
+                   motivo_revision[opcional], ts_cliente, dispositivo_id)
+                  ← en uso desde la 0029. Mismo patrón de dos pasos que
+                    cargues/cargue_lineas (admin planea, bodega confirma
+                    línea por línea, ahí nace el TRASLADO real — ver R4), con
+                    `promotor_id` dividido en origen y destino porque el
+                    producto va directo de un promotor a otro sin pasar por
+                    bodega físicamente. A diferencia del cargue normal, NO
+                    exige turno abierto de ningún promotor para confirmar
+                    (es una operación administrativa, mismo espíritu que
+                    RETIRO_ADMIN). Tope de validación: el saldo real del
+                    promotor ORIGEN (`obtenerSaldosPromotor`), nunca el de
+                    bodega.
 _sync_pendiente   (id UUID PK, tabla[turnos|comprobantes_venta|ventas|
-                   movimientos|lotes|cargues|conteos|arqueos_caja|usuarios|
-                   productos|categorias], entidad_id, tipo_tarea[FILA|FOTO], intentos,
+                   movimientos|lotes|cargues|traslados|conteos|arqueos_caja|
+                   usuarios|productos|categorias|intentos_pin_fallidos|
+                   desbloqueos_pin|logins_exitosos_pin], entidad_id,
+                   tipo_tarea[FILA|FOTO], intentos,
                    ultimo_error[opcional], creado_ts, completado_ts[opcional])
                   ← en uso desde la 0016 (ver ADR 0006). Cola de subida a
                     Supabase, drenada en background por src/sync/motor.ts —
@@ -582,8 +606,10 @@ logins_exitosos_pin   (id UUID PK, dispositivo_id, modo, ts_cliente)          �
 `ANULACION_VENTA`.
 Hoy en uso: `COMPRA_PROVEEDOR` (entrada a bodega), `RECARGA` (bodega →
 promotor), `VENTA` (promotor → afuera), `ANULACION_VENTA` (revierte una
-venta: afuera → promotor, ver ADR 0004) y `AJUSTE_CONTEO` (conteo de cierre:
-bodega→promotor si sobra, promotor→afuera si falta). El resto sigue sin
+venta: afuera → promotor, ver ADR 0004), `AJUSTE_CONTEO` (conteo de cierre:
+bodega→promotor si sobra, promotor→afuera si falta) y `TRASLADO` (promotor
+→ otro promotor directo, sin pasar por bodega — ver R4, sección 10
+"Traslado de inventario entre promotores"). El resto sigue sin
 implementarse.
 
 **Reposición por nivel objetivo** (Fase 6, sin construir):
@@ -853,6 +879,29 @@ faltan empresas/puntos, eventos y descuentos —, Fase 6 bastante avanzada
   tiene físicamente lo que el sistema decía, la línea queda "a revisar"
   con motivo obligatorio, sin bloquear el resto del cargue — admin la
   resuelve después desde el detalle del cargue.
+- **Traslado de inventario entre promotores** (`app/admin/cargue/`, pestaña
+  "Traslado entre promotores", `app/admin/cargue/traslado/[id].tsx`,
+  `app/bodega/cargues/traslado/[id].tsx`, `src/db/traslados.ts`,
+  `src/db/traslado.ts`, migración 0029): tercera salida del inventario de
+  un promotor junto a VENTA y RETIRO_ADMIN (R4) — el admin traslada
+  producto directo del inventario de un promotor al de otro, sin pasar
+  físicamente por bodega. Vive dentro del mismo módulo Cargue, mismo
+  patrón de dos pasos: admin elige promotor origen → promotor destino →
+  productos (topados al saldo REAL del origen, `obtenerSaldosPromotor`,
+  nunca al de bodega) y planea; bodega confirma línea por línea igual que
+  un cargue normal (mismo componente de escaneo, misma lista combinada de
+  "Cargues por entregar" en `app/bodega/cargues/`, con una insignia
+  "Traslado" para distinguir la fila) — ahí nace el movimiento `TRASLADO`
+  real. **A diferencia del cargue normal, NO exige turno abierto de ningún
+  promotor para confirmar** (decisión explícita del usuario: es una
+  operación administrativa, no depende de que nadie esté en jornada
+  activa). Sincroniza igual que cargues (subida y bajada, `traslados`/
+  `traslado_lineas`, `supabase/migraciones/0011_traslados.sql`) — el
+  movimiento `TRASLADO` resultante llega a los celulares de AMBOS
+  promotores (origen ve la salida, destino ve la entrada) por el mismo
+  pipeline genérico de movimientos; admin ve el traslado completo a través
+  de la tabla `traslados` (no lee `movimientos` crudo para esto, mismo
+  criterio que ya usa para cargues).
 - **Empresas y puntos** (`app/admin/empresas/`, `src/db/empresas.ts`,
   `src/db/puntos.ts`, migración 0011): admin crea empresas cliente (ej.
   Falabella) y sus puntos/sedes (ej. Norte, Sur). Sin edición ni baja
@@ -1343,6 +1392,11 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
       `logins_exitosos_pin` remotas. Sin esto: sincronizar seguridad de PIN
       falla silenciosamente (queda en la cola, ver `app/admin/sync/`) y
       "Seguridad de acceso" solo ve el propio dispositivo de admin.
+- [ ] **Correr `supabase/migraciones/0011_traslados.sql`** en el SQL Editor
+      de Supabase, después de `0010`. Crea `traslados`/`traslado_lineas`
+      remotas (tampoco usa `_politicas_abiertas`, mismo motivo que 0010).
+      Sin esto: un traslado planeado en un dispositivo no le llega a
+      bodega en otro, y admin no ve traslados hechos en otro dispositivo.
 - [ ] **Nada de la sincronización se ha probado contra un Supabase real con
       dos dispositivos.** Todo verificado hasta ahora es `tsc`/tests/lint/
       bundle (y lectura del código). Antes de darla por buena: correr en

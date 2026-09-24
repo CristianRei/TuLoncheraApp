@@ -49,6 +49,20 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   });
 }
 
+console.log('\n== 0011 (traslados entre promotores) encima de 0010, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  await paso(`0011 aplica sin error (proyecto ${nombre})`, async () => { await db.exec(leer('0011_traslados.sql')); });
+  await paso(`existen traslados/traslado_lineas (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select table_name from information_schema.tables where table_schema='public'`);
+    const tablas = new Set(r.rows.map((x) => x.table_name));
+    for (const t of ['traslados', 'traslado_lineas']) assert.ok(tablas.has(t), `falta la tabla ${t}`);
+  });
+  await paso(`Realtime habilitado en traslados (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime'`);
+    assert.ok(r.rows.some((x) => x.tablename === 'traslados'), 'no está traslados');
+  });
+}
+
 for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   console.log(`\n== Comportamiento (proyecto ${nombre}) ==`);
   const U = () => crypto.randomUUID();
@@ -132,6 +146,23 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
       await db.query(`insert into logins_exitosos_pin (id, dispositivo_id, modo, ts_cliente) values ($1,$2,'PROMOTOR',$3)`, [U(), U(), ahora]);
       const admin = U();
       await db.query(`insert into desbloqueos_pin (id, dispositivo_id, modo, admin_id, ts_cliente) values ($1,$2,'PROMOTOR',$3,$4)`, [U(), U(), admin, ahora]);
+    } finally { await db.exec('reset role'); }
+  });
+  await paso('traslados: la línea toca la cabecera (subido_ts sube) y una ENTREGADA no retrocede', async () => {
+    await db.exec('set role authenticated');
+    try {
+      const t = U(), l = U();
+      await db.query(`insert into traslados (id, promotor_origen_id, promotor_origen_nombre, promotor_destino_id, promotor_destino_nombre, estado, creado_por, ts_cliente, dispositivo_id) values ($1,$2,'Pedro',$3,'Ana','ENTREGADO',$2,$4,$2)`, [t, U(), U(), ahora]);
+      const antes = (await db.query(`select subido_ts from traslados where id=$1`, [t])).rows[0].subido_ts;
+      await new Promise((r) => setTimeout(r, 15));
+      await db.query(`insert into traslado_lineas (id, traslado_id, producto_id, producto_sku, producto_nombre, cantidad_planeada, cantidad_entregada, estado, ts_cliente, dispositivo_id) values ($1,$2,$3,'TL001','X',10,10,'ENTREGADA',$4,$2)`, [l, t, U(), ahora]);
+      const despues = (await db.query(`select subido_ts from traslados where id=$1`, [t])).rows[0].subido_ts;
+      assert.ok(new Date(despues) > new Date(antes), 'subido_ts no cambió al llegar la línea');
+
+      await db.query(`update traslado_lineas set estado='PENDIENTE', cantidad_entregada=0 where id=$1`, [l]);
+      await db.query(`update traslados set estado='PLANEADO' where id=$1`, [t]);
+      assert.equal((await db.query(`select estado, cantidad_entregada from traslado_lineas where id=$1`, [l])).rows[0].estado, 'ENTREGADA');
+      assert.equal((await db.query(`select estado from traslados where id=$1`, [t])).rows[0].estado, 'ENTREGADO');
     } finally { await db.exec('reset role'); }
   });
   await paso('reintento tras subida exitosa: upsert sobre comprobantes_venta y arqueos_caja no falla por falta de UPDATE', async () => {

@@ -4,6 +4,7 @@ import type { UsuarioSesion } from '@/core/tipos';
 import {
   descargarCarguesNuevos,
   descargarMovimientosNuevos,
+  descargarTrasladosNuevos,
   descargarVentasNuevas,
 } from '@/db/bajadaOperativa';
 import { descargarCategoriasNuevas } from '@/db/categorias';
@@ -40,12 +41,17 @@ async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesio
   let cambios = 0;
   if (sesion.rol === 'ADMIN') {
     // Lo que otros dispositivos generan y el admin necesita ver: ventas de los
-    // promotores, cargues (y su estado de entrega) y movimientos de la bodega.
+    // promotores, cargues/traslados (y su estado de entrega) y movimientos de
+    // la bodega. Los movimientos TRASLADO (promotor↔promotor) no matchean el
+    // filtro BODEGA de abajo — admin los ve completos vía la tabla `traslados`,
+    // igual que ya pasa con cargues (nunca lee `movimientos` crudo para eso).
     cambios += await descargarVentasNuevas(db);
     cambios += await descargarCarguesNuevos(db);
+    cambios += await descargarTrasladosNuevos(db);
     cambios += await descargarMovimientosNuevos(db, { tipo: 'BODEGA' });
   } else if (sesion.rol === 'BODEGA') {
     cambios += await descargarCarguesNuevos(db);
+    cambios += await descargarTrasladosNuevos(db);
     cambios += await descargarMovimientosNuevos(db, { tipo: 'BODEGA' });
   } else if (sesion.rol === 'PROMOTOR') {
     cambios += await descargarMovimientosNuevos(db, { tipo: 'PROMOTOR', usuarioId: sesion.id });

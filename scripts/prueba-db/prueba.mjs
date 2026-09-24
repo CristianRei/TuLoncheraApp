@@ -180,7 +180,7 @@ await paso('DESPUES de la 0025, la tarea vieja de turnos se conserva', async () 
   assert.equal(f.n, 1);
 });
 await paso('DESPUES de la 0025, se puede encolar cualquier tabla', async () => {
-  for (const tabla of ['turnos','comprobantes_venta','ventas','movimientos','lotes','cargues','conteos','arqueos_caja','usuarios','productos','categorias','intentos_pin_fallidos','desbloqueos_pin','logins_exitosos_pin'])
+  for (const tabla of ['turnos','comprobantes_venta','ventas','movimientos','lotes','cargues','traslados','conteos','arqueos_caja','usuarios','productos','categorias','intentos_pin_fallidos','desbloqueos_pin','logins_exitosos_pin'])
     await encolarSync(dbA, { tabla, entidadId: 'x', tipoTarea: 'FILA' });
 });
 await dbA.runAsync('DELETE FROM _sync_pendiente');
@@ -211,6 +211,7 @@ await paso('admin planea cargue y bodega lo entrega (RECARGA)', async () => {
   const linea = await dbA.getFirstAsync('SELECT id FROM cargue_lineas LIMIT 1');
   await confirmarLineaCargue(dbA, { lineaId: linea.id, cantidadEntregada: 10, ejecutorId: bodega.id }, dispA);
 });
+
 await paso('PROMOTOR: registrar venta en efectivo (el flujo que fallaba en el celular)', async () => {
   venta = await registrarVenta(dbA, { promotorId: promotor.id, promotorNombre: promotor.nombre, items: [{ productoId: tl001.id, productoNombre: tl001.nombre, cantidad: 2, precioUnitario: 3000 }], metodoPago: 'EFECTIVO' }, dispA);
 });
@@ -595,6 +596,107 @@ console.log('\n== H. Tres dispositivos: admin (computador), bodega y promotor (c
     assert.equal(recibidos, 1);
     cancelar();
     assert.equal(nube.canales.length, base);
+  });
+}
+
+console.log('\n== I. Traslado entre promotores (sin pasar por bodega) ==');
+{
+  const dbI = crearDb();
+  await aplicar(dbI, migs);
+  const dispI = await getDispositivoId(dbI);
+  await sembrarUsuariosDePrueba(dbI, dispI);
+  const promotorOrigen = await dbI.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+  const bodegaI = await dbI.getFirstAsync(`SELECT id FROM usuarios WHERE pin='1234'`);
+  const adminI = await dbI.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+  const tl001I = await dbI.getFirstAsync(`SELECT id, nombre FROM productos WHERE sku='TL001'`);
+
+  const promotorDestino = { id: crypto.randomUUID(), nombre: 'Promotor Destino' };
+  await dbI.runAsync(
+    `INSERT INTO usuarios (id, nombre, rol, activo, ts_cliente, dispositivo_id) VALUES (?, ?, 'PROMOTOR', 1, ?, ?)`,
+    [promotorDestino.id, promotorDestino.nombre, new Date().toISOString(), dispI]
+  );
+
+  const { registrarEntradaBodega: registrarEntradaBodegaI } = await imp('db/entradasBodega.ts');
+  const { crearCargue: crearCargueI, confirmarLineaCargue: confirmarLineaCargueI } = await imp('db/cargues.ts');
+  const { iniciarTurno: iniciarTurnoI } = await imp('db/turnos.ts');
+  const { crearTraslado, confirmarLineaTraslado, resolverLineaEnRevisionTraslado } = await imp('db/traslados.ts');
+  const { obtenerSaldosPromotor: obtenerSaldosPromotorI } = await imp('db/inventario.ts');
+
+  await paso('preparar inventario del promotor origen (RECARGA real vía cargue)', async () => {
+    await iniciarTurnoI(dbI, { promotorId: promotorOrigen.id, selfieUri: 'file:///s.jpg', latitud: 1, longitud: 1 }, dispI);
+    await registrarEntradaBodegaI(dbI, { usuarioId: bodegaI.id, items: [{ productoId: tl001I.id, cantidad: 50 }] }, dispI);
+    await crearCargueI(dbI, { promotorId: promotorOrigen.id, promotorNombre: promotorOrigen.nombre, items: [{ productoId: tl001I.id, cantidad: 10 }], creadoPor: adminI.id }, dispI);
+    const linea = await dbI.getFirstAsync('SELECT id FROM cargue_lineas LIMIT 1');
+    await confirmarLineaCargueI(dbI, { lineaId: linea.id, cantidadEntregada: 10, ejecutorId: bodegaI.id }, dispI);
+  });
+
+  await paso('traslado entre promotores: baja el saldo del origen, sube el del destino, sin exigir turno del destino', async () => {
+    await crearTraslado(dbI, { promotorOrigenId: promotorOrigen.id, promotorOrigenNombre: promotorOrigen.nombre, promotorDestinoId: promotorDestino.id, promotorDestinoNombre: promotorDestino.nombre, items: [{ productoId: tl001I.id, cantidad: 4 }], creadoPor: adminI.id }, dispI);
+    const lineaTraslado = await dbI.getFirstAsync('SELECT id FROM traslado_lineas LIMIT 1');
+    // El promotor DESTINO nunca inició turno — a diferencia de un cargue
+    // normal, esto NO debe bloquear la confirmación (confirmado con el
+    // usuario: el traslado es una operación administrativa, como RETIRO_ADMIN).
+    await confirmarLineaTraslado(dbI, { lineaId: lineaTraslado.id, cantidadEntregada: 4, ejecutorId: bodegaI.id }, dispI);
+
+    const saldosOrigen = await obtenerSaldosPromotorI(dbI, promotorOrigen.id);
+    const saldosDestino = await obtenerSaldosPromotorI(dbI, promotorDestino.id);
+    assert.equal(saldosOrigen.get(tl001I.id), 6, `el origen debería quedar con 6, quedó con ${saldosOrigen.get(tl001I.id)}`);
+    assert.equal(saldosDestino.get(tl001I.id), 4, `el destino debería quedar con 4, quedó con ${saldosDestino.get(tl001I.id)}`);
+  });
+
+  await paso('traslado parcial queda REVISAR con motivo, y se resuelve después', async () => {
+    await crearTraslado(dbI, { promotorOrigenId: promotorOrigen.id, promotorOrigenNombre: promotorOrigen.nombre, promotorDestinoId: promotorDestino.id, promotorDestinoNombre: promotorDestino.nombre, items: [{ productoId: tl001I.id, cantidad: 2 }], creadoPor: adminI.id }, dispI);
+    const lineaParcial = await dbI.getFirstAsync(`SELECT id FROM traslado_lineas WHERE cantidad_planeada = 2`);
+    await confirmarLineaTraslado(dbI, { lineaId: lineaParcial.id, cantidadEntregada: 1, motivoRevision: 'Faltó una unidad', ejecutorId: bodegaI.id }, dispI);
+    let fila = await dbI.getFirstAsync('SELECT estado, motivo_revision FROM traslado_lineas WHERE id = ?', [lineaParcial.id]);
+    assert.equal(fila.estado, 'REVISAR');
+    assert.equal(fila.motivo_revision, 'Faltó una unidad');
+
+    await resolverLineaEnRevisionTraslado(dbI, { lineaId: lineaParcial.id, cantidadAdicional: 1, ejecutorId: adminI.id }, dispI);
+    fila = await dbI.getFirstAsync('SELECT estado, cantidad_entregada FROM traslado_lineas WHERE id = ?', [lineaParcial.id]);
+    assert.equal(fila.estado, 'ENTREGADA');
+    assert.equal(fila.cantidad_entregada, 2);
+  });
+
+  await paso('no se puede trasladar más de lo que tiene el promotor origen (StockInsuficienteError)', async () => {
+    let lanzo = false;
+    try {
+      await crearTraslado(dbI, { promotorOrigenId: promotorOrigen.id, promotorOrigenNombre: promotorOrigen.nombre, promotorDestinoId: promotorDestino.id, promotorDestinoNombre: promotorDestino.nombre, items: [{ productoId: tl001I.id, cantidad: 999 }], creadoPor: adminI.id }, dispI);
+    } catch (e) {
+      lanzo = e.name === 'StockInsuficienteError';
+    }
+    assert.ok(lanzo, 'debería lanzar StockInsuficienteError');
+  });
+
+  await paso('un traslado a sí mismo se rechaza', async () => {
+    let lanzo = false;
+    try {
+      await crearTraslado(dbI, { promotorOrigenId: promotorOrigen.id, promotorOrigenNombre: promotorOrigen.nombre, promotorDestinoId: promotorOrigen.id, promotorDestinoNombre: promotorOrigen.nombre, items: [{ productoId: tl001I.id, cantidad: 1 }], creadoPor: adminI.id }, dispI);
+    } catch {
+      lanzo = true;
+    }
+    assert.ok(lanzo, 'debería rechazar origen === destino');
+  });
+
+  await paso('traslados sincroniza: encolar + drenar contra Supabase falso coincide con el esquema SQL', async () => {
+    const { drenarColaSync: drenarColaSyncI } = await imp('sync/motor.ts');
+    const fakeI = crearFake();
+    globalThis.__db = dbI;
+    globalThis.__supabase = fakeI;
+    await drenarColaSyncI();
+    const pendientesI = await dbI.getAllAsync("SELECT tabla FROM _sync_pendiente WHERE completado_ts IS NULL AND tabla = 'traslados'");
+    assert.equal(pendientesI.length, 0, 'quedaron traslados sin subir');
+
+    const esquema = esquemaSupabase();
+    const cols = esquema.get('traslados');
+    const colsLineas = esquema.get('traslado_lineas');
+    assert.ok(cols, 'falta la tabla traslados en supabase/migraciones/*.sql');
+    assert.ok(colsLineas, 'falta la tabla traslado_lineas en supabase/migraciones/*.sql');
+    for (const { tabla, fila } of fakeI.capturas) {
+      if (tabla !== 'traslados' && tabla !== 'traslado_lineas') continue;
+      const columnas = tabla === 'traslados' ? cols : colsLineas;
+      for (const k of Object.keys(fila)) assert.ok(columnas.has(k), `${tabla}.${k} no existe en Supabase`);
+    }
   });
 }
 

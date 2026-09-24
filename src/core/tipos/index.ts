@@ -300,6 +300,33 @@ export interface CargueLinea {
   motivoRevision: string | null;
 }
 
+/**
+ * Traslado directo de inventario entre dos promotores (sin pasar por
+ * bodega), planeado por admin y confirmado por bodega línea por línea —
+ * mismo patrón que Cargue/CargueLinea, con `promotorId` dividido en origen
+ * y destino. Ver R4 (CLAUDE.md sección 3): tercera salida del inventario de
+ * un promotor, junto a VENTA y RETIRO_ADMIN.
+ */
+export interface Traslado {
+  id: string;
+  promotorOrigenId: string;
+  promotorOrigenNombre: string;
+  promotorDestinoId: string;
+  promotorDestinoNombre: string;
+  estado: EstadoCargue;
+  tsCliente: string;
+}
+
+export interface TrasladoLinea {
+  id: string;
+  productoId: string;
+  productoNombre: string;
+  cantidadPlaneada: number;
+  cantidadEntregada: number;
+  estado: EstadoLineaCargue;
+  motivoRevision: string | null;
+}
+
 export type TipoNotificacion = 'STOCK_BAJO' | 'LOTE_POR_VENCER' | 'CARGUE_REVISAR';
 export type NivelNotificacion = 'INFO' | 'ALERTA' | 'CRITICO';
 

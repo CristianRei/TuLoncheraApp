@@ -14,6 +14,7 @@ import { obtenerMovimientoParaSync } from '@/db/movimientos';
 import { obtenerPersona } from '@/db/personal';
 import { obtenerProducto } from '@/db/productos';
 import type { TablaSync } from '@/db/syncCola';
+import { obtenerTraslado } from '@/db/traslados';
 import { obtenerTurno } from '@/db/turnos';
 import { obtenerVenta } from '@/db/ventas';
 
@@ -258,6 +259,49 @@ async function subirFila(
             estado: linea.estado,
             motivo_revision: linea.motivoRevision,
             ts_cliente: cargue.tsCliente,
+            dispositivo_id: dispositivoId,
+          }))
+        );
+        if (errorLineas) throw errorLineas;
+      }
+      return;
+    }
+
+    case 'traslados': {
+      const resultado = await obtenerTraslado(db, tarea.entidad_id);
+      if (!resultado) return;
+      const { traslado, lineas } = resultado;
+      const creador = await db.getFirstAsync<{ creado_por: string }>(
+        'SELECT creado_por FROM traslados WHERE id = ?',
+        [traslado.id]
+      );
+      const { error } = await supabase.from('traslados').upsert({
+        id: traslado.id,
+        promotor_origen_id: traslado.promotorOrigenId,
+        promotor_origen_nombre: traslado.promotorOrigenNombre,
+        promotor_destino_id: traslado.promotorDestinoId,
+        promotor_destino_nombre: traslado.promotorDestinoNombre,
+        estado: traslado.estado,
+        creado_por: creador?.creado_por ?? null,
+        ts_cliente: traslado.tsCliente,
+        dispositivo_id: dispositivoId,
+      });
+      if (error) throw error;
+
+      if (lineas.length > 0) {
+        const skus = await skuPorProductoId(db, lineas.map((l) => l.productoId));
+        const { error: errorLineas } = await supabase.from('traslado_lineas').upsert(
+          lineas.map((linea) => ({
+            id: linea.id,
+            traslado_id: traslado.id,
+            producto_id: linea.productoId,
+            producto_sku: skus.get(linea.productoId) ?? null,
+            producto_nombre: linea.productoNombre,
+            cantidad_planeada: linea.cantidadPlaneada,
+            cantidad_entregada: linea.cantidadEntregada,
+            estado: linea.estado,
+            motivo_revision: linea.motivoRevision,
+            ts_cliente: traslado.tsCliente,
             dispositivo_id: dispositivoId,
           }))
         );
