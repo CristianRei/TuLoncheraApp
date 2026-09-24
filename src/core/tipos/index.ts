@@ -192,6 +192,9 @@ export interface Descuento {
   productoNombre: string | null;
   puntoId: string | null;
   puntoNombre: string | null;
+  /** NULL = aplica a cualquier promotor (migración 0031). */
+  promotorId: string | null;
+  promotorNombre: string | null;
   tipo: TipoDescuento;
   valor: number;
   desde: string;

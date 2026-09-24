@@ -53,7 +53,7 @@ function crearFake() {
   const canales = [];
   const t = (n) => { if (!tablas.has(n)) tablas.set(n, new Map()); return tablas.get(n); };
   const PADRES = { venta_items: ['ventas', 'venta_id'], cargue_lineas: ['cargues', 'cargue_id'], conteo_lineas: ['conteos', 'conteo_id'] };
-  const CON_SUBIDO = new Set(['ventas', 'movimientos', 'cargues', 'conteos', 'eventos']);
+  const CON_SUBIDO = new Set(['ventas', 'movimientos', 'cargues', 'conteos', 'eventos', 'descuentos']);
 
   function avisar(nombre) {
     for (const c of canales) for (const h of c.handlers) if (h.filtro.table === nombre) h.cb({ table: nombre });
@@ -181,7 +181,7 @@ await paso('DESPUES de la 0025, la tarea vieja de turnos se conserva', async () 
   assert.equal(f.n, 1);
 });
 await paso('DESPUES de la 0025, se puede encolar cualquier tabla', async () => {
-  for (const tabla of ['turnos','comprobantes_venta','ventas','movimientos','lotes','cargues','traslados','conteos','arqueos_caja','usuarios','productos','categorias','empresas','puntos','eventos','intentos_pin_fallidos','desbloqueos_pin','logins_exitosos_pin'])
+  for (const tabla of ['turnos','comprobantes_venta','ventas','movimientos','lotes','cargues','traslados','conteos','arqueos_caja','usuarios','productos','categorias','empresas','puntos','eventos','descuentos','intentos_pin_fallidos','desbloqueos_pin','logins_exitosos_pin'])
     await encolarSync(dbA, { tabla, entidadId: 'x', tipoTarea: 'FILA' });
 });
 await dbA.runAsync('DELETE FROM _sync_pendiente');
@@ -1066,6 +1066,156 @@ console.log('\n== K. Un promotor nunca queda con dos turnos abiertos a la vez ==
     globalThis.__supabase = { from: () => ({ select: () => ({ eq: () => ({ is: () => ({ gte: () => ({ order: () => ({ limit: () => ({ returns: async () => { throw new Error('Network request failed'); } }) }) }) }) }) }) }) };
     const turno = await iniciarTurnoJ(dbJ3, { promotorId: otroPromotor.id, selfieUri: 'file:///offline.jpg', latitud: 3, longitud: 3 }, dispJ3);
     assert.equal(turno.selfieUri, 'file:///offline.jpg');
+  });
+}
+
+console.log('\n== M. Descuentos por promotor: admin los asigna, el celular cobra con ellos ==');
+{
+  const { crearDescuento, desactivarDescuento, resolverPreciosConDescuento, descargarDescuentosNuevos, encolarDescuentosSinSubir } =
+    await imp('db/descuentos.ts');
+  const { crearEmpresa } = await imp('db/empresas.ts');
+  const { crearPunto } = await imp('db/puntos.ts');
+  const { crearEvento } = await imp('db/eventos.ts');
+  const { crearPersona } = await imp('db/personal.ts');
+  const { iniciarTurno } = await imp('db/turnos.ts');
+  const { registrarVenta } = await imp('db/ventas.ts');
+  const { sincronizarDatosRemotos } = await imp('sync/bajada.ts');
+  const { suscribirDatosActualizados } = await imp('sync/eventosDatos.ts');
+  const { fechaHoyBogota } = await imp('core/analitica/index.ts');
+
+  const nube = crearFake();
+  const dbAdm = crearDb(), dbPro = crearDb();
+  for (const d of [dbAdm, dbPro]) await aplicar(d, migs);
+  const dAdm = await getDispositivoId(dbAdm);
+  const dPro = 'd0d0d0d0-0000-4000-8000-000000000000';
+  // Como en `__DEV__`: cada dispositivo con SUS usuarios de prueba y SU copia
+  // del catálogo inicial — ids distintos para "Cristian" y para cada producto.
+  await sembrarUsuariosDePrueba(dbAdm, dAdm);
+  await sembrarUsuariosDePrueba(dbPro, dPro);
+  const adminM = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+  const cristianAdm = await dbAdm.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+  const cristianPro = await dbPro.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+  const prod = async (db, sku) => db.getFirstAsync(`SELECT id, precio FROM productos WHERE sku = ?`, [sku]);
+  const [tl001Adm, tl012Adm, tl001Pro, tl012Pro] = [await prod(dbAdm, 'TL001'), await prod(dbAdm, 'TL012'), await prod(dbPro, 'TL001'), await prod(dbPro, 'TL012')];
+  const conNube = (db, fn) => { globalThis.__db = db; globalThis.__supabase = nube; return fn(); };
+  const tareas = async () => (await dbAdm.getFirstAsync(`SELECT count(*) n FROM _sync_pendiente WHERE tabla = 'descuentos'`)).n;
+  const enHoras = (h) => new Date(Date.now() + h * 3600 * 1000).toISOString();
+  const precio = async (db, promotorId, producto, ahora) =>
+    (await resolverPreciosConDescuento(db, { promotorId, productos: [producto], ahora })).get(producto.id);
+
+  let diezCristian;
+  await paso('los productos iniciales tienen id distinto en cada dispositivo (por eso el descuento viaja con sku)', async () => {
+    assert.notEqual(tl012Adm.id, tl012Pro.id);
+  });
+  await paso('admin le asigna a Cristian 10 % en todo, de hace 1 h a dentro de 1 h: se encola en la misma transacción', async () => {
+    diezCristian = await crearDescuento(dbAdm, { promotorId: cristianAdm.id, tipo: 'PORCENTAJE', valor: 10, desde: enHoras(-1), hasta: enHoras(1), creadoPor: adminM.id }, dAdm);
+    assert.equal(await tareas(), 1);
+  });
+  await paso('el seed de demo (sincronizar: false) no encola; el respaldo del admin lo encola una sola vez', async () => {
+    await crearDescuento(dbAdm, { tipo: 'PORCENTAJE', valor: 5, desde: enHoras(-100), hasta: enHoras(-99), creadoPor: adminM.id }, dAdm, { sincronizar: false });
+    assert.equal(await tareas(), 1);
+    await encolarDescuentosSinSubir(dbAdm);
+    await encolarDescuentosSinSubir(dbAdm);
+    assert.equal(await tareas(), 2);
+  });
+  let laura;
+  await paso('solo Cristian lo tiene, y solo dentro del horario', async () => {
+    laura = await crearPersona(dbAdm, { nombre: 'Laura Gómez', rol: 'PROMOTOR', cedula: '52999111' }, dAdm, adminM.id);
+    const dentro = await precio(dbAdm, cristianAdm.id, tl001Adm);
+    assert.equal(dentro.precioFinal, Math.round(tl001Adm.precio * 0.9));
+    assert.deepEqual(dentro.descuento, { tipo: 'PORCENTAJE', valor: 10 });
+    assert.equal((await precio(dbAdm, laura.id, tl001Adm)).precioFinal, tl001Adm.precio);
+    assert.equal((await precio(dbAdm, cristianAdm.id, tl001Adm, enHoras(2))).precioFinal, tl001Adm.precio);
+    assert.equal((await precio(dbAdm, cristianAdm.id, tl001Adm, enHoras(-2))).precioFinal, tl001Adm.precio);
+  });
+  let punto;
+  await paso('si le aplican varios, gana el mayor (nunca se suman): 15 % en TL012 y 20 % en su punto de hoy', async () => {
+    await crearDescuento(dbAdm, { productoId: tl012Adm.id, tipo: 'PORCENTAJE', valor: 15, desde: enHoras(-1), hasta: enHoras(5), creadoPor: adminM.id }, dAdm);
+    assert.equal((await precio(dbAdm, cristianAdm.id, tl012Adm)).descuento.valor, 15);
+    assert.equal((await precio(dbAdm, cristianAdm.id, tl001Adm)).descuento.valor, 10);
+    const empresa = await crearEmpresa(dbAdm, { nombre: 'Falabella' }, dAdm);
+    punto = await crearPunto(dbAdm, { empresaId: empresa.id, nombre: 'Norte' }, dAdm);
+    await crearEvento(dbAdm, { empresaId: empresa.id, puntoId: punto.id, fecha: fechaHoyBogota(), promotorIds: [cristianAdm.id], creadoPor: adminM.id }, dAdm);
+    await crearDescuento(dbAdm, { puntoId: punto.id, tipo: 'PORCENTAJE', valor: 20, desde: enHoras(-1), hasta: enHoras(5), creadoPor: adminM.id }, dAdm);
+    assert.equal((await precio(dbAdm, cristianAdm.id, tl012Adm)).descuento.valor, 20);
+    assert.equal((await precio(dbAdm, laura.id, tl012Adm)).descuento.valor, 15); // Laura no está en ese punto hoy
+  });
+  await paso('registrarVenta guarda el precio que el promotor vio, sin volver a descontar', async () => {
+    const turno = await iniciarTurno(dbAdm, { promotorId: cristianAdm.id, selfieUri: 'file:///s.jpg', latitud: 1, longitud: 1 }, dAdm);
+    assert.ok(turno);
+    const final = (await precio(dbAdm, cristianAdm.id, tl012Adm)).precioFinal;
+    const venta = await registrarVenta(dbAdm, { promotorId: cristianAdm.id, promotorNombre: 'Cristian', items: [{ productoId: tl012Adm.id, productoNombre: 'TL012', cantidad: 2, precioUnitario: final }], metodoPago: 'EFECTIVO' }, dAdm);
+    assert.equal(venta.total, final * 2);
+    const item = await dbAdm.getFirstAsync('SELECT precio_unitario FROM venta_items WHERE venta_id = ?', [venta.id]);
+    assert.equal(item.precio_unitario, final);
+  });
+  await paso('subir: sin pendientes, columnas de 0015, y el producto viaja con su sku', async () => {
+    await conNube(dbAdm, () => drenarColaSync());
+    const pend = await dbAdm.getAllAsync("SELECT tabla, ultimo_error FROM _sync_pendiente WHERE completado_ts IS NULL");
+    assert.deepEqual(pend, []);
+    const cols = esquemaSupabase().get('descuentos');
+    assert.ok(cols, 'falta la tabla descuentos en supabase/migraciones');
+    const problemas = [];
+    for (const { fila } of nube.capturas.filter((c) => c.tabla === 'descuentos')) {
+      for (const k of Object.keys(fila)) if (!cols.has(k)) problemas.push(`descuentos.${k} no existe en Supabase`);
+      for (const [c, req] of cols) if (req && !(c in fila)) problemas.push(`descuentos.${c} es obligatoria y no se envía`);
+    }
+    assert.deepEqual([...new Set(problemas)], []);
+    const remotos = [...nube.tablas.get('descuentos').values()];
+    assert.equal(remotos.find((d) => d.valor === 15).producto_sku, 'TL012');
+    assert.equal(remotos.find((d) => d.id === diezCristian).promotor_nombre, 'Cristian');
+    assert.ok(nube.tablas.get('puntos').has(punto.id), 'el punto del descuento no subió');
+  });
+  let avisos = 0;
+  const dejarDeOir = suscribirDatosActualizados(() => { avisos++; });
+  const sesionPro = { id: cristianPro.id, nombre: 'Cristian', rol: 'PROMOTOR' };
+  await paso('el celular de Cristian recibe los descuentos y cobra con ellos (su Cristian, su TL012 por sku, su punto por el evento)', async () => {
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, sesionPro));
+    assert.ok(avisos > 0, 'no avisó a las pantallas');
+    assert.equal((await precio(dbPro, cristianPro.id, tl001Pro)).descuento.valor, 20);
+    assert.equal((await precio(dbPro, cristianPro.id, tl012Pro)).descuento.valor, 20);
+    assert.deepEqual(await dbPro.getAllAsync('PRAGMA foreign_key_check'), []);
+  });
+  await paso('admin desactiva el de su punto: el celular vuelve a 15 % en TL012 y 10 % en lo demás', async () => {
+    const veinte = await dbAdm.getFirstAsync('SELECT id FROM descuentos WHERE valor = 20');
+    await desactivarDescuento(dbAdm, veinte.id);
+    await conNube(dbAdm, () => drenarColaSync());
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, sesionPro));
+    assert.equal((await precio(dbPro, cristianPro.id, tl012Pro)).descuento.valor, 15);
+    assert.equal((await precio(dbPro, cristianPro.id, tl001Pro)).descuento.valor, 10);
+  });
+  await paso('descargar otra vez no cambia nada ni vuelve a avisar', async () => {
+    const antes = avisos;
+    const n = (await dbPro.getFirstAsync('SELECT count(*) n FROM descuentos')).n;
+    await conNube(dbPro, () => sincronizarDatosRemotos(dbPro, sesionPro));
+    assert.equal(avisos, antes);
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM descuentos')).n, n);
+  });
+  dejarDeOir();
+  await paso('un descuento de un producto que el celular no conoce se omite — nunca se vuelve "descuento en todo"', async () => {
+    const n = (await dbPro.getFirstAsync('SELECT count(*) n FROM descuentos')).n;
+    const ahoraIso = new Date().toISOString();
+    await nube.from('descuentos').upsert({ id: randomUUID(), producto_id: randomUUID(), producto_sku: 'NO-EXISTE', producto_nombre: 'Fantasma', punto_id: null, promotor_id: null, promotor_nombre: null, tipo: 'PORCENTAJE', valor: 90, desde: enHoras(-1), hasta: enHoras(1), activo: true, creado_por: adminM.id, creado_por_nombre: 'Admin', ts_cliente: ahoraIso, dispositivo_id: dAdm });
+    await conNube(dbPro, () => descargarDescuentosNuevos(dbPro));
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM descuentos')).n, n);
+    assert.notEqual((await precio(dbPro, cristianPro.id, tl001Pro)).descuento.valor, 90);
+  });
+  await paso('las fechas de Postgres ("...+00:00") se guardan en el formato local para compararse bien', async () => {
+    const id = randomUUID();
+    const desdePg = new Date(Date.now() - 3600 * 1000).toISOString().replace('Z', '+00:00').replace(/\.\d{3}/, '');
+    const hastaPg = new Date(Date.now() + 3600 * 1000).toISOString().replace('Z', '+00:00').replace(/\.\d{3}/, '');
+    await nube.from('descuentos').upsert({ id, producto_id: null, producto_sku: null, producto_nombre: null, punto_id: null, promotor_id: cristianAdm.id, promotor_nombre: 'Cristian', tipo: 'PORCENTAJE', valor: 12, desde: desdePg, hasta: hastaPg, activo: true, creado_por: adminM.id, creado_por_nombre: 'Admin', ts_cliente: desdePg, dispositivo_id: dAdm });
+    await conNube(dbPro, () => descargarDescuentosNuevos(dbPro));
+    const fila = await dbPro.getFirstAsync('SELECT desde, hasta FROM descuentos WHERE id = ?', [id]);
+    assert.match(fila.desde, /Z$/);
+    assert.equal((await precio(dbPro, cristianPro.id, tl001Pro)).descuento.valor, 12);
+  });
+  await paso('sin red: no lanza y no toca los descuentos locales', async () => {
+    const antes = (await dbPro.getFirstAsync('SELECT count(*) n FROM descuentos')).n;
+    globalThis.__db = dbPro;
+    globalThis.__supabase = { from: () => ({ select: () => ({ returns: async () => { throw new Error('Network request failed'); } }) }) };
+    assert.equal(await descargarDescuentosNuevos(dbPro), 0);
+    assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM descuentos')).n, antes);
   });
 }
 

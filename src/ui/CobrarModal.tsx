@@ -9,6 +9,8 @@ import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 interface Props {
   visible: boolean;
   total: number;
+  /** Cuánto se descontó — si es mayor que 0 se avisa bajo el total, que ya lo incluye. */
+  ahorro?: number;
   colorAcento: string;
   procesando: boolean;
   /** `comprobanteUri` solo viene con TRANSFERENCIA — la foto ya se tomó antes de llamar esto. */
@@ -34,6 +36,7 @@ const OPCIONES: { metodo: MetodoPago; etiqueta: string }[] = [
 export function CobrarModal({
   visible,
   total,
+  ahorro = 0,
   colorAcento,
   procesando,
   onSeleccionar,
@@ -72,6 +75,7 @@ export function CobrarModal({
       <View style={styles.tarjeta}>
         <Text style={styles.etiquetaTotal}>Total a cobrar</Text>
         <Text style={[styles.total, { color: colorAcento }]}>{formatearPesos(total)}</Text>
+        {ahorro > 0 && <Text style={styles.ahorro}>Incluye descuento de {formatearPesos(ahorro)}</Text>}
         {clienteNombre && <Text style={styles.cliente}>Facturando a: {clienteNombre}</Text>}
 
         <Text style={styles.pregunta}>¿Cómo va a pagar?</Text>
@@ -140,6 +144,12 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
     marginBottom: 8,
+  },
+  ahorro: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.positivo,
+    textAlign: 'center',
   },
   cliente: {
     fontSize: 12,

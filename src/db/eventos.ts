@@ -9,9 +9,8 @@ import { getSupabaseClient } from '@/sync/supabaseClient';
 
 import { registrarAccionAuditoria } from './auditoria';
 import { getDispositivoId } from './dispositivo';
-import { descargarEmpresasNuevas } from './empresas';
 import { resolverUsuarioLocalId } from './mapeoRemoto';
-import { descargarPuntosNuevos } from './puntos';
+import { asegurarPuntosLocales } from './puntos';
 import { encolarSync } from './syncCola';
 import { guardarCursor, leerCursor } from './syncEstado';
 
@@ -623,7 +622,7 @@ async function aplicarEventoRemoto(db: SQLiteDatabase, ev: FilaEventoRemota, dis
         ev.motivo_cancelacion,
         serie?.id ?? null,
         creadoPor,
-        ev.ts_cliente,
+        new Date(ev.ts_cliente).toISOString(),
         ev.dispositivo_id,
       ]
     );
@@ -658,7 +657,6 @@ export async function descargarEventosNuevos(db: SQLiteDatabase): Promise<number
     const dispositivoId = await getDispositivoId(db);
     let cursor = await leerCursor(db, 'eventos');
     let desde = cursor ? new Date(new Date(cursor).getTime() - SOLAPE_CURSOR_MS).toISOString() : null;
-    let puntosRefrescados = false;
 
     for (;;) {
       let consulta = supabase.from('eventos').select('*');
@@ -670,20 +668,7 @@ export async function descargarEventosNuevos(db: SQLiteDatabase): Promise<number
       if (error) throw error;
       if (!eventos || eventos.length === 0) break;
 
-      // Un punto creado justo ahora puede no haber llegado en la descarga de
-      // puntos de esta misma vuelta: se vuelve a pedir una vez antes de
-      // aplicar, para no saltarse el evento por la FK.
-      if (!puntosRefrescados) {
-        const puntoIds = [...new Set(eventos.map((e) => e.punto_id))];
-        const conocidos = await db.getAllAsync<{ id: string }>(
-          `SELECT id FROM puntos WHERE id IN (${puntoIds.map(() => '?').join(', ')})`,
-          puntoIds
-        );
-        if (conocidos.length < puntoIds.length) {
-          puntosRefrescados = true;
-          if (await descargarEmpresasNuevas(db)) await descargarPuntosNuevos(db);
-        }
-      }
+      await asegurarPuntosLocales(db, eventos.map((e) => e.punto_id));
 
       for (const ev of eventos) {
         try {

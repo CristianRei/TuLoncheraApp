@@ -14,32 +14,63 @@ import {
   View,
 } from 'react-native';
 
+import { fechaHoyBogota } from '@/core/analitica';
 import { parsearPesos } from '@/core/dinero';
-import type { Producto, Punto, TipoDescuento } from '@/core/tipos';
+import type { Producto, Punto, TipoDescuento, UsuarioSesion } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { crearDescuento } from '@/db/descuentos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { listarProductos } from '@/db/productos';
 import { listarPuntos } from '@/db/puntos';
+import { listarPromotores } from '@/db/usuarios';
 import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
-type PasoSelector = 'PRODUCTO' | 'PUNTO' | null;
+type PasoSelector = 'PRODUCTO' | 'PUNTO' | 'PROMOTOR' | null;
 
 function formatearFechaCorta(iso: string | null): string {
   if (!iso) return '';
   return new Date(`${iso}T00:00:00`).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function formatearFechaHora(iso: string): string {
+  return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit' });
+}
+
+/** "8", "8:00", "08:00", "16:30" → "HH:MM"; `null` si no es una hora válida. */
+function parsearHora(texto: string): string | null {
+  const m = texto.trim().match(/^(\d{1,2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  const horas = Number(m[1]);
+  const minutos = m[2] === undefined ? 0 : Number(m[2]);
+  if (horas > 23 || minutos > 59) return null;
+  return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')}`;
+}
+
+/**
+ * Instante (ISO) de una fecha + hora de Colombia (UTC-5 fijo, sin horario de
+ * verano) — así "8:00" es 8 am en Bogotá sin importar la zona del computador.
+ */
+function instanteBogota(fecha: string, hora: string, segundos: string): string {
+  return new Date(`${fecha}T${hora}:${segundos}-05:00`).toISOString();
+}
+
 export default function NuevoDescuento() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [puntos, setPuntos] = useState<Punto[]>([]);
+  const [promotores, setPromotores] = useState<UsuarioSesion[]>([]);
   const [producto, setProducto] = useState<Producto | null>(null);
   const [punto, setPunto] = useState<Punto | null>(null);
+  const [promotor, setPromotor] = useState<UsuarioSesion | null>(null);
+  // Horario continuo: empieza el primer día a `horaDesde` y termina el último
+  // día a `horaHasta` (decisión del negocio). "Todo el día" = 00:00 a 23:59.
+  const [conHorario, setConHorario] = useState(false);
+  const [horaDesdeTexto, setHoraDesdeTexto] = useState('08:00');
+  const [horaHastaTexto, setHoraHastaTexto] = useState('16:00');
   const [selector, setSelector] = useState<PasoSelector>(null);
   const [busqueda, setBusqueda] = useState('');
   const [tipo, setTipo] = useState<TipoDescuento>('PORCENTAJE');
@@ -53,9 +84,14 @@ export default function NuevoDescuento() {
   useEffect(() => {
     (async () => {
       const db = await getDb();
-      const [listaProductos, listaPuntos] = await Promise.all([listarProductos(db), listarPuntos(db)]);
+      const [listaProductos, listaPuntos, listaPromotores] = await Promise.all([
+        listarProductos(db),
+        listarPuntos(db),
+        listarPromotores(db),
+      ]);
       setProductos(listaProductos);
       setPuntos(listaPuntos);
+      setPromotores(listaPromotores);
       setCargando(false);
     })();
   }, []);
@@ -64,13 +100,23 @@ export default function NuevoDescuento() {
   const usuarioActual = usuario;
 
   const valor = tipo === 'PORCENTAJE' ? parseInt(valorTexto, 10) || 0 : parsearPesos(valorTexto);
-  const fechasValidas = !!desdeTexto && !!hastaTexto;
+  const horaDesde = conHorario ? parsearHora(horaDesdeTexto) : '00:00';
+  const horaHasta = conHorario ? parsearHora(horaHastaTexto) : '23:59';
+  const desdeIso = desdeTexto && horaDesde ? instanteBogota(desdeTexto, horaDesde, '00') : null;
+  const hastaIso = hastaTexto && horaHasta ? instanteBogota(hastaTexto, horaHasta, conHorario ? '00' : '59') : null;
+  const errorHorario =
+    conHorario && (!horaDesde || !horaHasta)
+      ? 'Escribe las horas como 8:00 o 16:30.'
+      : desdeIso && hastaIso && desdeIso >= hastaIso
+        ? 'La hora de fin debe ser después de la de inicio.'
+        : null;
+  const fechasValidas = !!desdeIso && !!hastaIso && !errorHorario;
   const valorValido =
     valor > 0 && (tipo === 'MONTO_FIJO' || (valor <= 100 && Number.isInteger(valor)));
   const puedeGuardar = valorValido && fechasValidas && !guardando;
 
   async function confirmar() {
-    if (!puedeGuardar || !desdeTexto || !hastaTexto) return;
+    if (!puedeGuardar || !desdeIso || !hastaIso) return;
     setGuardando(true);
     try {
       const db = await getDb();
@@ -80,10 +126,11 @@ export default function NuevoDescuento() {
         {
           productoId: producto?.id ?? null,
           puntoId: punto?.id ?? null,
+          promotorId: promotor?.id ?? null,
           tipo,
           valor,
-          desde: new Date(`${desdeTexto}T00:00:00`).toISOString(),
-          hasta: new Date(`${hastaTexto}T23:59:59`).toISOString(),
+          desde: desdeIso,
+          hasta: hastaIso,
           creadoPor: usuarioActual.id,
         },
         dispositivoId
@@ -142,6 +189,25 @@ export default function NuevoDescuento() {
             )}
           />
         </ContenedorAncho>
+      ) : selector === 'PROMOTOR' ? (
+        <ContenedorAncho anchoMaximo={600} llenarAlto>
+          <FlatList
+            data={promotores}
+            keyExtractor={(p) => p.id}
+            contentContainerStyle={styles.lista}
+            renderItem={({ item }) => (
+              <Pressable
+                style={styles.filaSelector}
+                onPress={() => {
+                  setPromotor(item);
+                  setSelector(null);
+                }}
+              >
+                <Text style={styles.filaSelectorTexto}>{item.nombre}</Text>
+              </Pressable>
+            )}
+          />
+        </ContenedorAncho>
       ) : selector === 'PUNTO' ? (
         <ContenedorAncho anchoMaximo={600} llenarAlto>
           <FlatList
@@ -167,6 +233,18 @@ export default function NuevoDescuento() {
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
           <ContenedorAncho anchoMaximo={600}>
             <View style={styles.form}>
+              <View style={styles.campo}>
+                <Text style={styles.etiqueta}>Promotor (vacío = todos)</Text>
+                <Pressable style={styles.selectorBoton} onPress={() => setSelector('PROMOTOR')}>
+                  <Text style={styles.selectorBotonTexto}>{promotor?.nombre ?? 'Todos los promotores'}</Text>
+                  {promotor && (
+                    <Pressable onPress={() => setPromotor(null)}>
+                      <Text style={styles.quitar}>Quitar</Text>
+                    </Pressable>
+                  )}
+                </Pressable>
+              </View>
+
               <View style={styles.campo}>
                 <Text style={styles.etiqueta}>Producto (vacío = todos)</Text>
                 <Pressable style={styles.selectorBoton} onPress={() => setSelector('PRODUCTO')}>
@@ -251,16 +329,84 @@ export default function NuevoDescuento() {
 
               <View style={styles.campo}>
                 <Text style={styles.etiqueta}>Vigencia</Text>
-                <Pressable style={styles.selectorBoton} onPress={() => setCalendarioVisible(true)}>
-                  <View style={styles.selectorBotonIconoTexto}>
-                    <Ionicons name="calendar-outline" size={16} color={COLORES_ADMIN.dorado} />
-                    <Text style={styles.selectorBotonTexto}>
-                      {desdeTexto && hastaTexto
-                        ? `${formatearFechaCorta(desdeTexto)} — ${formatearFechaCorta(hastaTexto)}`
-                        : 'Elegir fechas'}
+                <View style={styles.filaVigencia}>
+                  <Pressable style={[styles.selectorBoton, styles.selectorFechas]} onPress={() => setCalendarioVisible(true)}>
+                    <View style={styles.selectorBotonIconoTexto}>
+                      <Ionicons name="calendar-outline" size={16} color={COLORES_ADMIN.dorado} />
+                      <Text style={styles.selectorBotonTexto}>
+                        {desdeTexto && hastaTexto
+                          ? desdeTexto === hastaTexto
+                            ? formatearFechaCorta(desdeTexto)
+                            : `${formatearFechaCorta(desdeTexto)} — ${formatearFechaCorta(hastaTexto)}`
+                          : 'Elegir fechas'}
+                      </Text>
+                    </View>
+                  </Pressable>
+                  <Pressable
+                    style={styles.botonHoy}
+                    onPress={() => {
+                      const hoy = fechaHoyBogota();
+                      setDesdeTexto(hoy);
+                      setHastaTexto(hoy);
+                    }}
+                  >
+                    <Text style={styles.botonHoyTexto}>Solo hoy</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View style={styles.campo}>
+                <Text style={styles.etiqueta}>Horario</Text>
+                <View style={styles.tipoFila}>
+                  <Pressable
+                    style={[styles.tipoBoton, !conHorario && styles.tipoBotonActivo]}
+                    onPress={() => setConHorario(false)}
+                  >
+                    <Text style={[styles.tipoBotonTexto, !conHorario && styles.tipoBotonTextoActivo]}>Todo el día</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.tipoBoton, conHorario && styles.tipoBotonActivo]}
+                    onPress={() => setConHorario(true)}
+                  >
+                    <Text style={[styles.tipoBotonTexto, conHorario && styles.tipoBotonTextoActivo]}>
+                      Horario específico
                     </Text>
+                  </Pressable>
+                </View>
+                {conHorario && (
+                  <View style={styles.filaHoras}>
+                    <View style={styles.campoHora}>
+                      <Text style={styles.etiquetaHora}>Desde las</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={horaDesdeTexto}
+                        onChangeText={(t) => setHoraDesdeTexto(t.replace(/[^\d:]/g, '').slice(0, 5))}
+                        placeholder="08:00"
+                        placeholderTextColor={COLORES_ADMIN.textoSecundario}
+                        keyboardType="numbers-and-punctuation"
+                      />
+                    </View>
+                    <View style={styles.campoHora}>
+                      <Text style={styles.etiquetaHora}>Hasta las</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={horaHastaTexto}
+                        onChangeText={(t) => setHoraHastaTexto(t.replace(/[^\d:]/g, '').slice(0, 5))}
+                        placeholder="16:00"
+                        placeholderTextColor={COLORES_ADMIN.textoSecundario}
+                        keyboardType="numbers-and-punctuation"
+                      />
+                    </View>
                   </View>
-                </Pressable>
+                )}
+                {errorHorario ? (
+                  <Text style={styles.errorTexto}>{errorHorario}</Text>
+                ) : desdeIso && hastaIso ? (
+                  <Text style={styles.resumenVigencia}>
+                    Aplica desde el {formatearFechaHora(desdeIso)} hasta el {formatearFechaHora(hastaIso)}
+                    {conHorario && desdeTexto !== hastaTexto ? ', sin interrupción' : ''}
+                  </Text>
+                ) : null}
               </View>
 
               <Pressable
@@ -409,6 +555,50 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
+  },
+  filaVigencia: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  selectorFechas: {
+    flex: 1,
+  },
+  botonHoy: {
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.vino,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    justifyContent: 'center',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+  },
+  botonHoyTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
+  },
+  filaHoras: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  campoHora: {
+    flex: 1,
+    gap: 4,
+  },
+  etiquetaHora: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  errorTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.error,
+  },
+  resumenVigencia: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
   },
   selectorBotonIconoTexto: {
     flexDirection: 'row',

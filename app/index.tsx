@@ -10,6 +10,7 @@ import { rolesPermitidosPara, type ModoLogin } from '@/core/auth';
 import type { EstadoIntentosPin, Rol } from '@/core/tipos';
 import { mensajeDeError } from '@/core/errores';
 import { getDb } from '@/db/client';
+import { encolarDescuentosSinSubir } from '@/db/descuentos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { encolarEventosSinSubir } from '@/db/eventos';
 import {
@@ -237,8 +238,9 @@ export default function Login() {
           );
           encolarEmpresasYPuntosSinSubir(db)
             .then(() => encolarEventosSinSubir(db))
+            .then(() => encolarDescuentosSinSubir(db))
             .catch((errorEncolado) =>
-              console.log('[puntos] no se pudo encolar empresas/puntos/eventos existentes:', errorEncolado)
+              console.log('[puntos] no se pudo encolar empresas/puntos/eventos/descuentos existentes:', errorEncolado)
             );
         }
         // Nunca bloquea el login (R5): si falla (sin red, permiso negado,

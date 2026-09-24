@@ -4,12 +4,15 @@ import type { Cliente } from '@/core/tipos';
 import { formatearPesos } from '@/core/dinero';
 import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 
+import { etiquetaDescuento } from './etiquetaDescuento';
 import type { ItemCarrito } from './useCarrito';
 
 interface Props {
   visible: boolean;
   items: ItemCarrito[];
   total: number;
+  /** Cuánto se descontó en total — si es mayor que 0, se muestra sobre el total. */
+  ahorro?: number;
   colorAcento: string;
   onQuitarUno: (productoId: string) => void;
   onVaciar: () => void;
@@ -38,6 +41,7 @@ export function TicketModal({
   visible,
   items,
   total,
+  ahorro = 0,
   colorAcento,
   onQuitarUno,
   onVaciar,
@@ -104,6 +108,12 @@ export function TicketModal({
                       {item.cantidad} × {formatearPesos(item.precio)} ={' '}
                       {formatearPesos(item.precio * item.cantidad)}
                     </Text>
+                    {item.descuento && item.precioLista > item.precio && (
+                      <View style={styles.filaDescuento}>
+                        <Text style={styles.filaPrecioLista}>{formatearPesos(item.precioLista)} c/u</Text>
+                        <Text style={styles.filaDescuentoEtiqueta}>{etiquetaDescuento(item.descuento)}</Text>
+                      </View>
+                    )}
                   </View>
                   <Pressable
                     style={styles.botonQuitar}
@@ -122,6 +132,12 @@ export function TicketModal({
             </Pressable>
 
             <View style={styles.pie}>
+              {ahorro > 0 && (
+                <View style={styles.totalFila}>
+                  <Text style={styles.ahorroEtiqueta}>Descuento aplicado</Text>
+                  <Text style={styles.ahorroValor}>-{formatearPesos(ahorro)}</Text>
+                </View>
+              )}
               <View style={styles.totalFila}>
                 <Text style={styles.totalEtiqueta}>Total</Text>
                 <Text style={styles.totalValor}>{formatearPesos(total)}</Text>
@@ -244,6 +260,38 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
     color: COLORES.textoSecundario,
+  },
+  filaDescuento: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  filaPrecioLista: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    color: COLORES.textoSecundario,
+    textDecorationLine: 'line-through',
+  },
+  filaDescuentoEtiqueta: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    color: '#FFF',
+    backgroundColor: COLORES.positivo,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    overflow: 'hidden',
+  },
+  ahorroEtiqueta: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.positivo,
+  },
+  ahorroValor: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    color: COLORES.positivo,
   },
   botonQuitar: {
     width: 32,

@@ -8,6 +8,7 @@ import {
   descargarVentasNuevas,
 } from '@/db/bajadaOperativa';
 import { descargarCategoriasNuevas } from '@/db/categorias';
+import { descargarDescuentosNuevos } from '@/db/descuentos';
 import { descargarEmpresasNuevas } from '@/db/empresas';
 import { descargarEventosNuevos } from '@/db/eventos';
 import { descargarProductosNuevos } from '@/db/productos';
@@ -29,8 +30,9 @@ import { notificarDatosActualizados } from './eventosDatos';
  * (`null`, ej. sin red) los productos se omiten: sin ese mapa les borrarían
  * la categoría. Igual con empresas antes que puntos (`puntos.empresa_id` es
  * FK): si las empresas fallan, los puntos se omiten; y los eventos del
- * calendario van al final (referencian personal, empresa y punto). Devuelve
- * cuántos eventos cambiaron, para que el calendario abierto se refresque.
+ * calendario y los descuentos van al final (referencian personal, producto,
+ * empresa y punto). Devuelve cuántos eventos y descuentos cambiaron, para que
+ * el calendario y los precios abiertos se refresquen.
  *
  * Nunca se llama desde el dispositivo de admin: esa base local ya es la
  * fuente de verdad de todas estas tablas (él es quien las crea), y
@@ -43,7 +45,9 @@ export async function descargarDatosDeAdmin(db: SQLiteDatabase): Promise<number>
   if (categorias) await descargarProductosNuevos(db, categorias);
   if (!(await descargarEmpresasNuevas(db))) return 0;
   if (!(await descargarPuntosNuevos(db))) return 0;
-  return descargarEventosNuevos(db);
+  const eventos = await descargarEventosNuevos(db);
+  const descuentos = await descargarDescuentosNuevos(db);
+  return eventos + descuentos;
 }
 
 async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesion): Promise<number> {

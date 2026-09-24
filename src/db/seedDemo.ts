@@ -206,7 +206,8 @@ export async function sembrarDatosDemo(
       hasta: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       creadoPor: adminId,
     },
-    dispositivoId
+    dispositivoId,
+    { sincronizar: false }
   );
 
   // Stock de bodega suficiente para que cada promotor tenga saldo a vender.

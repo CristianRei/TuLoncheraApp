@@ -17,7 +17,7 @@ contraria (Supabase → celular) cubre **personal/PINs**, **catálogo**
 ventas de los promotores, bodega ve los cargues que admin planea, y lo que
 bodega entrega llega al inventario del promotor — con **Realtime** de Supabase
 para que se vea al instante, además de empresas, puntos y los **eventos del
-calendario** (con la meta diaria). Falta bajar descuentos (ver CLAUDE.md
+calendario** (con la meta diaria) y los **descuentos** (ver CLAUDE.md
 sección 11). Las notificaciones push las envía Supabase, no el celular del
 admin. Las pantallas abiertas se
 actualizan solas cuando llega algo nuevo. La sincronización de ventas ya se
@@ -27,7 +27,7 @@ Supabase las migraciones pendientes (ver [`supabase/README.md`](supabase/README.
 ## Qué está hecho y qué falta
 
 ### Fase 1 — Base local ✅ Completa
-- [x] SQLite + sistema de migraciones versionado (0001 a 0029)
+- [x] SQLite + sistema de migraciones versionado (0001 a 0031)
 - [x] Catálogo de productos (alta, edición, baja lógica) — 123 productos reales cargados
 - [x] Categorías de producto administrables (lista cerrada, sin duplicados por mayúsculas/espacios) y marca con autocompletado
 - [x] Usuarios y roles (promotor, conductor, bodega, admin) con login por PIN (4 dígitos derivados de cédula, 6 manuales para admin)
@@ -84,8 +84,8 @@ Supabase las migraciones pendientes (ver [`supabase/README.md`](supabase/README.
 - [x] Empresas y puntos bajan al celular del promotor/bodega
 - [x] Eventos del calendario (con meta diaria) bajan al celular del promotor,
   al instante (Realtime)
-- [ ] Bajar descuentos — todavía no llegan al celular del promotor. Ver
-  CLAUDE.md sección 11
+- [x] Descuentos bajan al celular del promotor (incluidos los asignados a un
+  promotor con horario, ej. "hoy de 8 am a 4 pm, 10 %")
 - [ ] Fotos de producto (dónde almacenarlas y cómo viajan)
 - [x] Mensajes push enviados desde Supabase (funciona también con el admin en
   el computador) — falta aplicar `0013` en Supabase y probarlo

@@ -208,6 +208,38 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   });
 }
 
+console.log('\n== 0015 (descuentos) encima de 0014, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  const U = () => crypto.randomUUID();
+  await paso(`0015 aplica sin error y es idempotente (proyecto ${nombre})`, async () => {
+    await db.exec(leer('0015_descuentos.sql'));
+    await db.exec(leer('0015_descuentos.sql'));
+  });
+  await paso(`como usuario autenticado: subir un descuento de promotor con horario y desactivarlo (upsert); subido_ts avanza (proyecto ${nombre})`, async () => {
+    await db.exec('set role authenticated');
+    try {
+      const id = U(), admin = U(), cristian = U(), disp = U();
+      const sql = `insert into descuentos (id, promotor_id, promotor_nombre, tipo, valor, desde, hasta, activo, creado_por, creado_por_nombre, ts_cliente, dispositivo_id)
+                   values ($1,$2,'Cristian','PORCENTAJE',10,'2026-09-24T13:00:00Z','2026-09-24T21:00:00Z',$3,$4,'Admin',now(),$5)
+                   on conflict (id) do update set activo = excluded.activo`;
+      await db.query(sql, [id, cristian, true, admin, disp]);
+      const antes = (await db.query(`select subido_ts from descuentos where id=$1`, [id])).rows[0].subido_ts;
+      await new Promise((r) => setTimeout(r, 15));
+      await db.query(sql, [id, cristian, false, admin, disp]);
+      const f = (await db.query(`select activo, valor, subido_ts from descuentos where id=$1`, [id])).rows[0];
+      assert.equal(f.activo, false);
+      assert.equal(Number(f.valor), 10);
+      assert.ok(new Date(f.subido_ts) > new Date(antes), 'subido_ts no cambió al desactivar');
+    } finally { await db.exec('reset role'); }
+  });
+  await paso(`Realtime habilitado en descuentos y sin política de DELETE (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime'`);
+    assert.ok(r.rows.some((x) => x.tablename === 'descuentos'), 'no está descuentos');
+    const d = await db.query(`select 1 from pg_policies where tablename = 'descuentos' and cmd = 'DELETE'`);
+    assert.equal(d.rows.length, 0);
+  });
+}
+
 for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   console.log(`\n== Comportamiento (proyecto ${nombre}) ==`);
   const U = () => crypto.randomUUID();
