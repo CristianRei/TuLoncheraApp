@@ -2,10 +2,6 @@ import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import type { AccionAuditoria, EntidadAuditoria, LogAuditoria } from '@/core/auditoria';
-import { mensajeDeError } from '@/core/errores';
-import type { ModoLogin } from '@/core/tipos';
-
-import { listarIntentosFallidosRemotos } from './intentosPinRemotos';
 
 const ETIQUETA_ENTIDAD: Record<EntidadAuditoria, string> = {
   PERSONA: 'Personal',
@@ -72,13 +68,15 @@ interface FiltrosLineaDeTiempo {
 
 /**
  * Línea de tiempo unificada: bitácora administrativa + movimientos de
- * inventario (ya inmutables, no se duplican aquí, solo se leen) +
- * intentos fallidos de PIN. `bitacora_auditoria`/`movimientos` comparten
- * `usuario_id`, así que se combinan con un UNION ALL real en SQL; los
- * intentos fallidos no tienen `usuario_id` (son anónimos por diseño,
- * dispositivo+modo) así que se traen aparte y se mezclan en memoria,
- * ordenando todo por `tsCliente` al final — mismo motivo por el que
- * src/db/intentosPin.ts nunca junta esa tabla con una que sí tenga usuario.
+ * inventario (ya inmutables, no se duplican aquí, solo se leen).
+ * `bitacora_auditoria`/`movimientos` comparten `usuario_id`, así que se
+ * combinan en memoria, ordenando por `tsCliente` al final. Los intentos
+ * fallidos de PIN NO viven aquí — el filtro "Accesos" de la pantalla usa
+ * `listarResumenIntentosPin`/`listarResumenIntentosPinRemoto`
+ * (src/db/intentosPin.ts/intentosPinRemotos.ts) directo: son estado
+ * AGREGADO por dispositivo+modo (fallos/bloqueado), no eventos sueltos —
+ * necesario para poder ofrecer el botón "Desbloquear" ahí mismo (antes
+ * vivía en el módulo separado "Seguridad de acceso", fusionado aquí).
  */
 export async function obtenerLineaDeTiempoAuditoria(
   db: SQLiteDatabase,
@@ -164,59 +162,5 @@ export async function obtenerLineaDeTiempoAuditoria(
     }));
   }
 
-  // Intentos fallidos de PIN: sin usuario_id (anónimos por diseño) y sin
-  // producto/categoría — solo relevantes cuando ninguno de esos filtros
-  // está activo (no se puede saber "quién" ni "qué producto" en un intento
-  // fallido, así que fijar cualquiera de esos filtros los excluye).
-  let logsAccesos: LogAuditoria[] = [];
-  if (
-    !filtros.entidad &&
-    !filtros.entidadId &&
-    !filtros.usuarioId &&
-    !filtros.productoId &&
-    !filtros.categoriaId
-  ) {
-    const filasAcceso = await db.getAllAsync<{
-      id: string;
-      dispositivoId: string;
-      modo: string;
-      tsCliente: string;
-    }>(
-      `SELECT id, dispositivo_id as dispositivoId, modo, ts_cliente as tsCliente
-       FROM intentos_pin_fallidos
-       WHERE ts_cliente >= ? AND ts_cliente <= ?
-       ORDER BY ts_cliente DESC`,
-      [filtros.desde, filtros.hasta]
-    );
-
-    // Local solo ve los fallos de ESTE dispositivo (el de admin) — un
-    // promotor bloqueado en su propio celular nunca escribió en este SQLite.
-    // Se completa con Supabase (best-effort, se degrada a solo local sin
-    // red), deduplicando por id contra lo que ya subió el propio drenado de
-    // la cola de este dispositivo (no debería pasar, admin no genera fallos
-    // de PROMOTOR/BODEGA en su propio celular, pero es inofensivo si pasara).
-    let filasAccesoRemoto: { id: string; dispositivoId: string; modo: ModoLogin; tsCliente: string }[] = [];
-    try {
-      filasAccesoRemoto = await listarIntentosFallidosRemotos(filtros.desde, filtros.hasta);
-    } catch (error) {
-      console.log('[auditoria] no se pudieron traer accesos remotos:', mensajeDeError(error));
-    }
-
-    const idsLocales = new Set(filasAcceso.map((f) => f.id));
-    const combinadas = [...filasAcceso, ...filasAccesoRemoto.filter((f) => !idsLocales.has(f.id))];
-
-    logsAccesos = combinadas.map((fila) => ({
-      id: fila.id,
-      origen: 'ACCESO_FALLIDO',
-      usuarioNombre: null,
-      dispositivoId: fila.dispositivoId,
-      descripcion: `Intento fallido de PIN (modo ${fila.modo})`,
-      detalles: null,
-      tsCliente: fila.tsCliente,
-    }));
-  }
-
-  return [...logsAuditoria, ...logsMovimientos, ...logsAccesos].sort((a, b) =>
-    b.tsCliente.localeCompare(a.tsCliente)
-  );
+  return [...logsAuditoria, ...logsMovimientos].sort((a, b) => b.tsCliente.localeCompare(a.tsCliente));
 }

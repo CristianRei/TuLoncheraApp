@@ -2,7 +2,7 @@ import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { calcularRangoHoyBogota } from '@/core/analitica';
-import type { NivelNotificacion, Notificacion, TipoNotificacion } from '@/core/tipos';
+import type { ModoLogin, NivelNotificacion, Notificacion, TipoNotificacion } from '@/core/tipos';
 
 import { listarProductosVendidos } from './analitica';
 import { listarLotesConVencimiento } from './lotes';
@@ -151,10 +151,28 @@ const detectorCargueRevisar: DetectorNotificacion = {
 const DETECTORES: DetectorNotificacion[] = [detectorStockBajo, detectorLotePorVencer, detectorCargueRevisar];
 
 /**
+ * Prefijos de clave de deduplicación que NO pasan por los detectores — son
+ * eventos puntuales (algo que ocurrió una vez, ej. un desbloqueo de PIN),
+ * no condiciones de negocio recalculables como stock bajo o un lote por
+ * vencer. `generarNotificaciones` nunca las marca `resuelta` (no hay
+ * "condición" que dejar de cumplirse): se insertan directo donde ocurre el
+ * evento (ver `registrarNotificacionDesbloqueo`) y solo se apagan cuando el
+ * admin las marca leídas.
+ */
+const PREFIJOS_EVENTO_PUNTUAL = ['DESBLOQUEO_PIN:'];
+
+function esEventoPuntual(claveDeduplicacion: string): boolean {
+  return PREFIJOS_EVENTO_PUNTUAL.some((prefijo) => claveDeduplicacion.startsWith(prefijo));
+}
+
+/**
  * Corre todos los detectores y sincroniza la tabla: las claves de
  * deduplicación que siguen activas no se duplican (upsert), las que ya no
  * aparecen entre las candidatas se marcan `resuelta=1` (la condición que
  * las generó ya no aplica — stock repuesto, lote vencido y retirado, etc.).
+ * Las notificaciones de evento puntual (ver `esEventoPuntual`) se saltan
+ * por completo aquí — nunca fueron candidatas de ningún detector, así que
+ * "no están entre las candidatas" no significa que ya no apliquen.
  * Se llama al entrar a /admin/notificaciones y al entrar al menú admin
  * (para el contador), igual patrón que ya usan los indicadores del menú.
  */
@@ -168,8 +186,9 @@ export async function generarNotificaciones(db: SQLiteDatabase, dispositivoId: s
   const clavesExistentes = new Set(existentes.map((fila) => fila.clave_deduplicacion));
 
   await db.withTransactionAsync(async () => {
-    // Resolver las que ya no aplican
+    // Resolver las que ya no aplican (nunca las de evento puntual)
     for (const fila of existentes) {
+      if (esEventoPuntual(fila.clave_deduplicacion)) continue;
       if (!clavesActivas.has(fila.clave_deduplicacion)) {
         await db.runAsync('UPDATE notificaciones SET resuelta = 1 WHERE id = ?', [fila.id]);
       }
@@ -207,6 +226,8 @@ interface FilaNotificacion {
   detalle: string;
   producto_id: string | null;
   lote_id: string | null;
+  dispositivo_id: string | null;
+  modo: ModoLogin | null;
   leida: number;
   ts_cliente: string;
 }
@@ -220,6 +241,8 @@ function aNotificacion(fila: FilaNotificacion): Notificacion {
     detalle: fila.detalle,
     productoId: fila.producto_id,
     loteId: fila.lote_id,
+    dispositivoId: fila.dispositivo_id,
+    modo: fila.modo,
     leida: fila.leida === 1,
     tsCliente: fila.ts_cliente,
   };
@@ -231,7 +254,7 @@ export async function listarNotificaciones(
 ): Promise<Notificacion[]> {
   const condicion = opciones.soloNoLeidas ? 'resuelta = 0 AND leida = 0' : 'resuelta = 0';
   const filas = await db.getAllAsync<FilaNotificacion>(
-    `SELECT id, tipo, nivel, titulo, detalle, producto_id, lote_id, leida, ts_cliente
+    `SELECT id, tipo, nivel, titulo, detalle, producto_id, lote_id, dispositivo_id, modo, leida, ts_cliente
      FROM notificaciones
      WHERE ${condicion}
      ORDER BY
@@ -239,6 +262,36 @@ export async function listarNotificaciones(
        ts_cliente DESC`
   );
   return filas.map(aNotificacion);
+}
+
+/**
+ * Notificación de evento puntual: un admin desbloqueó un dispositivo+modo
+ * — ver `esEventoPuntual`/`PREFIJOS_EVENTO_PUNTUAL` arriba. Se llama desde
+ * `registrarDesbloqueo` (src/db/intentosPin.ts) justo después de confirmar
+ * el desbloqueo real; nunca pasa por `DETECTORES`/`generarNotificaciones`
+ * y por eso nunca se auto-resuelve. `claveDeduplicacion` incluye el
+ * `tsCliente` del desbloqueo para que cada desbloqueo real genere su
+ * propia notificación, nunca colisione con uno anterior o futuro.
+ */
+export async function registrarNotificacionDesbloqueo(
+  db: SQLiteDatabase,
+  datos: { dispositivoId: string; modo: ModoLogin; adminNombre: string },
+  tsCliente: string
+): Promise<void> {
+  const nombreDispositivo = `Dispositivo ${datos.dispositivoId.slice(0, 8)}`;
+  await db.runAsync(
+    `INSERT INTO notificaciones (id, tipo, nivel, titulo, detalle, producto_id, lote_id, modo, clave_deduplicacion, leida, resuelta, ts_cliente, dispositivo_id)
+     VALUES (?, 'DESBLOQUEO_PIN', 'INFO', ?, ?, NULL, NULL, ?, ?, 0, 0, ?, ?)`,
+    [
+      Crypto.randomUUID(),
+      `Desbloqueo de PIN: ${nombreDispositivo}`,
+      `${datos.adminNombre} desbloqueó ${nombreDispositivo} (modo ${datos.modo}).`,
+      datos.modo,
+      `DESBLOQUEO_PIN:${datos.dispositivoId}:${datos.modo}:${tsCliente}`,
+      tsCliente,
+      datos.dispositivoId,
+    ]
+  );
 }
 
 export async function marcarNotificacionLeida(db: SQLiteDatabase, id: string): Promise<void> {

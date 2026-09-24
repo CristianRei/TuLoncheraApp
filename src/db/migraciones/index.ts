@@ -29,6 +29,7 @@ import { migracion0026SyncEstado } from './0026_sync_estado';
 import { migracion0027BitacoraAuditoria } from './0027_bitacora_auditoria';
 import { migracion0028DesbloqueosPinSinFk } from './0028_desbloqueos_pin_sin_fk';
 import { migracion0029Traslados } from './0029_traslados';
+import { migracion0030NotificacionesModo } from './0030_notificaciones_modo';
 
 export interface Migracion {
   version: number;
@@ -69,6 +70,7 @@ const migraciones: Migracion[] = [
   migracion0027BitacoraAuditoria,
   migracion0028DesbloqueosPinSinFk,
   migracion0029Traslados,
+  migracion0030NotificacionesModo,
 ];
 
 /**

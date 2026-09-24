@@ -6,6 +6,7 @@ import type { EstadoIntentosPin, ModoLogin, ResumenIntentosPin } from '@/core/ti
 import { mensajeDeError } from '@/core/errores';
 import { getSupabaseClient } from '@/sync/supabaseClient';
 
+import { registrarNotificacionDesbloqueo } from './notificaciones';
 import { encolarSync } from './syncCola';
 
 const CORTE_SIN_EVENTOS = '0000-00-00';
@@ -106,6 +107,22 @@ export async function registrarDesbloqueo(
   } catch (error) {
     console.log('[intentosPin] desbloqueo remoto inmediato falló, queda en la cola:', mensajeDeError(error));
   }
+
+  // Best-effort — un desbloqueo real ya ocurrió arriba, que la notificación
+  // falle (ej. por el CHECK viejo antes de correr la migración 0030) nunca
+  // debe deshacer ni bloquear el desbloqueo en sí.
+  try {
+    const admin = await db.getFirstAsync<{ nombre: string }>('SELECT nombre FROM usuarios WHERE id = ?', [
+      adminId,
+    ]);
+    await registrarNotificacionDesbloqueo(
+      db,
+      { dispositivoId, modo, adminNombre: admin?.nombre ?? 'Un administrador' },
+      tsCliente
+    );
+  } catch (error) {
+    console.log('[intentosPin] no se pudo registrar la notificación de desbloqueo:', mensajeDeError(error));
+  }
 }
 
 /**
@@ -146,7 +163,9 @@ export async function obtenerEstadoIntentos(
  * fallos, EN ESTE dispositivo únicamente (su propio SQLite local — solo
  * aporta algo si el propio admin generó fallos en su propio celular/PC). Ver
  * `src/db/intentosPinRemotos.ts` para la vista de TODOS los dispositivos vía
- * Supabase, que es la que de verdad importa en `app/admin/intentos-pin/`.
+ * Supabase, que es la que de verdad importa en `app/admin/auditoria/index.tsx`
+ * (filtro "Accesos" — fusionó lo que antes era el módulo separado
+ * "Seguridad de acceso").
  */
 export async function listarResumenIntentosPin(
   db: SQLiteDatabase

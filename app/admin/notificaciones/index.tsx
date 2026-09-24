@@ -1,34 +1,59 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { Notificacion, TipoNotificacion } from '@/core/tipos';
+import { formatearPesos } from '@/core/dinero';
+import { mensajeDeError } from '@/core/errores';
+import type { Notificacion, Persona, Rol, TipoNotificacion } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
+import { enviarMensajes } from '@/db/mensajes';
+import { obtenerProgresoMetasDiarias, type ProgresoMetaDiaria } from '@/db/metasDiarias';
 import {
   generarNotificaciones,
   listarNotificaciones,
   marcarNotificacionLeida,
 } from '@/db/notificaciones';
+import { listarPersonalCompleto } from '@/db/personal';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
-type Filtro = 'NO_LEIDAS' | 'TODAS';
+type Pestana = 'ALERTAS' | 'MENSAJES';
+
+type FiltroAlertas = 'NO_LEIDAS' | 'TODAS';
+
+type RolDestino = 'PROMOTOR' | 'BODEGA';
 
 const ETIQUETAS_TIPO: Record<TipoNotificacion, string> = {
   STOCK_BAJO: 'Stock bajo',
   LOTE_POR_VENCER: 'Vencimiento próximo',
   CARGUE_REVISAR: 'Cargue a revisar',
+  DESBLOQUEO_PIN: 'Desbloqueo de PIN',
 };
 
 const ICONOS_TIPO: Record<TipoNotificacion, keyof typeof Ionicons.glyphMap> = {
   STOCK_BAJO: 'cube-outline',
   LOTE_POR_VENCER: 'time-outline',
   CARGUE_REVISAR: 'alert-circle-outline',
+  DESBLOQUEO_PIN: 'lock-open-outline',
+};
+
+const ETIQUETA_ROL: Record<RolDestino, string> = {
+  PROMOTOR: 'Promotores',
+  BODEGA: 'Bodega',
 };
 
 function formatearFechaRelativa(iso: string): string {
@@ -41,40 +66,133 @@ function formatearFechaRelativa(iso: string): string {
   return `hace ${dias} día${dias === 1 ? '' : 's'}`;
 }
 
-export default function Notificaciones() {
+function mensajeProgreso(fila: ProgresoMetaDiaria): string {
+  if (fila.progresoPct >= 100) {
+    return `¡Felicitaciones! Ya cumpliste tu meta del día en ${fila.puntoNombre} (${formatearPesos(fila.totalVendidoHoy)} de ${formatearPesos(fila.metaDiaria)}).`;
+  }
+  return `Ánimo, vas en un ${fila.progresoPct}% de tu meta de hoy en ${fila.puntoNombre} (${formatearPesos(fila.totalVendidoHoy)} de ${formatearPesos(fila.metaDiaria)}) — ¡con esfuerzo la cumples!`;
+}
+
+export default function NotificacionesYMensajes() {
   const usuario = useRequiereSesion(['ADMIN']);
-  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
-  const [filtro, setFiltro] = useState<Filtro>('NO_LEIDAS');
-  const [cargando, setCargando] = useState(true);
   const insets = useSafeAreaInsets();
   const anchaPantalla = useEsPantallaAncha();
 
-  const cargar = useCallback(async () => {
-    setCargando(true);
+  const [pestana, setPestana] = useState<Pestana>('ALERTAS');
+
+  // --- Alertas del sistema ---
+  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
+  const [filtroAlertas, setFiltroAlertas] = useState<FiltroAlertas>('NO_LEIDAS');
+  const [cargandoAlertas, setCargandoAlertas] = useState(true);
+
+  // --- Mensajes a promotores/bodega ---
+  const [rol, setRol] = useState<RolDestino>('PROMOTOR');
+  const [personal, setPersonal] = useState<Persona[]>([]);
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [cuerpo, setCuerpo] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [aviso, setAviso] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  const [progresoMetas, setProgresoMetas] = useState<ProgresoMetaDiaria[]>([]);
+  const [cargandoMetas, setCargandoMetas] = useState(true);
+  const [enviandoMetas, setEnviandoMetas] = useState(false);
+
+  const cargarAlertas = useCallback(async () => {
+    setCargandoAlertas(true);
     try {
       const db = await getDb();
       const dispositivoId = await getDispositivoId(db);
       await generarNotificaciones(db, dispositivoId);
       setNotificaciones(await listarNotificaciones(db));
     } finally {
-      setCargando(false);
+      setCargandoAlertas(false);
+    }
+  }, []);
+
+  const cargarPersonal = useCallback(async (rolActual: RolDestino) => {
+    const db = await getDb();
+    const lista = await listarPersonalCompleto(db, { rol: rolActual as Rol });
+    setPersonal(lista);
+    setSeleccionados(new Set(lista.map((p) => p.id))); // todos marcados por defecto
+  }, []);
+
+  const cargarMetas = useCallback(async () => {
+    setCargandoMetas(true);
+    try {
+      const db = await getDb();
+      setProgresoMetas(await obtenerProgresoMetasDiarias(db));
+    } finally {
+      setCargandoMetas(false);
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      cargar();
-    }, [cargar])
+      cargarAlertas();
+      cargarPersonal(rol);
+      cargarMetas();
+    }, [cargarAlertas, cargarPersonal, cargarMetas, rol])
   );
 
   if (!usuario) return null;
 
-  const filtradas = notificaciones.filter((n) => (filtro === 'NO_LEIDAS' ? !n.leida : true));
+  const alertasFiltradas = notificaciones.filter((n) => (filtroAlertas === 'NO_LEIDAS' ? !n.leida : true));
+  const noLeidas = notificaciones.filter((n) => !n.leida).length;
 
   async function marcarLeida(id: string) {
     const db = await getDb();
     await marcarNotificacionLeida(db, id);
     setNotificaciones((actual) => actual.map((n) => (n.id === id ? { ...n, leida: true } : n)));
+  }
+
+  function alternarSeleccion(id: string) {
+    setSeleccionados((actual) => {
+      const nuevo = new Set(actual);
+      if (nuevo.has(id)) nuevo.delete(id);
+      else nuevo.add(id);
+      return nuevo;
+    });
+  }
+
+  async function enviar() {
+    if (cuerpo.trim().length === 0 || seleccionados.size === 0 || !usuario) return;
+    setEnviando(true);
+    setAviso(null);
+    try {
+      const destinatarios = personal
+        .filter((p) => seleccionados.has(p.id))
+        .map((p) => ({ id: p.id, nombre: p.nombre }));
+      await enviarMensajes(
+        [{ cuerpo: cuerpo.trim(), tipo: 'MANUAL', destinatarios }],
+        { id: usuario.id, nombre: usuario.nombre }
+      );
+      setCuerpo('');
+      setAviso({ tipo: 'ok', texto: `Mensaje enviado a ${destinatarios.length} persona(s).` });
+    } catch (error) {
+      setAviso({ tipo: 'error', texto: mensajeDeError(error) });
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function enviarProgresoDeMetas() {
+    if (!usuario || progresoMetas.length === 0) return;
+    setEnviandoMetas(true);
+    setAviso(null);
+    try {
+      await enviarMensajes(
+        progresoMetas.map((fila) => ({
+          cuerpo: mensajeProgreso(fila),
+          tipo: 'META_PROGRESO',
+          destinatarios: [{ id: fila.promotorId, nombre: fila.promotorNombre }],
+        })),
+        { id: usuario.id, nombre: usuario.nombre }
+      );
+      setAviso({ tipo: 'ok', texto: `Progreso enviado a ${progresoMetas.length} promotor(es).` });
+    } catch (error) {
+      setAviso({ tipo: 'error', texto: mensajeDeError(error) });
+    } finally {
+      setEnviandoMetas(false);
+    }
   }
 
   return (
@@ -100,78 +218,226 @@ export default function Notificaciones() {
       </View>
 
       <ContenedorAncho anchoMaximo={720}>
-        <View style={styles.tabs}>
+        <View style={styles.pestanas}>
           <Pressable
-            style={[styles.tab, filtro === 'NO_LEIDAS' && styles.tabActivo]}
-            onPress={() => setFiltro('NO_LEIDAS')}
+            style={[styles.pestana, pestana === 'ALERTAS' && styles.pestanaActiva]}
+            onPress={() => setPestana('ALERTAS')}
           >
-            <Text style={[styles.tabTexto, filtro === 'NO_LEIDAS' && styles.tabTextoActivo]}>
-              No leídas
+            <Text style={[styles.pestanaTexto, pestana === 'ALERTAS' && styles.pestanaTextoActiva]}>
+              Alertas del sistema{noLeidas > 0 ? ` (${noLeidas})` : ''}
             </Text>
           </Pressable>
           <Pressable
-            style={[styles.tab, filtro === 'TODAS' && styles.tabActivo]}
-            onPress={() => setFiltro('TODAS')}
+            style={[styles.pestana, pestana === 'MENSAJES' && styles.pestanaActiva]}
+            onPress={() => setPestana('MENSAJES')}
           >
-            <Text style={[styles.tabTexto, filtro === 'TODAS' && styles.tabTextoActivo]}>Todas</Text>
+            <Text style={[styles.pestanaTexto, pestana === 'MENSAJES' && styles.pestanaTextoActiva]}>
+              Mensajes
+            </Text>
           </Pressable>
         </View>
       </ContenedorAncho>
 
-      {cargando ? (
-        <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
-        </View>
-      ) : filtradas.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>
-            {filtro === 'NO_LEIDAS' ? 'No hay notificaciones sin leer.' : 'No hay notificaciones.'}
-          </Text>
-        </View>
-      ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
-          <FlatList
-            data={filtradas}
-            keyExtractor={(n) => n.id}
-            contentContainerStyle={styles.lista}
-            renderItem={({ item }) => (
-              <View style={[styles.fila, !item.leida && styles.filaNoLeida]}>
-                <View
-                  style={[
-                    styles.icono,
-                    item.nivel === 'CRITICO' && styles.iconoCritico,
-                    item.nivel === 'ALERTA' && styles.iconoAlerta,
-                  ]}
-                >
-                  <Ionicons
-                    name={ICONOS_TIPO[item.tipo]}
-                    size={18}
-                    color={
-                      item.nivel === 'CRITICO'
-                        ? COLORES_ADMIN.error
-                        : item.nivel === 'ALERTA'
-                          ? COLORES_ADMIN.vino
-                          : COLORES_ADMIN.textoSecundario
-                    }
-                  />
-                </View>
-                <View style={styles.filaTexto}>
-                  <View style={styles.filaEncabezado}>
-                    <Text style={styles.filaTipo}>{ETIQUETAS_TIPO[item.tipo]}</Text>
-                    <Text style={styles.filaTiempo}>{formatearFechaRelativa(item.tsCliente)}</Text>
+      {pestana === 'ALERTAS' ? (
+        <>
+          <ContenedorAncho anchoMaximo={720}>
+            <View style={styles.tabsFiltro}>
+              <Pressable
+                style={[styles.tabFiltro, filtroAlertas === 'NO_LEIDAS' && styles.tabFiltroActivo]}
+                onPress={() => setFiltroAlertas('NO_LEIDAS')}
+              >
+                <Text style={[styles.tabFiltroTexto, filtroAlertas === 'NO_LEIDAS' && styles.tabFiltroTextoActivo]}>
+                  No leídas
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.tabFiltro, filtroAlertas === 'TODAS' && styles.tabFiltroActivo]}
+                onPress={() => setFiltroAlertas('TODAS')}
+              >
+                <Text style={[styles.tabFiltroTexto, filtroAlertas === 'TODAS' && styles.tabFiltroTextoActivo]}>
+                  Todas
+                </Text>
+              </Pressable>
+            </View>
+          </ContenedorAncho>
+
+          {cargandoAlertas ? (
+            <View style={styles.centrado}>
+              <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
+            </View>
+          ) : alertasFiltradas.length === 0 ? (
+            <View style={styles.centrado}>
+              <Text style={styles.vacio}>
+                {filtroAlertas === 'NO_LEIDAS' ? 'No hay notificaciones sin leer.' : 'No hay notificaciones.'}
+              </Text>
+            </View>
+          ) : (
+            <ContenedorAncho anchoMaximo={720} llenarAlto>
+              <FlatList
+                data={alertasFiltradas}
+                keyExtractor={(n) => n.id}
+                contentContainerStyle={styles.lista}
+                renderItem={({ item }) => (
+                  <View style={[styles.fila, !item.leida && styles.filaNoLeida]}>
+                    <View
+                      style={[
+                        styles.icono,
+                        item.nivel === 'CRITICO' && styles.iconoCritico,
+                        item.nivel === 'ALERTA' && styles.iconoAlerta,
+                      ]}
+                    >
+                      <Ionicons
+                        name={ICONOS_TIPO[item.tipo]}
+                        size={18}
+                        color={
+                          item.nivel === 'CRITICO'
+                            ? COLORES_ADMIN.error
+                            : item.nivel === 'ALERTA'
+                              ? COLORES_ADMIN.vino
+                              : COLORES_ADMIN.textoSecundario
+                        }
+                      />
+                    </View>
+                    <View style={styles.filaTexto}>
+                      <View style={styles.filaEncabezado}>
+                        <Text style={styles.filaTipo}>{ETIQUETAS_TIPO[item.tipo]}</Text>
+                        <Text style={styles.filaTiempo}>{formatearFechaRelativa(item.tsCliente)}</Text>
+                      </View>
+                      <Text style={styles.filaTitulo}>{item.titulo}</Text>
+                      <Text style={styles.filaDetalle}>{item.detalle}</Text>
+                    </View>
+                    {!item.leida && (
+                      <Pressable style={styles.botonLeida} onPress={() => marcarLeida(item.id)}>
+                        <Text style={styles.botonLeidaTexto}>Marcar leída</Text>
+                      </Pressable>
+                    )}
                   </View>
-                  <Text style={styles.filaTitulo}>{item.titulo}</Text>
-                  <Text style={styles.filaDetalle}>{item.detalle}</Text>
-                </View>
-                {!item.leida && (
-                  <Pressable style={styles.botonLeida} onPress={() => marcarLeida(item.id)}>
-                    <Text style={styles.botonLeidaTexto}>Marcar leída</Text>
-                  </Pressable>
                 )}
+              />
+            </ContenedorAncho>
+          )}
+        </>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll}>
+          <ContenedorAncho anchoMaximo={720} style={{ gap: 16 }}>
+            {aviso && (
+              <View style={[styles.aviso, aviso.tipo === 'error' && styles.avisoError]}>
+                <Text style={[styles.avisoTexto, aviso.tipo === 'error' && styles.avisoTextoError]}>
+                  {aviso.texto}
+                </Text>
               </View>
             )}
-          />
-        </ContenedorAncho>
+
+            <View style={styles.tarjeta}>
+              <Text style={styles.tarjetaTitulo}>Progreso de la meta del día</Text>
+              <Text style={styles.tarjetaDescripcion}>
+                Envía a cada promotor con meta asignada hoy un mensaje personalizado con su % de avance.
+              </Text>
+              {cargandoMetas ? (
+                <ActivityIndicator color={COLORES_ADMIN.vino} style={{ marginTop: 8 }} />
+              ) : progresoMetas.length === 0 ? (
+                <Text style={styles.vacio}>Ningún promotor tiene una meta diaria asignada hoy (Calendario de eventos).</Text>
+              ) : (
+                <>
+                  {progresoMetas.map((fila) => (
+                    <View key={`${fila.eventoId}-${fila.promotorId}`} style={styles.filaProgreso}>
+                      <Text style={styles.filaProgresoNombre}>{fila.promotorNombre}</Text>
+                      <Text style={styles.filaProgresoPct}>{fila.progresoPct}%</Text>
+                    </View>
+                  ))}
+                  <Pressable
+                    style={[styles.boton, enviandoMetas && styles.botonDeshabilitado]}
+                    disabled={enviandoMetas}
+                    onPress={enviarProgresoDeMetas}
+                  >
+                    {enviandoMetas ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.botonTexto}>Enviar progreso a {progresoMetas.length} promotor(es)</Text>
+                    )}
+                  </Pressable>
+                </>
+              )}
+            </View>
+
+            <View style={styles.tarjeta}>
+              <Text style={styles.tarjetaTitulo}>Enviar un mensaje</Text>
+              <Text style={styles.tarjetaDescripcion}>
+                Llega como notificación push al celular de cada persona seleccionada.
+              </Text>
+
+              <View style={styles.tabsRol}>
+                {(['PROMOTOR', 'BODEGA'] as RolDestino[]).map((opcion) => (
+                  <Pressable
+                    key={opcion}
+                    style={[styles.chipRol, rol === opcion && styles.chipRolActivo]}
+                    onPress={() => setRol(opcion)}
+                  >
+                    <Text style={[styles.chipRolTexto, rol === opcion && styles.chipRolTextoActivo]}>
+                      {ETIQUETA_ROL[opcion]}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <View style={styles.filaSeleccionTodos}>
+                <Text style={styles.etiquetaSeleccion}>
+                  {seleccionados.size} de {personal.length} seleccionados
+                </Text>
+                <Pressable onPress={() => setSeleccionados(new Set(personal.map((p) => p.id)))}>
+                  <Text style={styles.enlaceSeleccion}>Todos</Text>
+                </Pressable>
+                <Pressable onPress={() => setSeleccionados(new Set())}>
+                  <Text style={styles.enlaceSeleccion}>Ninguno</Text>
+                </Pressable>
+              </View>
+
+              {personal.length === 0 ? (
+                <Text style={styles.vacio}>No hay {ETIQUETA_ROL[rol].toLowerCase()} activos.</Text>
+              ) : (
+                personal.map((p) => {
+                  const marcado = seleccionados.has(p.id);
+                  return (
+                    <Pressable key={p.id} style={styles.filaCheckbox} onPress={() => alternarSeleccion(p.id)}>
+                      <View style={[styles.checkbox, marcado && styles.checkboxMarcado]}>
+                        {marcado && <Text style={styles.checkboxMarca}>✓</Text>}
+                      </View>
+                      <Text style={styles.filaCheckboxTexto}>{p.nombre}</Text>
+                    </Pressable>
+                  );
+                })
+              )}
+
+              <TextInput
+                style={styles.textoMensaje}
+                placeholder="Escribe el mensaje..."
+                placeholderTextColor="#999"
+                value={cuerpo}
+                onChangeText={setCuerpo}
+                multiline
+              />
+
+              <Pressable
+                style={[
+                  styles.boton,
+                  (enviando || cuerpo.trim().length === 0 || seleccionados.size === 0) && styles.botonDeshabilitado,
+                ]}
+                disabled={enviando || cuerpo.trim().length === 0 || seleccionados.size === 0}
+                onPress={enviar}
+              >
+                {enviando ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.botonTexto}>Enviar mensaje</Text>
+                )}
+              </Pressable>
+            </View>
+
+            <Text style={styles.notaConductor}>
+              Nota: Conductor no tiene todavía una pantalla propia en la app, así que no puede recibir mensajes por ahora.
+            </Text>
+          </ContenedorAncho>
+        </ScrollView>
       )}
     </View>
   );
@@ -221,13 +487,40 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
     color: COLORES_ADMIN.vino,
   },
-  tabs: {
+  pestanas: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 20,
     paddingTop: 16,
   },
-  tab: {
+  pestana: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    alignItems: 'center',
+  },
+  pestanaActiva: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderColor: COLORES_ADMIN.vino,
+  },
+  pestanaTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  pestanaTextoActiva: {
+    color: '#FFFFFF',
+  },
+  tabsFiltro: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  tabFiltro: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -235,16 +528,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
   },
-  tabActivo: {
+  tabFiltroActivo: {
     backgroundColor: COLORES_ADMIN.vino,
     borderColor: COLORES_ADMIN.vino,
   },
-  tabTexto: {
+  tabFiltroTexto: {
     fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.textoSecundario,
   },
-  tabTextoActivo: {
+  tabFiltroTextoActivo: {
     color: '#FFFFFF',
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
@@ -336,5 +629,169 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
+  },
+  scroll: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  aviso: {
+    backgroundColor: '#EAF5EA',
+    borderWidth: 1,
+    borderColor: '#C3E3C3',
+    borderRadius: 10,
+    padding: 12,
+  },
+  avisoError: {
+    backgroundColor: '#FBEAEA',
+    borderColor: '#E3B3B3',
+  },
+  avisoTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#2E6B2E',
+  },
+  avisoTextoError: {
+    color: COLORES_ADMIN.error,
+  },
+  tarjeta: {
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: 16,
+    gap: 10,
+  },
+  tarjetaTitulo: {
+    fontSize: 16,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.texto,
+  },
+  tarjetaDescripcion: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  filaProgreso: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORES_ADMIN.bordeSuave,
+  },
+  filaProgresoNombre: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.texto,
+  },
+  filaProgresoPct: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
+  },
+  tabsRol: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  chipRol: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 18,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+  },
+  chipRolActivo: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderColor: COLORES_ADMIN.vino,
+  },
+  chipRolTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  chipRolTextoActivo: {
+    color: '#FFFFFF',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  filaSeleccionTodos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 4,
+  },
+  etiquetaSeleccion: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    flex: 1,
+  },
+  enlaceSeleccion: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
+    textDecorationLine: 'underline',
+  },
+  filaCheckbox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: COLORES_ADMIN.borde,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxMarcado: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderColor: COLORES_ADMIN.vino,
+  },
+  checkboxMarca: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  filaCheckboxTexto: {
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.texto,
+  },
+  textoMensaje: {
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    minHeight: 80,
+    textAlignVertical: 'top',
+    marginTop: 6,
+    color: COLORES_ADMIN.texto,
+  },
+  boton: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  botonDeshabilitado: {
+    opacity: 0.5,
+  },
+  botonTexto: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  notaConductor: {
+    fontSize: 11,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
 });

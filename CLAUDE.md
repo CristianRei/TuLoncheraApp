@@ -240,10 +240,9 @@ tulonchera/
       descuentos/                          ← crear / ver descuentos por producto y/o punto
       dashboard/                            ← KPIs, gráfico circular, ranking de productos, exportar informe, metas del mes + proyección
       analisis/                              ← repetibilidad por punto, rendimiento por promotor, cruces punto×promotor×producto
-      notificaciones/                        ← alertas de negocio: stock bajo, lote por vencer, cargue a revisar (NO son los mensajes push — ver "mensajes/" abajo)
-      intentos-pin/                           ← dispositivos bloqueados e intentos fallidos de PIN
+      notificaciones/                        ← UNA pantalla, dos pestañas (fusión solo visual, UX/UI — las tablas siguen separadas): "Alertas del sistema" (stock bajo, lote por vencer, cargue a revisar, desbloqueo de PIN) y "Mensajes" (admin envía push a Promotor/Bodega, manual o "progreso de meta del día"); ver sección 10 "Notificaciones y mensajes"
       personal/                                ← admin contrata (rol + PIN autogenerado o manual para Admin), edita, cambia de rol y da de baja/elimina personal (los 4 roles)
-      mensajes/                                 ← admin envía notificaciones push a Promotor/Bodega (manual o "progreso de meta del día"); ver sección 10 "Mensajes"
+      auditoria/                                ← línea de tiempo unificada (personal/clientes/categorías/eventos + movimientos) y, en el filtro "Accesos", el estado agregado por dispositivo+modo con botón Desbloquear — fusiona lo que antes era el módulo separado "Seguridad de acceso" (ver sección 10 "Seguridad de PIN")
       sync/                                      ← diagnóstico de la cola de sincronización (sin entrada en el menú)
     bodega/
       _layout.tsx                ← mantiene la base local al día con Supabase mientras hay sesión de bodega (cargues, movimientos) — ver src/ui/useSincronizacionEnVivo.ts
@@ -267,7 +266,7 @@ tulonchera/
       seguridadPin/                      ← backoff/bloqueo de PIN
       tipos/                                ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0029, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`)
+      migraciones/                ← 0001 a 0030, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`; la 0030 agrega DESBLOQUEO_PIN + columna `modo` a `notificaciones`)
       arqueos.ts                   ← registra y lee el arqueo de caja de un turno (una fila por turno)
       arqueosRemotos.ts             ← lectura desde Supabase, para cuando el turno no se abrió en este dispositivo
       cargues.ts                   ← planear/reducir/entregar cargue (cabecera + líneas)
@@ -423,7 +422,8 @@ evento_promotores (evento_id, promotor_id, meta_diaria[opcional])  ← N-a-N, en
                   evento puede tener varios promotores (lo usual es uno solo).
                   `meta_diaria` (Pesos, desde la 0023) es la meta de venta de
                   ESE día para ESE promotor en ESE evento — ver glosario
-                  "Meta" y app/admin/mensajes/. Independiente de la meta
+                  "Meta" y app/admin/notificaciones/ (pestaña Mensajes).
+                  Independiente de la meta
                   MENSUAL (tabla `metas`, más abajo): un promotor puede tener
                   las dos al mismo tiempo, un promotor puede cumplir la del
                   día y no la del mes o viceversa.
@@ -509,14 +509,18 @@ descuentos        (id UUID PK, producto_id[opcional], punto_id[opcional],
                     resolver: producto+punto > solo producto > solo punto.
                     activo se puede apagar antes de tiempo; el valor/vigencia
                     nunca se edita — se crea una regla nueva.
-notificaciones    (id UUID PK, tipo[STOCK_BAJO|LOTE_POR_VENCER|CARGUE_REVISAR],
-                   nivel[INFO|ALERTA|CRITICO], titulo, detalle,
-                   producto_id[opcional], lote_id[opcional],
+notificaciones    (id UUID PK, tipo[STOCK_BAJO|LOTE_POR_VENCER|CARGUE_REVISAR|
+                   DESBLOQUEO_PIN], nivel[INFO|ALERTA|CRITICO], titulo, detalle,
+                   producto_id[opcional], lote_id[opcional], modo[opcional],
                    clave_deduplicacion, leida, resuelta, ts_cliente, dispositivo_id)
-                  ← en uso desde la 0013 (CARGUE_REVISAR agregado en la 0018).
-                    Generador con detectores plug-in (src/db/notificaciones.ts);
+                  ← en uso desde la 0013 (CARGUE_REVISAR agregado en la 0018,
+                    DESBLOQUEO_PIN + columna `modo` en la 0030). Generador con
+                    detectores plug-in (src/db/notificaciones.ts);
                     clave_deduplicacion con índice único parcial evita
-                    duplicar la misma alerta mientras siga activa.
+                    duplicar la misma alerta mientras siga activa —
+                    DESBLOQUEO_PIN es la excepción: evento puntual, nunca pasa
+                    por los detectores ni se auto-resuelve (ver "Seguridad de
+                    PIN" en sección 10).
 cargues           (id UUID PK, promotor_id, estado[PLANEADO|ENTREGADO|
                    CANCELADO], creado_por, ts_cliente, dispositivo_id)
 cargue_lineas     (id UUID PK, cargue_id, producto_id, cantidad_planeada,
@@ -571,8 +575,8 @@ metas             (id UUID PK, tipo[PROMOTOR|PUNTO], entidad_id, mes["AAAA-MM"],
 mensajes_recibidos (id UUID PK, destinatario_id, cuerpo, tipo[MANUAL|META_PROGRESO],
                    remitente_nombre, ts_cliente, leida)
                   ← en uso desde la 0023. Espejo LOCAL de solo lectura de los
-                    mensajes push que un admin envió (ver app/admin/mensajes/,
-                    src/db/mensajes.ts) — el mensaje real vive en Supabase
+                    mensajes push que un admin envió (ver app/admin/notificaciones/
+                    pestaña Mensajes, src/db/mensajes.ts) — el mensaje real vive en Supabase
                     (`mensajes` + `mensaje_destinatarios`, tiene que viajar
                     entre dispositivos, R5/R6 no alcanzan) y se descarga acá
                     para que la pantalla de Notificaciones de Promotor/Bodega
@@ -729,20 +733,32 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   20, 45, 90s) tras 3 fallos consecutivos y bloqueo duro a los 8, por
   dispositivo+modo. Un admin puede desbloquear tecleando su propio PIN EN EL
   MISMO dispositivo bloqueado (`src/ui/ModalDesbloqueoPin.tsx`, siempre
-  disponible, no depende de red) — o, desde `app/admin/intentos-pin/`, ver
-  y desbloquear CUALQUIER dispositivo (`intentos_pin_fallidos`/
-  `desbloqueos_pin`/`logins_exitosos_pin` ahora sincronizan a Supabase,
-  subida únicamente; antes eran 100% locales y admin no podía saber que un
-  promotor se había bloqueado en su propio celular, ni desbloquearlo desde
-  otro). Un desbloqueo hecho por admin desde OTRO dispositivo llega solo con
-  red: `app/index.tsx` pregunta a Supabase cada 5s mientras el estado es
-  BLOQUEADO (`huboDesbloqueoRemotoReciente`) y se auto-destraba sin que la
-  persona tenga que teclear nada — best-effort (R5), sin red sigue
-  funcionando el link local de siempre. `registrarDesbloqueo` también
-  intenta un insert directo a Supabase (fuera de la cola normal de sync,
-  además de encolarla) para no depender del drenado diferido de ~700ms
-  cuando lo urgente es que la otra persona pueda reintentar ya. Nunca se
-  guarda el PIN tecleado.
+  disponible, no depende de red) — o, desde `app/admin/auditoria/`, filtro
+  "Accesos" (antes un módulo separado "Seguridad de acceso", eliminado del
+  menú — fusionado aquí a pedido del usuario: la única diferencia real con
+  Bitácora era poder actuar, así que se movió el botón, no se dejaron dos
+  pantallas mostrando lo mismo), ver y desbloquear CUALQUIER dispositivo
+  (`intentos_pin_fallidos`/`desbloqueos_pin`/`logins_exitosos_pin` ahora
+  sincronizan a Supabase, subida únicamente; antes eran 100% locales y admin
+  no podía saber que un promotor se había bloqueado en su propio celular, ni
+  desbloquearlo desde otro). Un desbloqueo hecho por admin desde OTRO
+  dispositivo llega solo con red: `app/index.tsx` pregunta a Supabase cada 5s
+  mientras el estado es BLOQUEADO (`huboDesbloqueoRemotoReciente`) y se
+  auto-destraba sin que la persona tenga que teclear nada — best-effort (R5),
+  sin red sigue funcionando el link local de siempre. `registrarDesbloqueo`
+  también intenta un insert directo a Supabase (fuera de la cola normal de
+  sync, además de encolarla) para no depender del drenado diferido de ~700ms
+  cuando lo urgente es que la otra persona pueda reintentar ya — y, en el
+  mismo dispositivo, dispara una notificación `DESBLOQUEO_PIN` (best-effort,
+  ver `registrarNotificacionDesbloqueo` en `src/db/notificaciones.ts`) que
+  aparece en Notificaciones → Alertas del sistema. A diferencia de
+  STOCK_BAJO/LOTE_POR_VENCER/CARGUE_REVISAR (condiciones recalculables que
+  `generarNotificaciones` auto-resuelve cuando dejan de aplicar),
+  `DESBLOQUEO_PIN` es un evento puntual: se inserta directo al ocurrir y
+  nunca pasa por los detectores, así que nunca se auto-resuelve — queda
+  marcada por prefijo de clave de deduplicación (`PREFIJOS_EVENTO_PUNTUAL`)
+  para que el barrido de resolución la salte. Nunca se guarda el PIN
+  tecleado.
 - **Dashboard de ventas** (`app/admin/dashboard/`, `src/db/analitica.ts`,
   `src/core/analitica/`): KPIs (total vendido, cantidad de ventas, ticket
   promedio, saldo en bodega), desglose por método de pago, por promotor,
@@ -1221,14 +1237,19 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   sección 5) — Personal, Descuentos y Clientes reemplazaron sus
   confirmaciones de 2 botones por `src/ui/ModalConfirmacion.tsx`, que sí se
   puede probar en el navegador.
-- **Meta de venta diaria y Mensajes/notificaciones push**
-  (`app/admin/calendario/`, `app/admin/mensajes/`, `app/promotor/notificaciones.tsx`,
+- **Meta de venta diaria y Notificaciones y mensajes push**
+  (`app/admin/calendario/`, `app/admin/notificaciones/` — pestaña "Mensajes",
+  `app/promotor/notificaciones.tsx`,
   `app/bodega/notificaciones.tsx`, `src/db/eventos.ts`, `src/db/metasDiarias.ts`,
   `src/db/mensajes.ts`, `src/sync/push.ts`, `src/core/errores/`, migración
   0023, `supabase/migraciones/0003_mensajes.sql`): al planear o editar un
   evento en el Calendario, admin puede fijar una meta de venta DIARIA por
   promotor asignado (`evento_promotores.meta_diaria`) — distinta de la meta
-  MENSUAL (`metas`, más arriba). Nuevo módulo admin "Mensajes": envía una
+  MENSUAL (`metas`, más arriba). `app/admin/notificaciones/` es UNA pantalla
+  con dos pestañas — fusión solo visual (UX/UI, a pedido del usuario), las
+  tablas de datos siguen 100% separadas: "Alertas del sistema" (lo que antes
+  era el módulo "Notificaciones" solo, ver más abajo) y "Mensajes" (antes el
+  módulo separado "Mensajes", eliminado del menú): envía una
   notificación push a Promotor o Bodega (texto libre, selección individual
   dentro del rol) o, con un botón, el progreso de la meta del día de cada
   promotor que tenga una asignada hoy (`"Ánimo, vas en un X% de tu meta de
@@ -1455,7 +1476,9 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
       escritas explícitas). Crea `intentos_pin_fallidos`/`desbloqueos_pin`/
       `logins_exitosos_pin` remotas. Sin esto: sincronizar seguridad de PIN
       falla silenciosamente (queda en la cola, ver `app/admin/sync/`) y
-      "Seguridad de acceso" solo ve el propio dispositivo de admin.
+      el filtro "Accesos" (entonces el módulo separado "Seguridad de
+      acceso", fusionado después dentro de Bitácora — ver sección 10) solo
+      ve el propio dispositivo de admin.
 - [ ] **Correr `supabase/migraciones/0011_traslados.sql`** en el SQL Editor
       de Supabase, después de `0010` — **todavía NO aplicada** (verificado
       2026-09-23: `traslados` no existe en el Supabase real). Crea `traslados`/`traslado_lineas`

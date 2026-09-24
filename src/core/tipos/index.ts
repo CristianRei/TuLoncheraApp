@@ -327,7 +327,7 @@ export interface TrasladoLinea {
   motivoRevision: string | null;
 }
 
-export type TipoNotificacion = 'STOCK_BAJO' | 'LOTE_POR_VENCER' | 'CARGUE_REVISAR';
+export type TipoNotificacion = 'STOCK_BAJO' | 'LOTE_POR_VENCER' | 'CARGUE_REVISAR' | 'DESBLOQUEO_PIN';
 export type NivelNotificacion = 'INFO' | 'ALERTA' | 'CRITICO';
 
 export interface Notificacion {
@@ -338,16 +338,21 @@ export interface Notificacion {
   detalle: string;
   productoId: string | null;
   loteId: string | null;
+  /** Solo `DESBLOQUEO_PIN` los usa — qué dispositivo+modo se desbloqueó. */
+  dispositivoId: string | null;
+  modo: ModoLogin | null;
   leida: boolean;
   tsCliente: string;
 }
 
 /**
  * Mensaje que un admin envía como notificación push a Promotor/Bodega — ver
- * app/admin/mensajes/. Nada que ver con `Notificacion` de arriba (esas son
- * alertas internas del negocio: stock bajo, lotes por vencer). `MANUAL` es
- * texto libre elegido por el admin; `META_PROGRESO` es el mensaje
- * autogenerado del botón "Enviar progreso de meta" (ver src/db/metasDiarias.ts).
+ * app/admin/notificaciones/ (pestaña Mensajes; visualmente fusionada con las
+ * alertas del sistema, aunque la tabla sigue separada). Nada que ver con
+ * `Notificacion` de arriba (esas son alertas internas del negocio: stock
+ * bajo, lotes por vencer). `MANUAL` es texto libre elegido por el admin;
+ * `META_PROGRESO` es el mensaje autogenerado del botón "Enviar progreso de
+ * meta" (ver src/db/metasDiarias.ts).
  */
 export type TipoMensaje = 'MANUAL' | 'META_PROGRESO';
 

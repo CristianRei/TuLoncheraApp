@@ -99,14 +99,8 @@ export const MODULOS_ADMIN: ModuloAdmin[] = [
   {
     ruta: '/admin/notificaciones',
     titulo: 'Notificaciones',
-    descripcion: 'Stock bajo, lotes por vencer y otras alertas del negocio.',
+    descripcion: 'Alertas del sistema (stock bajo, lotes por vencer) y mensajes a promotores o bodega.',
     icono: 'notifications-outline',
-  },
-  {
-    ruta: '/admin/intentos-pin',
-    titulo: 'Seguridad de acceso',
-    descripcion: 'Dispositivos bloqueados e intentos fallidos de PIN.',
-    icono: 'lock-closed-outline',
   },
   {
     ruta: '/admin/auditoria',
@@ -119,11 +113,5 @@ export const MODULOS_ADMIN: ModuloAdmin[] = [
     titulo: 'Gestionar personal',
     descripcion: 'Contratar, editar y dar de baja promotores, conductores, bodega y administradores.',
     icono: 'people-outline',
-  },
-  {
-    ruta: '/admin/mensajes',
-    titulo: 'Mensajes',
-    descripcion: 'Enviar una notificación a promotores o bodega, o avisarles el progreso de su meta del día.',
-    icono: 'chatbubbles-outline',
   },
 ];

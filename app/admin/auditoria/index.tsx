@@ -14,11 +14,13 @@ import {
 
 import { calcularRangoPeriodo, ETIQUETAS_PERIODO, type Periodo } from '@/core/analitica';
 import type { EntidadAuditoria, LogAuditoria } from '@/core/auditoria';
-import type { Categoria, Cliente, Persona, Producto } from '@/core/tipos';
+import type { Categoria, Cliente, Persona, Producto, ResumenIntentosPin } from '@/core/tipos';
 import { obtenerLineaDeTiempoAuditoria } from '@/db/auditoria';
 import { listarCategorias } from '@/db/categorias';
 import { getDb } from '@/db/client';
 import { listarClientes } from '@/db/clientes';
+import { listarResumenIntentosPin, registrarDesbloqueo } from '@/db/intentosPin';
+import { listarResumenIntentosPinRemoto } from '@/db/intentosPinRemotos';
 import { listarPersonalCompleto } from '@/db/personal';
 import { listarProductos } from '@/db/productos';
 import { CalendarioRango } from '@/ui/CalendarioRango';
@@ -27,6 +29,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import { Encabezado } from '@/ui/Encabezado';
 import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { mensajeDeError } from '@/core/errores';
 
 type FiltroEntidad = 'TODOS' | EntidadAuditoria | 'ACCESOS';
 
@@ -58,6 +61,15 @@ const ESTILO_ICONO: Record<LogAuditoria['origen'], { fondo: string; borde: strin
 
 function formatearFecha(tsCliente: string): string {
   return new Date(tsCliente).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function formatearFechaOpcional(tsCliente: string | null): string {
+  if (!tsCliente) return 'Sin registro';
+  return formatearFecha(tsCliente);
+}
+
+function nombreDispositivo(dispositivoId: string): string {
+  return `Dispositivo ${dispositivoId.slice(0, 8)}`;
 }
 
 interface OpcionSelector {
@@ -158,6 +170,13 @@ export default function Auditoria() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
 
+  // "Accesos" ya no es un filtro sobre `logs` — es una vista aparte (estado
+  // AGREGADO por dispositivo+modo, con acción de desbloquear), fusión de lo
+  // que antes era el módulo separado "Seguridad de acceso".
+  const [resumenAccesos, setResumenAccesos] = useState<ResumenIntentosPin[]>([]);
+  const [cargandoAccesos, setCargandoAccesos] = useState(true);
+  const [desbloqueando, setDesbloqueando] = useState<string | null>(null);
+
   useEffect(() => {
     (async () => {
       const db = await getDb();
@@ -196,6 +215,7 @@ export default function Auditoria() {
   }, [filtroEntidad, personal, clientes, categorias]);
 
   const cargar = useCallback(async () => {
+    if (filtroEntidad === 'ACCESOS') return;
     if (!rango) return;
     setCargando(true);
     try {
@@ -203,17 +223,68 @@ export default function Auditoria() {
       const resultado = await obtenerLineaDeTiempoAuditoria(db, {
         desde: rango.desde,
         hasta: rango.hasta,
-        entidad: filtroEntidad === 'TODOS' || filtroEntidad === 'ACCESOS' ? undefined : filtroEntidad,
+        entidad: filtroEntidad === 'TODOS' ? undefined : filtroEntidad,
         entidadId: afectadoId ?? undefined,
         usuarioId: actorId ?? undefined,
         productoId: productoId ?? undefined,
         categoriaId: categoriaId ?? undefined,
       });
-      setLogs(filtroEntidad === 'ACCESOS' ? resultado.filter((l) => l.origen === 'ACCESO_FALLIDO') : resultado);
+      setLogs(resultado);
     } finally {
       setCargando(false);
     }
   }, [rango, filtroEntidad, afectadoId, actorId, productoId, categoriaId]);
+
+  // Fusiona local (solo dispositivo de admin) + remoto (cualquier
+  // dispositivo vía Supabase) — mismo criterio que ya usaba el módulo
+  // separado "Seguridad de acceso": se queda con el mayor conteo de fallos
+  // por combinación dispositivo+modo. Se degrada a solo local sin red.
+  const cargarAccesos = useCallback(async () => {
+    if (filtroEntidad !== 'ACCESOS') return;
+    setCargandoAccesos(true);
+    try {
+      const db = await getDb();
+      const local = await listarResumenIntentosPin(db);
+      let remoto: ResumenIntentosPin[] = [];
+      try {
+        remoto = await listarResumenIntentosPinRemoto();
+      } catch (error) {
+        console.log('[auditoria] no se pudo traer el resumen remoto de accesos:', mensajeDeError(error));
+      }
+      const combinado = new Map<string, ResumenIntentosPin>();
+      for (const item of [...local, ...remoto]) {
+        const clave = `${item.dispositivoId}-${item.modo}`;
+        const actual = combinado.get(clave);
+        if (!actual || item.fallosConsecutivos > actual.fallosConsecutivos) {
+          combinado.set(clave, item);
+        }
+      }
+      setResumenAccesos(
+        [...combinado.values()].sort((a, b) => (b.ultimoIntentoTs ?? '').localeCompare(a.ultimoIntentoTs ?? ''))
+      );
+    } finally {
+      setCargandoAccesos(false);
+    }
+  }, [filtroEntidad]);
+
+  async function desbloquear(item: ResumenIntentosPin) {
+    if (!usuario) return;
+    const clave = `${item.dispositivoId}-${item.modo}`;
+    setDesbloqueando(clave);
+    try {
+      const db = await getDb();
+      await registrarDesbloqueo(db, item.dispositivoId, item.modo, usuario.id);
+      await cargarAccesos();
+    } finally {
+      setDesbloqueando(null);
+    }
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      cargarAccesos();
+    }, [cargarAccesos])
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -358,49 +429,53 @@ export default function Auditoria() {
               )}
             </View>
 
-            {/* Fila 3: selectores tipo dropdown */}
-            <View style={[styles.filaPanel, styles.filaDropdowns]}>
-              <FilaSelector
-                icono="person-outline"
-                etiqueta="Usuario responsable"
-                valor={nombreActor ?? 'Cualquier usuario (Todos)'}
-                onPress={() => setSelectorAbierto('ACTOR')}
-              />
-              {muestraAfectado && (
+            {/* Fila 3: selectores tipo dropdown — no aplican en modo Accesos (vista agregada, no filtrada) */}
+            {filtroEntidad !== 'ACCESOS' && (
+              <View style={[styles.filaPanel, styles.filaDropdowns]}>
                 <FilaSelector
-                  icono="locate-outline"
-                  etiqueta="Sobre quién"
-                  valor={nombreAfectado ?? 'Cualquiera'}
-                  onPress={() => setSelectorAbierto('AFECTADO')}
+                  icono="person-outline"
+                  etiqueta="Usuario responsable"
+                  valor={nombreActor ?? 'Cualquier usuario (Todos)'}
+                  onPress={() => setSelectorAbierto('ACTOR')}
                 />
-              )}
-              {muestraProductoCategoria && (
-                <>
+                {muestraAfectado && (
                   <FilaSelector
-                    icono="pricetag-outline"
-                    etiqueta="Producto o SKU"
-                    valor={nombreProducto ?? 'Cualquier producto (Todos)'}
-                    onPress={() => setSelectorAbierto('PRODUCTO')}
+                    icono="locate-outline"
+                    etiqueta="Sobre quién"
+                    valor={nombreAfectado ?? 'Cualquiera'}
+                    onPress={() => setSelectorAbierto('AFECTADO')}
                   />
-                  <FilaSelector
-                    icono="pricetags-outline"
-                    etiqueta="Categoría de producto"
-                    valor={nombreCategoria ?? 'Cualquier categoría'}
-                    onPress={() => setSelectorAbierto('CATEGORIA')}
-                  />
-                </>
-              )}
-            </View>
+                )}
+                {muestraProductoCategoria && (
+                  <>
+                    <FilaSelector
+                      icono="pricetag-outline"
+                      etiqueta="Producto o SKU"
+                      valor={nombreProducto ?? 'Cualquier producto (Todos)'}
+                      onPress={() => setSelectorAbierto('PRODUCTO')}
+                    />
+                    <FilaSelector
+                      icono="pricetags-outline"
+                      etiqueta="Categoría de producto"
+                      valor={nombreCategoria ?? 'Cualquier categoría'}
+                      onPress={() => setSelectorAbierto('CATEGORIA')}
+                    />
+                  </>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Chips de filtros aplicados + contador */}
           <View style={styles.resumenFila}>
             <Text style={styles.resumenEtiqueta}>Filtros aplicados:</Text>
-            <View style={styles.chipResumen}>
-              <Text style={styles.chipResumenTexto}>
-                Período: <Text style={styles.chipResumenValor}>{etiquetaPeriodo}</Text>
-              </Text>
-            </View>
+            {filtroEntidad !== 'ACCESOS' && (
+              <View style={styles.chipResumen}>
+                <Text style={styles.chipResumenTexto}>
+                  Período: <Text style={styles.chipResumenValor}>{etiquetaPeriodo}</Text>
+                </Text>
+              </View>
+            )}
             <View style={styles.chipResumen}>
               <Text style={styles.chipResumenTexto}>
                 Tipo:{' '}
@@ -410,11 +485,78 @@ export default function Auditoria() {
               </Text>
             </View>
             <Text style={styles.resumenContador}>
-              Mostrando {logsFiltrados.length} de {logs.length} eventos
+              {filtroEntidad === 'ACCESOS'
+                ? `${resumenAccesos.length} dispositivo${resumenAccesos.length === 1 ? '' : 's'} con historial`
+                : `Mostrando ${logsFiltrados.length} de ${logs.length} eventos`}
             </Text>
           </View>
 
-          {cargando ? (
+          {filtroEntidad === 'ACCESOS' ? (
+            cargandoAccesos ? (
+              <View style={styles.centrado}>
+                <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
+              </View>
+            ) : resumenAccesos.length === 0 ? (
+              <EmptyState icono="shield-checkmark-outline" mensaje="No hay intentos fallidos de PIN registrados." />
+            ) : (
+              <FlatList
+                data={resumenAccesos}
+                keyExtractor={(item) => `${item.dispositivoId}-${item.modo}`}
+                contentContainerStyle={styles.lista}
+                renderItem={({ item }) => {
+                  const clave = `${item.dispositivoId}-${item.modo}`;
+                  return (
+                    <View style={[styles.tarjetaEvento, item.bloqueado && styles.tarjetaEventoAlerta]}>
+                      <View
+                        style={[
+                          styles.iconoCaja,
+                          { backgroundColor: ESTILO_ICONO.ACCESO_FALLIDO.fondo, borderColor: ESTILO_ICONO.ACCESO_FALLIDO.borde },
+                        ]}
+                      >
+                        <Ionicons
+                          name={item.bloqueado ? 'lock-closed-outline' : 'warning-outline'}
+                          size={18}
+                          color={ESTILO_ICONO.ACCESO_FALLIDO.color}
+                        />
+                      </View>
+                      <View style={styles.tarjetaTexto}>
+                        <View style={styles.tarjetaMetaFila}>
+                          <Text style={styles.tarjetaDescripcion}>{nombreDispositivo(item.dispositivoId)}</Text>
+                          {item.bloqueado && (
+                            <View style={styles.insigniaBloqueado}>
+                              <Text style={styles.insigniaBloqueadoTexto}>Bloqueado</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.tarjetaMeta}>
+                          Modo {item.modo} · {item.fallosConsecutivos} fallos consecutivos
+                        </Text>
+                        <View style={styles.tarjetaMetaFila}>
+                          <Ionicons name="time-outline" size={13} color={COLORES_ADMIN.textoSecundario} />
+                          <Text style={styles.tarjetaMeta}>
+                            Último intento: {formatearFechaOpcional(item.ultimoIntentoTs)}
+                          </Text>
+                        </View>
+                      </View>
+                      {item.bloqueado && (
+                        <Pressable
+                          style={styles.botonDesbloquear}
+                          onPress={() => desbloquear(item)}
+                          disabled={desbloqueando === clave}
+                        >
+                          {desbloqueando === clave ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <Text style={styles.botonDesbloquearTexto}>Desbloquear</Text>
+                          )}
+                        </Pressable>
+                      )}
+                    </View>
+                  );
+                }}
+              />
+            )
+          ) : cargando ? (
             <View style={styles.centrado}>
               <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
             </View>
@@ -787,6 +929,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 4,
+  },
+  insigniaBloqueado: {
+    backgroundColor: COLORES_ADMIN.error,
+    borderRadius: RADII_ADMIN.sm - 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  insigniaBloqueadoTexto: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#FFFFFF',
+  },
+  botonDesbloquear: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.sm,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    paddingVertical: ESPACIADO_ADMIN.sm + 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  botonDesbloquearTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#FFFFFF',
   },
   fondoModal: {
     flex: 1,

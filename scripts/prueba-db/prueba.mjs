@@ -238,6 +238,24 @@ await paso('seguridad de PIN: intento fallido, login exitoso y desbloqueo de adm
   await registrarDesbloqueo(dbA, dispA, 'PROMOTOR', admin.id);
 });
 
+const { generarNotificaciones } = await imp('db/notificaciones.ts');
+await paso('desbloqueo de PIN genera notificación DESBLOQUEO_PIN (evento puntual, no se auto-resuelve)', async () => {
+  const [notif] = await dbA.getAllAsync(
+    `SELECT id, tipo, resuelta FROM notificaciones WHERE tipo='DESBLOQUEO_PIN' AND dispositivo_id=? AND modo='PROMOTOR'`,
+    [dispA]
+  );
+  assert.ok(notif, 'no se encontró la notificación de desbloqueo');
+  assert.equal(notif.resuelta, 0);
+
+  // A diferencia de STOCK_BAJO/LOTE_POR_VENCER/CARGUE_REVISAR, un
+  // desbloqueo es un evento puntual: no debe resolverse solo porque
+  // generarNotificaciones vuelva a correr (no hay ninguna condición
+  // recalculable de la que "dejar de cumplirse").
+  await generarNotificaciones(dbA, dispA);
+  const fila = await dbA.getFirstAsync('SELECT resuelta FROM notificaciones WHERE id=?', [notif.id]);
+  assert.equal(fila.resuelta, 0, 'una notificación de evento puntual no debe auto-resolverse');
+});
+
 console.log('\n== C. Admin: catálogo y personal (lo que se sube) ==');
 const { crearCategoria } = await imp('db/categorias.ts');
 const { crearProducto, actualizarProducto } = await imp('db/productos.ts');

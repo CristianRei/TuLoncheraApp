@@ -11,8 +11,9 @@ interface FilaEventoPinRemoto {
 /**
  * Resumen de fallos/bloqueos por dispositivo+modo de TODOS los dispositivos
  * (a diferencia de `listarResumenIntentosPin`, que solo ve el propio SQLite
- * local) — para que `app/admin/intentos-pin/` pueda mostrar y desbloquear un
- * celular ajeno. Son pocas filas (eventos de seguridad, no ventas), sin
+ * local) — para que `app/admin/auditoria/index.tsx` (filtro "Accesos")
+ * pueda mostrar y desbloquear un celular ajeno. Son pocas filas (eventos de
+ * seguridad, no ventas), sin
  * paginación. Lanza si no hay red/credenciales — el llamador decide si se
  * degrada a mostrar solo lo local (ver esa pantalla).
  */
