@@ -1,7 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Cargue, Producto, Traslado, UsuarioSesion } from '@/core/tipos';
 import { crearCargue, listarCargues, StockInsuficienteError } from '@/db/cargues';
@@ -15,12 +14,23 @@ import {
   StockInsuficienteError as StockInsuficienteTrasladoError,
 } from '@/db/traslados';
 import { listarPromotores } from '@/db/usuarios';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { FilterTabs } from '@/ui/FilterTabs';
+import { ListRow } from '@/ui/ListRow';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
+
+type Pestana = 'NUEVO' | 'PLANEADOS' | 'TRASLADO';
+
+const OPCIONES_PESTANA: { valor: Pestana; etiqueta: string }[] = [
+  { valor: 'NUEVO', etiqueta: 'Nuevo cargue' },
+  { valor: 'PLANEADOS', etiqueta: 'Cargues planeados' },
+  { valor: 'TRASLADO', etiqueta: 'Traslado entre promotores' },
+];
 
 const ETIQUETAS_ESTADO: Record<Cargue['estado'], string> = {
   PLANEADO: 'Planeado',
@@ -34,7 +44,7 @@ function formatearFecha(ts: string): string {
 
 export default function PantallaCargue() {
   const usuario = useRequiereSesion(['ADMIN']);
-  const [pestana, setPestana] = useState<'nuevo' | 'planeados' | 'traslado'>('nuevo');
+  const [pestana, setPestana] = useState<Pestana>('NUEVO');
   const [promotores, setPromotores] = useState<UsuarioSesion[]>([]);
   const [promotor, setPromotor] = useState<UsuarioSesion | null>(null);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -56,9 +66,6 @@ export default function PantallaCargue() {
   const [busquedaTraslado, setBusquedaTraslado] = useState('');
   const [guardandoTraslado, setGuardandoTraslado] = useState(false);
   const [traslados, setTraslados] = useState<Traslado[]>([]);
-
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargarBase = useCallback(async () => {
     const db = await getDb();
@@ -197,82 +204,44 @@ export default function PantallaCargue() {
     }
   }
 
+  const titulo = promotor
+    ? `Cargue para ${promotor.nombre}`
+    : promotorOrigen && promotorDestino
+      ? `Traslado de ${promotorOrigen.nombre} a ${promotorDestino.nombre}`
+      : promotorOrigen
+        ? `Traslado desde ${promotorOrigen.nombre}`
+        : 'Cargue a promotor';
+
+  const textoVolver = promotor
+    ? 'Elegir otro promotor'
+    : promotorDestino
+      ? 'Elegir otro destino'
+      : promotorOrigen
+        ? 'Elegir otro origen'
+        : 'Admin';
+
+  function volver() {
+    if (promotor) setPromotor(null);
+    else if (promotorDestino) setPromotorDestino(null);
+    else if (promotorOrigen) cerrarTraslado();
+    else router.back();
+  }
+
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          {(!anchaPantalla || promotor || promotorOrigen) && (
-            <Pressable
-              onPress={() => {
-                if (promotor) setPromotor(null);
-                else if (promotorDestino) setPromotorDestino(null);
-                else if (promotorOrigen) cerrarTraslado();
-                else router.back();
-              }}
-            >
-              <Text style={anchaPantalla ? styles.volverAncho : styles.volver}>
-                ‹{' '}
-                {promotor
-                  ? 'Elegir otro promotor'
-                  : promotorDestino
-                    ? 'Elegir otro destino'
-                    : promotorOrigen
-                      ? 'Elegir otro origen'
-                      : 'Admin'}
-              </Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>
-            {promotor
-              ? `Cargue para ${promotor.nombre}`
-              : promotorOrigen && promotorDestino
-                ? `Traslado de ${promotorOrigen.nombre} a ${promotorDestino.nombre}`
-                : promotorOrigen
-                  ? `Traslado desde ${promotorOrigen.nombre}`
-                  : 'Cargue a promotor'}
-          </Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo={titulo} rutaVolverTexto={textoVolver} onVolver={volver} />
 
       {!promotor && !promotorOrigen && (
         <ContenedorAncho anchoMaximo={720}>
           <View style={styles.pestanas}>
-            <Pressable
-              style={[styles.pestana, pestana === 'nuevo' && styles.pestanaActiva]}
-              onPress={() => setPestana('nuevo')}
-            >
-              <Text style={[styles.pestanaTexto, pestana === 'nuevo' && styles.pestanaTextoActiva]}>
-                Nuevo cargue
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.pestana, pestana === 'planeados' && styles.pestanaActiva]}
-              onPress={() => setPestana('planeados')}
-            >
-              <Text style={[styles.pestanaTexto, pestana === 'planeados' && styles.pestanaTextoActiva]}>
-                Cargues planeados
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[styles.pestana, pestana === 'traslado' && styles.pestanaActiva]}
-              onPress={() => setPestana('traslado')}
-            >
-              <Text style={[styles.pestanaTexto, pestana === 'traslado' && styles.pestanaTextoActiva]}>
-                Traslado entre promotores
-              </Text>
-            </Pressable>
+            <FilterTabs opciones={OPCIONES_PESTANA} valorActivo={pestana} onCambiar={setPestana} />
           </View>
         </ContenedorAncho>
       )}
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : promotor ? (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
@@ -283,7 +252,7 @@ export default function PantallaCargue() {
             onCambiarCantidad={cambiarCantidad}
             busqueda={busqueda}
             onCambiarBusqueda={setBusqueda}
-            colorAcento={COLORES.oscuro}
+            colorAcento={COLORES_ADMIN.vino}
           />
 
           <View style={styles.pie}>
@@ -314,7 +283,7 @@ export default function PantallaCargue() {
             onCambiarCantidad={cambiarCantidadTraslado}
             busqueda={busquedaTraslado}
             onCambiarBusqueda={setBusquedaTraslado}
-            colorAcento={COLORES.oscuro}
+            colorAcento={COLORES_ADMIN.vino}
           />
 
           <View style={styles.pie}>
@@ -343,38 +312,29 @@ export default function PantallaCargue() {
             keyExtractor={(p) => p.id}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
-              <Pressable style={styles.filaPromotor} onPress={() => setPromotorDestino(item)}>
-                <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
-                <Text style={styles.filaPromotorFlecha}>›</Text>
-              </Pressable>
+              <ListRow titulo={item.nombre} onPress={() => setPromotorDestino(item)} />
             )}
           />
         </ContenedorAncho>
-      ) : pestana === 'nuevo' ? (
+      ) : pestana === 'NUEVO' ? (
         promotores.length === 0 ? (
-          <View style={styles.centrado}>
-            <Text style={styles.vacio}>No hay promotores activos.</Text>
-          </View>
+          <EmptyState icono="person-outline" mensaje="No hay promotores activos." />
         ) : (
           <ContenedorAncho anchoMaximo={720} llenarAlto>
             <FlatList
               data={promotores}
               keyExtractor={(p) => p.id}
               contentContainerStyle={styles.lista}
-              renderItem={({ item }) => (
-                <Pressable style={styles.filaPromotor} onPress={() => setPromotor(item)}>
-                  <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
-                  <Text style={styles.filaPromotorFlecha}>›</Text>
-                </Pressable>
-              )}
+              renderItem={({ item }) => <ListRow titulo={item.nombre} onPress={() => setPromotor(item)} />}
             />
           </ContenedorAncho>
         )
-      ) : pestana === 'traslado' ? (
+      ) : pestana === 'TRASLADO' ? (
         promotores.length < 2 ? (
-          <View style={styles.centrado}>
-            <Text style={styles.vacio}>Hace falta al menos dos promotores activos para trasladar entre ellos.</Text>
-          </View>
+          <EmptyState
+            icono="swap-horizontal-outline"
+            mensaje="Hace falta al menos dos promotores activos para trasladar entre ellos."
+          />
         ) : (
           <ContenedorAncho anchoMaximo={720} llenarAlto>
             <FlatList
@@ -382,80 +342,54 @@ export default function PantallaCargue() {
               keyExtractor={(p) => p.id}
               contentContainerStyle={styles.lista}
               renderItem={({ item }) => (
-                <Pressable style={styles.filaPromotor} onPress={() => elegirPromotorOrigen(item)}>
-                  <Text style={styles.filaPromotorNombre}>{item.nombre}</Text>
-                  <Text style={styles.filaPromotorFlecha}>›</Text>
-                </Pressable>
+                <ListRow titulo={item.nombre} onPress={() => elegirPromotorOrigen(item)} />
               )}
             />
           </ContenedorAncho>
         )
-      ) : pestana === 'planeados' ? (
-        cargues.length === 0 ? (
-          <View style={styles.centrado}>
-            <Text style={styles.vacio}>Todavía no se ha planeado ningún cargue.</Text>
-          </View>
-        ) : (
-          <ContenedorAncho anchoMaximo={720} llenarAlto>
-            <FlatList
-              data={cargues}
-              keyExtractor={(c) => c.id}
-              contentContainerStyle={styles.lista}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={styles.filaCargue}
-                  onPress={() => router.push(`/admin/cargue/${item.id}`)}
-                >
-                  <View style={styles.filaCargueTexto}>
-                    <Text style={styles.filaPromotorNombre}>{item.promotorNombre}</Text>
-                    <Text style={styles.filaCargueDetalle}>{formatearFecha(item.tsCliente)}</Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.badgeEstado,
-                      item.estado === 'ENTREGADO' && styles.badgeEstadoEntregado,
-                    ]}
-                  >
-                    {ETIQUETAS_ESTADO[item.estado]}
-                  </Text>
-                  <Text style={styles.filaPromotorFlecha}>›</Text>
-                </Pressable>
-              )}
-            />
-          </ContenedorAncho>
-        )
-      ) : traslados.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Todavía no se ha planeado ningún traslado.</Text>
-        </View>
+      ) : cargues.length === 0 && traslados.length === 0 ? (
+        <EmptyState icono="cube-outline" mensaje="Todavía no se ha planeado ningún cargue ni traslado." />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
-            data={traslados}
-            keyExtractor={(t) => t.id}
+            data={[
+              ...(cargues.length > 0 ? [{ tipo: 'ENCABEZADO_CARGUES' as const }] : []),
+              ...cargues.map((c) => ({ tipo: 'CARGUE' as const, item: c })),
+              ...(traslados.length > 0 ? [{ tipo: 'ENCABEZADO_TRASLADOS' as const }] : []),
+              ...traslados.map((t) => ({ tipo: 'TRASLADO' as const, item: t })),
+            ]}
+            keyExtractor={(fila, i) =>
+              fila.tipo === 'ENCABEZADO_CARGUES' || fila.tipo === 'ENCABEZADO_TRASLADOS'
+                ? `${fila.tipo}-${i}`
+                : fila.item.id
+            }
             contentContainerStyle={styles.lista}
-            renderItem={({ item }) => (
-              <Pressable
-                style={styles.filaCargue}
-                onPress={() => router.push(`/admin/cargue/traslado/${item.id}`)}
-              >
-                <View style={styles.filaCargueTexto}>
-                  <Text style={styles.filaPromotorNombre}>
-                    {item.promotorOrigenNombre} → {item.promotorDestinoNombre}
-                  </Text>
-                  <Text style={styles.filaCargueDetalle}>{formatearFecha(item.tsCliente)}</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.badgeEstado,
-                    item.estado === 'ENTREGADO' && styles.badgeEstadoEntregado,
-                  ]}
-                >
-                  {ETIQUETAS_ESTADO[item.estado]}
-                </Text>
-                <Text style={styles.filaPromotorFlecha}>›</Text>
-              </Pressable>
-            )}
+            renderItem={({ item: fila }) => {
+              if (fila.tipo === 'ENCABEZADO_CARGUES') {
+                return <Text style={styles.subtituloSeccion}>Cargues planeados</Text>;
+              }
+              if (fila.tipo === 'ENCABEZADO_TRASLADOS') {
+                return <Text style={styles.subtituloSeccion}>Traslados planeados</Text>;
+              }
+              if (fila.tipo === 'CARGUE') {
+                return (
+                  <ListRow
+                    titulo={fila.item.promotorNombre}
+                    subtitulo={formatearFecha(fila.item.tsCliente)}
+                    badge={ETIQUETAS_ESTADO[fila.item.estado]}
+                    onPress={() => router.push(`/admin/cargue/${fila.item.id}`)}
+                  />
+                );
+              }
+              return (
+                <ListRow
+                  titulo={`${fila.item.promotorOrigenNombre} → ${fila.item.promotorDestinoNombre}`}
+                  subtitulo={formatearFecha(fila.item.tsCliente)}
+                  badge={ETIQUETAS_ESTADO[fila.item.estado]}
+                  onPress={() => router.push(`/admin/cargue/traslado/${fila.item.id}`)}
+                />
+              );
+            }}
           />
         </ContenedorAncho>
       )}
@@ -466,127 +400,34 @@ export default function PantallaCargue() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoContenido: {
-    gap: 4,
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  volverAncho: {
-    color: COLORES.oscuro,
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
+    backgroundColor: COLORES_ADMIN.background,
   },
   pestanas: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  pestana: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-  },
-  pestanaActiva: {
-    backgroundColor: COLORES.oscuro,
-  },
-  pestanaTexto: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORES.oscuro,
-  },
-  pestanaTextoActiva: {
-    color: '#FFFFFF',
+    paddingTop: ESPACIADO_ADMIN.lg,
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   lista: {
-    padding: 20,
-    gap: 10,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.sm,
   },
-  filaPromotor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-  },
-  filaPromotorNombre: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#333',
-  },
-  filaPromotorFlecha: {
-    fontSize: 20,
-    color: COLORES.oscuro,
-  },
-  filaCargue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 16,
-    gap: 10,
-  },
-  filaCargueTexto: {
-    flex: 1,
-    gap: 2,
-  },
-  filaCargueDetalle: {
-    fontSize: 12,
-    color: '#888',
-  },
-  badgeEstado: {
-    fontSize: 11,
-    fontWeight: '700',
+  subtituloSeccion: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoSecundario,
     textTransform: 'uppercase',
-    color: '#976200',
-  },
-  badgeEstadoEntregado: {
-    color: '#2E7D32',
+    letterSpacing: 0.4,
+    paddingTop: ESPACIADO_ADMIN.xs,
   },
   pie: {
-    padding: 20,
+    padding: ESPACIADO_ADMIN.xl,
   },
   botonConfirmar: {
-    backgroundColor: COLORES.oscuro,
+    backgroundColor: COLORES_ADMIN.vino,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -597,6 +438,6 @@ const styles = StyleSheet.create({
   botonConfirmarTexto: {
     color: '#FFF',
     fontSize: 15,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
 });

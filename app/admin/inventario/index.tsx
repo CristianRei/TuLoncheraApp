@@ -1,15 +1,15 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { exportarAExcel } from '@/db/exportarExcel';
 import { getDb } from '@/db/client';
 import { listarInventarioBodega, type ItemInventario } from '@/db/inventario';
 import { listarTodosLosMovimientos } from '@/db/movimientos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -18,8 +18,6 @@ export default function Inventario() {
   const [items, setItems] = useState<ItemInventario[]>([]);
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState<'inventario' | 'movimientos' | null>(null);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargarInventario = useCallback(async () => {
     setCargando(true);
@@ -81,29 +79,11 @@ export default function Inventario() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720}>
-          <View style={styles.encabezadoFila}>
-            {!anchaPantalla && (
-              <Pressable onPress={() => router.back()}>
-                <Text style={styles.volver}>‹ Admin</Text>
-              </Pressable>
-            )}
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Inventario de bodega</Text>
-            <Pressable
-              style={styles.botonNuevo}
-              onPress={() => router.push('/admin/inventario/pedido')}
-            >
-              <Text style={styles.botonNuevoTexto}>+ Pedido</Text>
-            </Pressable>
-          </View>
-        </ContenedorAncho>
-      </View>
+      <Encabezado
+        titulo="Inventario de bodega"
+        rutaVolverTexto="Admin"
+        accion={{ icono: 'add', texto: 'Pedido', onPress: () => router.push('/admin/inventario/pedido') }}
+      />
 
       <ContenedorAncho anchoMaximo={720}>
         <View style={styles.accionesExport}>
@@ -113,7 +93,7 @@ export default function Inventario() {
             disabled={exportando !== null || items.length === 0}
           >
             {exportando === 'inventario' ? (
-              <ActivityIndicator size="small" color={COLORES.oscuro} />
+              <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
             ) : (
               <Text style={styles.botonExportTexto}>Exportar inventario a Excel</Text>
             )}
@@ -124,7 +104,7 @@ export default function Inventario() {
             disabled={exportando !== null}
           >
             {exportando === 'movimientos' ? (
-              <ActivityIndicator size="small" color={COLORES.oscuro} />
+              <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
             ) : (
               <Text style={styles.botonExportTexto}>Exportar movimientos a Excel</Text>
             )}
@@ -134,14 +114,13 @@ export default function Inventario() {
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : items.length === 0 ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>
-            Todavía no hay stock en bodega. Toca &ldquo;Ingresar pedido&rdquo; para registrar lo que llegó.
-          </Text>
-        </View>
+        <EmptyState
+          icono="cube-outline"
+          mensaje={'Todavía no hay stock en bodega. Toca "+ Pedido" para registrar lo que llegó.'}
+        />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
@@ -166,107 +145,60 @@ export default function Inventario() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
-  },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
-  titulo: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  tituloAncho: {
-    color: COLORES.oscuro,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  botonNuevo: {
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: COLORES.primario,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  botonNuevoTexto: {
-    color: '#3A2400',
-    fontSize: 13,
-    fontWeight: '700',
+    backgroundColor: COLORES_ADMIN.background,
   },
   accionesExport: {
     flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 20,
-    paddingTop: 16,
+    gap: ESPACIADO_ADMIN.sm,
+    paddingTop: ESPACIADO_ADMIN.lg,
   },
   botonExport: {
     flex: 1,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    backgroundColor: '#FFFFFF',
+    borderRadius: RADII_ADMIN.md,
+    paddingVertical: ESPACIADO_ADMIN.sm + 2,
+    paddingHorizontal: ESPACIADO_ADMIN.sm,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
-    borderColor: COLORES.oscuro,
+    borderColor: COLORES_ADMIN.vino,
     alignItems: 'center',
     justifyContent: 'center',
   },
   botonExportTexto: {
     fontSize: 12,
-    fontWeight: '700',
-    color: COLORES.oscuro,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.vino,
     textAlign: 'center',
   },
   centrado: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-  },
-  vacio: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
+    padding: ESPACIADO_ADMIN.xxl,
   },
   lista: {
-    padding: 20,
-    gap: 10,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.sm,
   },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: ESPACIADO_ADMIN.md,
+    gap: ESPACIADO_ADMIN.md,
   },
   filaNombre: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginRight: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.texto,
   },
   filaSaldo: {
     fontSize: 15,
-    fontWeight: '800',
-    color: COLORES.oscuro,
+    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    color: COLORES_ADMIN.vino,
   },
 });

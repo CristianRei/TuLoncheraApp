@@ -1,25 +1,15 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import type { Cargue, CargueLinea } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { obtenerCargue, reducirLineaCargue, resolverLineaEnRevision } from '@/db/cargues';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -37,8 +27,6 @@ export default function DetalleCargue() {
   const [modo, setModo] = useState<'reducir' | 'resolver'>('reducir');
   const [valorTexto, setValorTexto] = useState('');
   const [guardando, setGuardando] = useState(false);
-  const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
 
   const cargar = useCallback(async () => {
     const db = await getDb();
@@ -99,30 +87,14 @@ export default function DetalleCargue() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
-        ]}
-      >
-        <ContenedorAncho anchoMaximo={720} style={styles.encabezadoContenido}>
-          {!anchaPantalla && (
-            <Pressable onPress={() => router.back()}>
-              <Text style={styles.volver}>‹ Cargue</Text>
-            </Pressable>
-          )}
-          <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Detalle del cargue</Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado titulo="Detalle del cargue" rutaVolverTexto="Cargue" />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : !cargue ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Este cargue ya no existe.</Text>
-        </View>
+        <EmptyState icono="cube-outline" mensaje="Este cargue ya no existe." />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <View style={styles.resumen}>
@@ -202,94 +174,91 @@ export default function DetalleCargue() {
 }
 
 const styles = StyleSheet.create({
-  contenedor: { flex: 1, backgroundColor: '#FBEDED' },
-  encabezado: { backgroundColor: COLORES.oscuro, paddingHorizontal: 20, paddingBottom: 16 },
-  encabezadoAncho: { backgroundColor: 'transparent', paddingHorizontal: 20, paddingBottom: 16 },
-  encabezadoContenido: { gap: 4 },
-  volver: { color: '#FFFFFF', fontSize: 14, textDecorationLine: 'underline' },
-  titulo: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
-  tituloAncho: { color: COLORES.oscuro, fontSize: 20, fontWeight: '700' },
-  centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  vacio: { fontSize: 14, color: '#888' },
+  contenedor: { flex: 1, backgroundColor: COLORES_ADMIN.background },
+  centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: ESPACIADO_ADMIN.xxl },
   resumen: {
-    backgroundColor: '#FFFFFF',
-    margin: 20,
-    marginBottom: 0,
-    borderRadius: 14,
-    padding: 16,
-    gap: 4,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    marginHorizontal: ESPACIADO_ADMIN.xl,
+    marginTop: ESPACIADO_ADMIN.lg,
+    borderRadius: RADII_ADMIN.lg,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: ESPACIADO_ADMIN.lg,
+    gap: ESPACIADO_ADMIN.xs,
   },
-  resumenPromotor: { fontSize: 16, fontWeight: '700', color: '#333' },
-  resumenDetalle: { fontSize: 13, color: '#777' },
-  lista: { padding: 20, gap: 10 },
+  resumenPromotor: { fontSize: 16, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, color: COLORES_ADMIN.texto },
+  resumenDetalle: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
+  lista: { padding: ESPACIADO_ADMIN.xl, gap: ESPACIADO_ADMIN.sm },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: ESPACIADO_ADMIN.md,
+    gap: ESPACIADO_ADMIN.md,
   },
   filaRevisar: {
-    borderWidth: 1,
-    borderColor: '#F8C8C8',
-    backgroundColor: '#FDF2F2',
+    borderColor: COLORES_ADMIN.dorado,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   filaTexto: { flex: 1, gap: 2 },
-  filaNombre: { fontSize: 14, fontWeight: '600', color: '#333' },
-  filaDetalle: { fontSize: 12, color: '#888' },
-  filaMotivo: { fontSize: 12, color: '#B00020', marginTop: 2 },
+  filaNombre: { fontSize: 14, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, color: COLORES_ADMIN.texto },
+  filaDetalle: { fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
+  filaMotivo: { fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.medio, color: COLORES_ADMIN.error, marginTop: 2 },
   botonAccion: {
     borderWidth: 1.5,
-    borderColor: COLORES.oscuro,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.sm,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    paddingVertical: ESPACIADO_ADMIN.sm,
   },
-  botonAccionTexto: { fontSize: 12, fontWeight: '700', color: COLORES.oscuro },
+  botonAccionTexto: { fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita, color: COLORES_ADMIN.vino },
   fondoModal: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(42,24,16,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: ESPACIADO_ADMIN.xl,
   },
   tarjetaModal: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    padding: 22,
-    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: RADII_ADMIN.lg,
+    padding: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.md,
   },
-  modalTitulo: { fontSize: 17, fontWeight: '700', color: '#333' },
-  modalTexto: { fontSize: 13, color: '#777' },
+  modalTitulo: { fontSize: 17, fontFamily: TIPOGRAFIA_ADMIN.negrita, color: COLORES_ADMIN.texto },
+  modalTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.md,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    paddingVertical: ESPACIADO_ADMIN.md,
     fontSize: 16,
-    fontWeight: '700',
+    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    color: COLORES_ADMIN.texto,
     textAlign: 'center',
   },
   modalAcciones: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: 20,
+    gap: ESPACIADO_ADMIN.xl,
   },
-  modalCancelar: { fontSize: 14, color: '#888' },
+  modalCancelar: { fontSize: 14, fontFamily: TIPOGRAFIA_ADMIN.medio, color: COLORES_ADMIN.textoSecundario },
   modalConfirmar: {
-    backgroundColor: COLORES.oscuro,
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.md,
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
+    paddingVertical: ESPACIADO_ADMIN.sm + 2,
     minWidth: 100,
     alignItems: 'center',
   },
-  modalConfirmarTexto: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  modalConfirmarTexto: { color: '#FFF', fontSize: 14, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita },
   botonDeshabilitado: { opacity: 0.5 },
 });
