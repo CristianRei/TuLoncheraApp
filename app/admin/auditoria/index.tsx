@@ -282,8 +282,8 @@ export default function Auditoria() {
         <View style={styles.scroll}>
           {/* Panel de filtros — una sola tarjeta con 3 filas divididas, igual al mockup de Stitch */}
           <View style={styles.panelFiltros}>
-            {/* Fila 1: segmented de período + buscador */}
-            <View style={styles.filaPanel}>
+            {/* Fila 1: segmented de período + buscador, lado a lado */}
+            <View style={[styles.filaPanel, styles.filaPeriodoBuscador]}>
               <View style={styles.periodoSegmentado}>
                 {OPCIONES_PERIODO.map((op) => {
                   const activo = periodo === op.valor;
@@ -556,6 +556,11 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORES_ADMIN.bordeSuave,
     gap: ESPACIADO_ADMIN.md,
   },
+  filaPeriodoBuscador: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
   filaDropdowns: {
     borderBottomWidth: 0,
     backgroundColor: COLORES_ADMIN.superficieBaja,
@@ -596,6 +601,8 @@ const styles = StyleSheet.create({
   buscador: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    minWidth: 180,
     gap: ESPACIADO_ADMIN.sm,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
