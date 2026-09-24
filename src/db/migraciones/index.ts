@@ -27,6 +27,7 @@ import { migracion0024ArqueosCaja } from './0024_arqueos_caja';
 import { migracion0025ColaSyncTodasLasTablas } from './0025_cola_sync_todas_las_tablas';
 import { migracion0026SyncEstado } from './0026_sync_estado';
 import { migracion0027BitacoraAuditoria } from './0027_bitacora_auditoria';
+import { migracion0028DesbloqueosPinSinFk } from './0028_desbloqueos_pin_sin_fk';
 
 export interface Migracion {
   version: number;
@@ -65,6 +66,7 @@ const migraciones: Migracion[] = [
   migracion0025ColaSyncTodasLasTablas,
   migracion0026SyncEstado,
   migracion0027BitacoraAuditoria,
+  migracion0028DesbloqueosPinSinFk,
 ];
 
 /**

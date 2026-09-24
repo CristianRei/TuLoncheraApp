@@ -290,6 +290,22 @@ const dbB = crearDb();
 await aplicar(dbB, migs);
 const dispB = 'b0b0b0b0-0000-4000-8000-000000000000';
 await sembrarUsuariosDePrueba(dbB, dispB);
+
+const { aplicarDesbloqueoRemoto } = await imp('db/intentosPin.ts');
+await paso('aplicar un desbloqueo remoto con admin_id de OTRO dispositivo no falla por FK (el bug real)', async () => {
+  // admin.id existe en dbA, NO en dbB — reproduce exactamente lo que pasó en
+  // el celular real: Supabase entrega el admin_id del dispositivo que
+  // desbloqueó, que nunca sincronizó como "personal" hacia este dispositivo.
+  await aplicarDesbloqueoRemoto(dbB, {
+    id: 'desbloqueo-remoto-1',
+    dispositivoId: dispB,
+    modo: 'PROMOTOR',
+    adminId: admin.id,
+    tsCliente: new Date().toISOString(),
+  });
+  const fila = await dbB.getFirstAsync(`SELECT admin_id FROM desbloqueos_pin WHERE id='desbloqueo-remoto-1'`);
+  assert.equal(fila.admin_id, admin.id);
+});
 const { descargarDatosDeAdmin, descargarDatosDeAdminConLimite } = await imp('sync/bajada.ts');
 const { buscarUsuarioPorPin } = await imp('db/usuarios.ts');
 const tl001B = await dbB.getFirstAsync(`SELECT id FROM productos WHERE sku='TL001'`);
