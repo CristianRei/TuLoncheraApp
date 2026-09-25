@@ -33,11 +33,9 @@ los asignados a un promotor con horario). Las notificaciones push las envía Sup
 no el dispositivo del admin. La sincronización de ventas entre celular y
 computador ya la confirmó el usuario con dispositivos reales (2026-09-23); el
 resto está probado con SQLite y Postgres reales de laboratorio (`npm run
-test:db`, `npm run test:sql`). En el Supabase real ya están aplicadas 0009 y
-0010; faltan 0011 (traslados), 0012 (empresas/puntos), 0013 (push desde el
-servidor), 0014 (eventos), 0015 (descuentos), 0017 (evidencia sin
-sobrescritura) y 0018 (credenciales privadas: PIN y datos personales fuera de
-`usuarios`, con pasos manuales) — ver sección 11.
+test:db`, `npm run test:sql`). En el Supabase real están aplicadas todas
+las migraciones de `supabase/migraciones/`, de 0001 a 0018 (0011-0018
+aplicadas por el usuario el 2026-09-25) — ver sección 11.
 
 ---
 
@@ -1554,47 +1552,24 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
       el filtro "Accesos" (entonces el módulo separado "Seguridad de
       acceso", fusionado después dentro de Bitácora — ver sección 10) solo
       ve el propio dispositivo de admin.
-- [ ] **Correr `supabase/migraciones/0011_traslados.sql`** en el SQL Editor
-      de Supabase, después de `0010` — **todavía NO aplicada** (verificado
-      2026-09-23: `traslados` no existe en el Supabase real). Crea `traslados`/`traslado_lineas`
-      remotas (tampoco usa `_politicas_abiertas`, mismo motivo que 0010).
-      Sin esto: un traslado planeado en un dispositivo no le llega a
-      bodega en otro, y admin no ve traslados hechos en otro dispositivo.
-- [ ] **Correr `supabase/migraciones/0012_empresas_puntos.sql`** en el SQL
-      Editor de Supabase (idempotente, se puede repetir; después de 0011 o
-      en cualquier orden respecto a ella). Crea `empresas`/`puntos` remotas.
-      Sin esto, cada empresa/punto nuevo queda pendiente en la cola
-      (`app/admin/sync/`) y no llega al celular.
-- [ ] **Correr `supabase/migraciones/0013_push_desde_servidor.sql`**
-      (idempotente). Activa `pg_net` y crea el trigger que envía el push.
-      Sin esto, los mensajes se guardan pero NINGÚN push sale (la app ya no
-      llama a Expo). Si la línea `create extension` falla por permisos,
-      activar `pg_net` en Database → Extensions y volver a correrla.
-- [ ] **Correr `supabase/migraciones/0014_eventos.sql`** (idempotente,
-      después de 0012). Sin esto, los eventos quedan pendientes en la cola
-      (`app/admin/sync/`) y no llegan al celular del promotor.
-- [ ] **Correr `supabase/migraciones/0015_descuentos.sql`** (idempotente,
-      después de 0012). Sin esto, los descuentos quedan pendientes en la
-      cola y el celular del promotor cobra sin ellos.
-- [ ] **Correr `supabase/migraciones/0018_credenciales_privadas.sql`** —
-      seguridad de PIN y datos personales. **Orden obligatorio:** (1)
-      actualizar la app en todos los dispositivos, (2) correr 0018, (3)
-      registrar a cada admin con `select registrar_admin('Nombre', 'PIN');`
-      en el SQL Editor. Detalle en `supabase/README.md`, "Credenciales".
-      Desde ahí, la primera entrada de cada persona en cada celular necesita
-      internet.
+- [x] ~~Correr 0011 (traslados), 0012 (empresas/puntos), 0013 (push desde el
+      servidor), 0014 (eventos), 0015 (descuentos), 0016 (Realtime de
+      turnos/arqueos), 0017 (evidencia sin sobrescritura) y 0018
+      (credenciales privadas)~~ — aplicadas en el Supabase real (el usuario,
+      2026-09-25). Tras 0018 hace falta al menos un admin registrado con
+      `registrar_admin` (ver `supabase/README.md`, "Credenciales"); si el
+      personal queda pendiente en `app/admin/sync/` con "Supabase no reconoce
+      el PIN de este administrador", es eso. Volver a correr 0009 reabre la
+      escritura en `usuarios`: si pasa, correr 0018 otra vez.
 - [ ] **Push falsos "del administrador" y escritura abierta en ventas/
       movimientos/mensajes** (auditoría 2026-09-25): siguen abiertos. Sin
       cuentas por persona, el servidor no distingue al admin de quien tenga
       la anon key. Cerrarlo es la opción B (autenticación real por persona:
       sesión de Supabase por empleado, RLS por rol) — sin decidir todavía.
-- [ ] **Correr `supabase/migraciones/0017_evidencia_sin_sobrescritura.sql`**
-      (idempotente, cualquier orden). Quita el UPDATE de los buckets
-      `selfies-turnos` y `comprobantes-venta`: la evidencia ya no se puede
-      reemplazar. La app ya sube sin `upsert` (`src/sync/motor.ts`).
 - [ ] **Mensajes/notificaciones push no llegaban** (reportado 2026-09-23,
       admin en el computador → promotor en el celular) — **arreglado en
-      código el 2026-09-23, falta aplicar 0013 y probarlo**. Dos causas:
+      código el 2026-09-23, 0013 aplicada el 2026-09-25, falta probarlo con
+      dispositivos reales**. Dos causas:
       (1) **CORS** — la app del admin llamaba a
       `https://exp.host/--/api/v2/push/send` directo, y ese servicio no
       devuelve `Access-Control-Allow-Origin`: desde el navegador el `fetch`
