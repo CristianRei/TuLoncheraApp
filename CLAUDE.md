@@ -228,7 +228,7 @@ tulonchera/
     admin/
       _layout.tsx                 ← en pantalla ancha monta BarraSuperiorAdmin + SidebarAdmin fijo; en celular no monta nada (cada pantalla sigue con su propio encabezado)
       index.tsx                  ← menú de módulos (orden sigue el flujo operativo del día; "Mensajes" siempre al final)
-      calendario/                 ← admin planea eventos: empresa + punto + fecha + horario + promotor(es) + meta de venta diaria del evento; abajo, "Promotores del día" (mover / asignar / retirar)
+      calendario/                 ← admin planea eventos: empresa + punto + fecha + horario + promotor(es) + meta de venta diaria del evento; abajo, "Promotores del día" (tablero por promotor: meta, facturado, arqueo, conteo; mover / asignar / retirar); facturas.tsx = facturas del día de un promotor con foto de las transferencias
       cargue/                      ← admin planea cargue (sin tocar inventario); [id] para reducir/quitar líneas
       turnos/                       ← selfie/hora/ubicación de check-in de cada promotor
       ventas/                        ← listado (Activas/Anuladas + filtro Todos los días/Hoy/fecha específica) + detalle de ventas
@@ -282,6 +282,7 @@ tulonchera/
       eventos.ts                           ← calendario de eventos + punto vigente del promotor (por fecha) + meta diaria por (evento, promotor); suben al cambiar y Promotor/Bodega los descargan (`descargarEventosNuevos`)
       mensajes.ts                           ← enviarMensajes/descargarMensajesNuevos/listarMensajesRecibidos/marcarMensajeLeido — mensajes push, ver sección 10 "Mensajes"
       metas.ts                               ← metas de venta MENSUALES por promotor/punto + progreso real
+      tableroPromotores.ts                    ← cifras del día por promotor (facturado por medio de pago), resumen de un evento, y arqueo/conteo de cada uno leídos de Supabase (best-effort)
       metasDiarias.ts                         ← progreso de la meta DIARIA por promotor con evento asignado (distinta escala que metas.ts)
       personal.ts                              ← alta/edición/cambio de rol/baja (activo=0)/eliminación real (protegida por FK) de personal (los 4 roles)
       turnos.ts                                 ← check-in/check-out, evento del día del promotor
@@ -308,7 +309,9 @@ tulonchera/
       useSincronizacionEnVivo.ts           ← hook de layout: descarga al entrar, al recibir un aviso Realtime, y cada 45 s de respaldo
       useVersionDatos.ts                    ← `useRecargarConDatosNuevos(fn)`: una pantalla se recarga sola cuando llegan datos nuevos de Supabase
       ModalConfirmacion.tsx               ← reemplaza Alert.alert para confirmaciones de 2 botones (Alert.alert no tiene UI en React Native Web)
-      PromotoresDelDia.tsx                 ← "Promotores del día" del calendario admin: en qué evento está cada promotor, mover / asignar / retirar (con motivo)
+      PromotoresDelDia.tsx                 ← "Promotores del día" del calendario admin: tarjeta por promotor (evento, barra de meta, facturado por medio de pago, arqueo, conteo, botón a sus facturas), mover / asignar / retirar (con motivo)
+      ResumenEventoModal.tsx               ← resumen de un evento desde "Promotores del día": meta, vendido en su punto por medio de pago y por integrante, editar o cancelar
+      BarraAvanceMeta.tsx                  ← barra de la meta del día para admin (misma escala rojo→verde que BarraMetaDiaria)
       SelectorDesplegable.tsx              ← menú desplegable de admin (uno o varios, con buscador si hay muchas opciones); se despliega en el mismo lugar, no en otro Modal
       BarraMetaDiaria.tsx                  ← barra animada de cumplimiento de la meta DIARIA, de rojo a verde según el avance (Ventas del turno del promotor)
       CalendarioRango.tsx                  ← calendario de mes, reusado para "Rango personalizado" (dashboard), fecha específica (Ventas) y un solo día
@@ -1013,7 +1016,23 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   a esta hora; si ninguno, el último que ya empezó (una venta a las 12:30
   tras Falabella de 8 a 12 sigue siendo de Falabella); si ninguno ha
   empezado, el primero (`elegirHorarioVigente`, `src/core/horas`) — ya no
-  depende de un estado manual `EN_CURSO`. **Sincroniza** (desde 2026-09-23,
+  depende de un estado manual `EN_CURSO`. **Tablero** (2026-09-25): cada
+  promotor es una tarjeta con la barra de la meta de su evento (misma escala
+  de rojo a verde que ve el promotor, `src/ui/BarraAvanceMeta.tsx`), lo que
+  lleva facturado ese día (una **factura es cualquier venta**; total, número,
+  efectivo, transferencia, libranza — `src/db/tableroPromotores.ts`, de la
+  base local, que ya recibe las ventas con Realtime), su arqueo de caja
+  (contó / cuadra o la diferencia) y si hizo el conteo de cierre — estos dos
+  se leen de Supabase (solo suben, no bajan al admin): sin conexión dice "sin
+  conexión", nunca un dato inventado —, y un botón a **sus facturas del día**
+  (`app/admin/calendario/facturas.tsx`: valor, hora, recibo, productos, filtro
+  por medio de pago y la **foto del comprobante** de las transferencias, en
+  grande al tocarla; la de otro dispositivo sale de Supabase). Tocar el
+  evento abre su resumen (`src/ui/ResumenEventoModal.tsx`): meta, lo vendido
+  en su punto por medio de pago y por integrante (también quien ya no está),
+  "Editar evento" (el detalle de siempre) y "Cancelar evento" (motivo; nadie
+  del equipo sigue vendiendo en él). Se actualiza sola al llegar ventas,
+  arqueos o conteos. **Sincroniza** (desde 2026-09-23,
   `supabase/migraciones/0014_eventos.sql`): cada cambio del admin (crear,
   serie, reasignar, cancelar, estado, meta diaria) encola el evento COMPLETO
   en la misma transacción; en Supabase los promotores viajan dentro del

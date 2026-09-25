@@ -498,6 +498,7 @@ export default function CalendarioAdmin() {
               adminId={usuarioActual.id}
               recargarCon={eventos}
               onCambio={recargar}
+              onEditarEvento={abrirDetalleEvento}
             />
           </View>
         </ContenedorAncho>

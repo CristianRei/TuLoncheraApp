@@ -279,6 +279,53 @@ export async function listarVentasEquipoHoy(
   return filas.map(aVenta);
 }
 
+/**
+ * Todas las facturas (ventas, de cualquier método de pago) de un promotor en
+ * un rango — la hora más reciente primero, incluidas las anuladas — con sus
+ * productos. Para que el admin compare lo cobrado contra lo vendido
+ * (app/admin/calendario/facturas.tsx); la foto de las transferencias hechas
+ * en otro dispositivo se completa desde Supabase (`obtenerComprobanteRemoto`).
+ */
+export async function listarFacturasPromotor(
+  db: SQLiteDatabase,
+  promotorId: string,
+  rango: { desde: string; hasta: string }
+): Promise<{ venta: Venta; items: VentaItem[] }[]> {
+  const filas = await db.getAllAsync<FilaVenta>(
+    `SELECT ${COLUMNAS_VENTA}
+     ${JOIN_VENTA}
+     WHERE v.promotor_id = ? AND v.ts_cliente BETWEEN ? AND ?
+     ORDER BY v.ts_cliente DESC`,
+    [promotorId, rango.desde, rango.hasta]
+  );
+  if (filas.length === 0) return [];
+  const lineas = await db.getAllAsync<{
+    venta_id: string;
+    producto_id: string;
+    producto_nombre: string;
+    cantidad: number;
+    precio_unitario: number;
+  }>(
+    `SELECT vi.venta_id, vi.producto_id, p.nombre as producto_nombre, vi.cantidad, vi.precio_unitario
+     FROM venta_items vi
+     JOIN productos p ON p.id = vi.producto_id
+     WHERE vi.venta_id IN (${filas.map(() => '?').join(', ')})
+     ORDER BY p.nombre`,
+    filas.map((f) => f.id)
+  );
+  return filas.map((fila) => ({
+    venta: aVenta(fila),
+    items: lineas
+      .filter((l) => l.venta_id === fila.id)
+      .map((l) => ({
+        productoId: l.producto_id,
+        productoNombre: l.producto_nombre,
+        cantidad: l.cantidad,
+        precioUnitario: l.precio_unitario,
+      })),
+  }));
+}
+
 export async function obtenerVenta(
   db: SQLiteDatabase,
   id: string

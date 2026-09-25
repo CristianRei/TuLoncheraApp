@@ -85,6 +85,7 @@ function crearFake() {
     in(c, vs) { this.filtros.push((r) => vs.includes(r[c])); return this; }
     gt(c, v) { this.filtros.push((r) => new Date(r[c]).getTime() > new Date(v).getTime()); return this; }
     gte(c, v) { this.filtros.push((r) => new Date(r[c]).getTime() >= new Date(v).getTime()); return this; }
+    lte(c, v) { this.filtros.push((r) => new Date(r[c]).getTime() <= new Date(v).getTime()); return this; }
     or(expr) {
       const conds = expr.split(',').map((p) => { const [c, , ...v] = p.split('.'); return (r) => r[c] === v.join('.'); });
       this.filtros.push((r) => conds.some((f) => f(r)));
@@ -1718,6 +1719,50 @@ console.log('\n== O. Un evento a la vez: cruces de horario, mover, retirar (y si
     const p = (await obtenerProgresoMetasDiarias(dbAdm)).find((f) => f.eventoId === evE.id);
     assert.ok(!p.promotorIds.includes(carla.id));
     assert.deepEqual([p.totalVendidoHoy, p.progresoPct], [300000, 30]);
+  });
+
+  // "Promotores del día" del admin: cifras, resumen del evento, facturas y cierre.
+  const tablero = await imp('db/tableroPromotores.ts');
+  const { listarFacturasPromotor } = await imp('db/ventas.ts');
+  const { calcularRangoDiaBogota } = await imp('core/analitica/index.ts');
+  await paso('tablero: lo facturado por cada promotor en el día, por medio de pago', async () => {
+    const tl001 = await dbAdm.getFirstAsync(`SELECT id FROM productos WHERE sku = 'TL001'`);
+    await registrarVenta(dbAdm, { promotorId: beto.id, promotorNombre: beto.nombre, items: [{ productoId: tl001.id, productoNombre: 'TL001', cantidad: 2, precioUnitario: 25000 }], metodoPago: 'TRANSFERENCIA', comprobanteUri: 'file:///comprobante.jpg' }, await idDeEsteDispositivo(dbAdm));
+    const cifras = await tablero.obtenerCifrasPromotoresDelDia(dbAdm, hoy);
+    const b = cifras.get(beto.id);
+    assert.deepEqual([b.totalVendido, b.facturas, b.porMetodo.EFECTIVO, b.porMetodo.TRANSFERENCIA, b.porMetodo.LIBRANZA], [250000, 2, 200000, 50000, 0]);
+    assert.equal(cifras.get(carla.id).totalVendido, 100000);
+    assert.equal(cifras.get(ana.id), undefined, 'Ana no ha vendido');
+  });
+  await paso('tablero: el resumen del evento cuenta su punto, por integrante (Carla sigue aunque ya no esté)', async () => {
+    const resumen = await tablero.obtenerResumenVentasEvento(dbAdm, await ev.obtenerEvento(dbAdm, evE.id));
+    assert.deepEqual([resumen.totalVendido, resumen.facturas, resumen.porMetodo.TRANSFERENCIA], [350000, 3, 50000]);
+    const de = (p) => resumen.porPromotor.find((x) => x.promotorId === p.id)?.cifras.totalVendido;
+    assert.deepEqual([de(beto), de(carla), de(ana)], [250000, 100000, 0]);
+  });
+  await paso('tablero: las facturas de Beto con sus productos, la más reciente primero (la transferencia trae su foto)', async () => {
+    const facturas = await listarFacturasPromotor(dbAdm, beto.id, calcularRangoDiaBogota(hoy));
+    assert.deepEqual(facturas.map((f) => f.venta.metodoPago), ['TRANSFERENCIA', 'EFECTIVO']);
+    assert.equal(facturas[0].venta.comprobanteUri, 'file:///comprobante.jpg');
+    assert.deepEqual(facturas[0].items.map((i) => [i.cantidad, i.precioUnitario]), [[2, 25000]]);
+  });
+  await paso('tablero: arqueo y conteo se leen de Supabase (por id o por nombre, solo del día); sin conexión se avisa', async () => {
+    const ahoraIso = new Date().toISOString();
+    const ayerIso = new Date(Date.now() - 36 * 3600 * 1000).toISOString();
+    await nube.from('arqueos_caja').upsert({ id: randomUUID(), turno_id: randomUUID(), promotor_id: randomUUID(), promotor_nombre: 'Beto Lara', efectivo_teorico: 200000, efectivo_contado: 199500, diferencia: -500, total_transferencia: 50000, total_libranza: 0, ts_cliente: ahoraIso, dispositivo_id: randomUUID() });
+    await nube.from('arqueos_caja').upsert({ id: randomUUID(), turno_id: randomUUID(), promotor_id: ana.id, promotor_nombre: 'Ana Mora', efectivo_teorico: 1, efectivo_contado: 1, diferencia: 0, total_transferencia: 0, total_libranza: 0, ts_cliente: ayerIso, dispositivo_id: randomUUID() });
+    await nube.from('conteos').upsert({ id: randomUUID(), promotor_id: carla.id, promotor_nombre: 'Carla Vélez', ts_cliente: ahoraIso, estado: 'CERRADO', dispositivo_id: randomUUID() });
+    const personas = [beto, carla, ana].map((p) => ({ promotorId: p.id, promotorNombre: p.nombre }));
+    const cierres = await conNube(dbAdm, () => tablero.obtenerCierresDelDia(dbAdm, hoy, personas));
+    assert.equal(cierres.sinConexion, false);
+    assert.deepEqual(cierres.porPromotor.get(beto.id), { arqueo: { efectivoTeorico: 200000, efectivoContado: 199500, diferencia: -500 }, conteoHecho: false });
+    assert.deepEqual(cierres.porPromotor.get(carla.id), { arqueo: null, conteoHecho: true });
+    assert.deepEqual(cierres.porPromotor.get(ana.id), { arqueo: null, conteoHecho: false }, 'el arqueo de ayer no cuenta');
+    globalThis.__supabase = { from: () => { throw new Error('Network request failed'); } };
+    const sinRed = await tablero.obtenerCierresDelDia(dbAdm, hoy, personas);
+    assert.equal(sinRed.sinConexion, true);
+    assert.equal(sinRed.porPromotor.get(beto.id).arqueo, null);
+    globalThis.__supabase = nube;
   });
 }
 
