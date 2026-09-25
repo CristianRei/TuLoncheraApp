@@ -33,6 +33,22 @@ export function FilaFiltrosSuperior({
   );
 }
 
+/**
+ * Rango de fechas de solo lectura (ej. en un detalle que hereda el período
+ * del Dashboard) — mismo lugar y aspecto que el control de período.
+ */
+export function PeriodoFijo({ desde, hasta }: { desde: string; hasta: string }) {
+  const formato = (iso: string) =>
+    new Date(iso).toLocaleDateString('es-CO', { timeZone: 'America/Bogota', day: 'numeric', month: 'short' });
+  const texto = formato(desde) === formato(hasta) ? formato(desde) : `${formato(desde)} — ${formato(hasta)}`;
+  return (
+    <View style={styles.periodoFijo}>
+      <Ionicons name="calendar-outline" size={13} color={COLORES_ADMIN.textoInverso} />
+      <Text style={styles.periodoFijoTexto}>{texto}</Text>
+    </View>
+  );
+}
+
 /** Fila de selectores/buscador que se reparten el ancho. */
 export function FilaSelectores({ children }: { children: ReactNode }) {
   return <View style={styles.filaSelectores}>{children}</View>;
@@ -178,6 +194,19 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: ESPACIADO_ADMIN.sm,
+  },
+  periodoFijo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO_ADMIN.xs,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.sm,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    paddingVertical: 7,
+  },
+  periodoFijoTexto: {
+    ...TEXTO_ADMIN.boton,
+    color: COLORES_ADMIN.textoInverso,
   },
   filaSelectores: {
     flexDirection: 'row',

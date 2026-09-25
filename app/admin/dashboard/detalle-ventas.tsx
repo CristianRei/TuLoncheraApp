@@ -1,8 +1,6 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { agruparVentasPorDia, type VentasPorDia } from '@/core/analitica';
 import { formatearPesos } from '@/core/dinero';
@@ -18,7 +16,13 @@ import {
   type VentaResumida,
 } from '@/db/analitica';
 import { getDb } from '@/db/client';
+import { listarCategorias } from '@/db/categorias';
+import { listarProductos } from '@/db/productos';
+import { listarPuntos } from '@/db/puntos';
+import { listarPromotores } from '@/db/usuarios';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { FilaFiltrosSuperior, FiltrosAplicados, PanelFiltros, PeriodoFijo, type FiltroAplicado } from '@/ui/PanelFiltros';
 import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontales';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
 import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
@@ -56,7 +60,6 @@ function formatearFechaHora(iso: string): string {
 export default function DetalleVentas() {
   const usuario = useRequiereSesion(['ADMIN']);
   const anchaPantalla = useEsPantallaAncha();
-  const insets = useSafeAreaInsets();
   const { metrica, desde, hasta, filtros: filtrosParam } = useLocalSearchParams<{
     metrica: Metrica;
     desde: string;
@@ -65,13 +68,69 @@ export default function DetalleVentas() {
   }>();
 
   const rango: RangoFechas = useMemo(() => ({ desde, hasta }), [desde, hasta]);
-  const filtros: FiltrosVentas = useMemo(() => {
+  const [filtros, setFiltros] = useState<FiltrosVentas>(() => {
     try {
       return filtrosParam ? JSON.parse(filtrosParam) : {};
     } catch {
       return {};
     }
-  }, [filtrosParam]);
+  });
+  const [nombres, setNombres] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    (async () => {
+      const db = await getDb();
+      const [promotores, puntos, productos, categorias] = await Promise.all([
+        listarPromotores(db),
+        listarPuntos(db),
+        listarProductos(db),
+        listarCategorias(db),
+      ]);
+      const mapa: Record<string, string> = {};
+      for (const p of promotores) mapa[p.id] = p.nombre;
+      for (const p of puntos) mapa[p.id] = `${p.empresaNombre} · ${p.nombre}`;
+      for (const p of productos) mapa[p.id] = p.nombre;
+      for (const c of categorias) mapa[c.id] = c.nombre;
+      setNombres(mapa);
+    })();
+  }, []);
+
+  function quitarFiltro(campo: keyof FiltrosVentas) {
+    setFiltros((actual) => {
+      const nuevo = { ...actual };
+      delete nuevo[campo];
+      return nuevo;
+    });
+  }
+
+  const filtrosAplicados = [
+    filtros.promotorId && {
+      clave: 'promotorId',
+      texto: `Promotor: ${nombres[filtros.promotorId] ?? ''}`,
+      onQuitar: () => quitarFiltro('promotorId'),
+    },
+    filtros.puntoId && {
+      clave: 'puntoId',
+      texto: `Punto: ${nombres[filtros.puntoId] ?? ''}`,
+      onQuitar: () => quitarFiltro('puntoId'),
+    },
+    filtros.categoriaId && {
+      clave: 'categoriaId',
+      texto: `Categoría: ${nombres[filtros.categoriaId] ?? ''}`,
+      onQuitar: () => quitarFiltro('categoriaId'),
+    },
+    filtros.marca && { clave: 'marca', texto: `Marca: ${filtros.marca}`, onQuitar: () => quitarFiltro('marca') },
+    filtros.productoId && {
+      clave: 'productoId',
+      texto: `Producto: ${nombres[filtros.productoId] ?? ''}`,
+      onQuitar: () => quitarFiltro('productoId'),
+    },
+    filtros.metodoPago && {
+      clave: 'metodoPago',
+      texto: `Pago: ${ETIQUETAS_METODO[filtros.metodoPago]}`,
+      onQuitar: () => quitarFiltro('metodoPago'),
+    },
+  ].filter((f): f is FiltroAplicado => !!f);
 
   const [cargando, setCargando] = useState(true);
   const [ventas, setVentas] = useState<VentaResumida[]>([]);
@@ -109,29 +168,20 @@ export default function DetalleVentas() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 16 : insets.top + 16 },
-        ]}
-      >
+      <Encabezado titulo={titulo} rutaVolverTexto="Dashboard" anchoMaximo={ANCHO_ADMIN.tablero} />
+
+      {anchaPantalla && (
         <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
-          <View style={styles.encabezadoFila}>
-            <Pressable
-              style={anchaPantalla ? styles.volverBotonAncho : styles.volverBoton}
-              onPress={() => router.back()}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={16}
-                color={anchaPantalla ? COLORES_ADMIN.vino : COLORES_ADMIN.superficie}
-              />
-              <Text style={anchaPantalla ? styles.volverTextoAncho : styles.volverTexto}>Dashboard</Text>
-            </Pressable>
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>{titulo}</Text>
+          <View style={styles.filtrosMargen}>
+            <PanelFiltros>
+              <FilaFiltrosSuperior separador={false}>
+                <PeriodoFijo desde={desde} hasta={hasta} />
+              </FilaFiltrosSuperior>
+              <FiltrosAplicados filtros={filtrosAplicados} onLimpiar={() => setFiltros({})} />
+            </PanelFiltros>
           </View>
         </ContenedorAncho>
-      </View>
+      )}
 
       {!anchaPantalla ? (
         <View style={styles.centrado}>
@@ -221,58 +271,13 @@ export default function DetalleVentas() {
 }
 
 const styles = StyleSheet.create({
+  filtrosMargen: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
   contenedor: {
     flex: 1,
     backgroundColor: COLORES_ADMIN.background,
-  },
-  encabezado: {
-    backgroundColor: COLORES_ADMIN.vino,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  volverBoton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  volverBotonAncho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  volverTexto: {
-    ...TEXTO_ADMIN.boton,
-    color: COLORES_ADMIN.superficie,
-  },
-  volverTextoAncho: {
-    ...TEXTO_ADMIN.boton,
-    color: COLORES_ADMIN.vino,
-  },
-  titulo: {
-    ...TEXTO_ADMIN.tituloSeccion,
-    color: COLORES_ADMIN.textoInverso,
-  },
-  tituloAncho: {
-    ...TEXTO_ADMIN.tituloPantalla,
-    color: COLORES_ADMIN.vino,
   },
   centrado: {
     flex: 1,

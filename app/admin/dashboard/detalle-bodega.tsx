@@ -1,8 +1,6 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { fechaBogota } from '@/core/analitica';
 import { formatearPesos } from '@/core/dinero';
@@ -15,6 +13,8 @@ import {
   type MovimientoBodegaDetallado,
 } from '@/db/inventario';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { FilaFiltrosSuperior, PanelFiltros, PeriodoFijo } from '@/ui/PanelFiltros';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
 import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
@@ -47,7 +47,6 @@ function calcularSerieNeta(movimientos: MovimientoBodegaDetallado[]): SaldoNetoD
 export default function DetalleBodega() {
   const usuario = useRequiereSesion(['ADMIN']);
   const anchaPantalla = useEsPantallaAncha();
-  const insets = useSafeAreaInsets();
   const { desde, hasta } = useLocalSearchParams<{ desde: string; hasta: string }>();
   const rango = useMemo(() => ({ desde, hasta }), [desde, hasta]);
 
@@ -82,29 +81,19 @@ export default function DetalleBodega() {
 
   return (
     <View style={styles.contenedor}>
-      <View
-        style={[
-          anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-          { paddingTop: anchaPantalla ? 16 : insets.top + 16 },
-        ]}
-      >
+      <Encabezado titulo="Saldo en bodega" rutaVolverTexto="Dashboard" anchoMaximo={ANCHO_ADMIN.tablero} />
+
+      {anchaPantalla && (
         <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
-          <View style={styles.encabezadoFila}>
-            <Pressable
-              style={anchaPantalla ? styles.volverBotonAncho : styles.volverBoton}
-              onPress={() => router.back()}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={16}
-                color={anchaPantalla ? COLORES_ADMIN.vino : COLORES_ADMIN.superficie}
-              />
-              <Text style={anchaPantalla ? styles.volverTextoAncho : styles.volverTexto}>Dashboard</Text>
-            </Pressable>
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Saldo en bodega</Text>
+          <View style={styles.filtrosMargen}>
+            <PanelFiltros>
+              <FilaFiltrosSuperior separador={false}>
+                <PeriodoFijo desde={desde} hasta={hasta} />
+              </FilaFiltrosSuperior>
+            </PanelFiltros>
           </View>
         </ContenedorAncho>
-      </View>
+      )}
 
       {!anchaPantalla ? (
         <View style={styles.centrado}>
@@ -185,58 +174,13 @@ export default function DetalleBodega() {
 }
 
 const styles = StyleSheet.create({
+  filtrosMargen: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
   contenedor: {
     flex: 1,
     backgroundColor: COLORES_ADMIN.background,
-  },
-  encabezado: {
-    backgroundColor: COLORES_ADMIN.vino,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoAncho: {
-    backgroundColor: 'transparent',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-  },
-  encabezadoFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  volverBoton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  volverBotonAncho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  volverTexto: {
-    ...TEXTO_ADMIN.boton,
-    color: COLORES_ADMIN.superficie,
-  },
-  volverTextoAncho: {
-    ...TEXTO_ADMIN.boton,
-    color: COLORES_ADMIN.vino,
-  },
-  titulo: {
-    ...TEXTO_ADMIN.tituloSeccion,
-    color: COLORES_ADMIN.textoInverso,
-  },
-  tituloAncho: {
-    ...TEXTO_ADMIN.tituloPantalla,
-    color: COLORES_ADMIN.vino,
   },
   centrado: {
     flex: 1,
