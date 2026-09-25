@@ -8,7 +8,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -29,8 +28,10 @@ import { EmptyState } from '@/ui/EmptyState';
 import { Encabezado } from '@/ui/Encabezado';
 import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
 import { Insignia } from '@/ui/Insignia';
+import { CampoFiltro, FilaFiltrosSuperior, FilaSelectores, FiltrosAplicados, PanelFiltros, SelectorFiltro, type FiltroAplicado } from '@/ui/PanelFiltros';
+import { SearchBar } from '@/ui/SearchBar';
 import { SelectorModal, type OpcionSelector } from '@/ui/SelectorModal';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { mensajeDeError } from '@/core/errores';
 
@@ -75,32 +76,6 @@ function nombreDispositivo(dispositivoId: string): string {
   return `Dispositivo ${dispositivoId.slice(0, 8)}`;
 }
 
-/** Fila-selector estilo "dropdown" del mockup (icono + etiqueta + valor elegido) — abre un SelectorModal al tocarla. */
-function FilaSelector({
-  icono,
-  etiqueta,
-  valor,
-  onPress,
-}: {
-  icono: keyof typeof Ionicons.glyphMap;
-  etiqueta: string;
-  valor: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable style={styles.dropdown} onPress={onPress}>
-      <Text style={styles.dropdownEtiqueta}>{etiqueta}</Text>
-      <View style={styles.dropdownValor}>
-        <Ionicons name={icono} size={14} color={COLORES_ADMIN.textoSecundario} />
-        <Text style={styles.dropdownValorTexto} numberOfLines={1}>
-          {valor}
-        </Text>
-        <Ionicons name="chevron-down" size={14} color={COLORES_ADMIN.textoSecundario} />
-      </View>
-    </Pressable>
-  );
-}
-
 export default function Auditoria() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [logs, setLogs] = useState<LogAuditoria[]>([]);
@@ -118,6 +93,7 @@ export default function Auditoria() {
   const [productoId, setProductoId] = useState<string | null>(null);
   const [categoriaId, setCategoriaId] = useState<string | null>(null);
 
+  const [selectorTipoVisible, setSelectorTipoVisible] = useState(false);
   const [selectorAbierto, setSelectorAbierto] = useState<'ACTOR' | 'AFECTADO' | 'PRODUCTO' | 'CATEGORIA' | null>(
     null
   );
@@ -286,15 +262,6 @@ export default function Auditoria() {
     ? logs.filter((l) => l.descripcion.toLowerCase().includes(terminoBusqueda))
     : logs;
 
-  const hayFiltrosActivos =
-    filtroEntidad !== 'TODOS' ||
-    periodo !== 'SEMANA' ||
-    busqueda.trim().length > 0 ||
-    actorId !== null ||
-    afectadoId !== null ||
-    productoId !== null ||
-    categoriaId !== null;
-
   const etiquetaPeriodo =
     periodo === 'PERSONALIZADO'
       ? desdePersonalizado && hastaPersonalizado
@@ -308,119 +275,115 @@ export default function Auditoria() {
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
         <View style={styles.scroll}>
-          {/* Panel de filtros — una sola tarjeta con 3 filas divididas, igual al mockup de Stitch */}
-          <View style={styles.panelFiltros}>
-            {/* Fila 1: segmented de período + buscador, lado a lado */}
-            <View style={[styles.filaPanel, styles.filaPeriodoBuscador]}>
-              <FiltroSegmentado
-                opciones={[
-                  ...OPCIONES_PERIODO,
-                  { valor: 'PERSONALIZADO' as const, etiqueta: 'Personalizado', icono: 'calendar-outline' as const },
-                ]}
-                valorActivo={periodo}
-                onCambiar={(valor) => {
-                  setPeriodo(valor);
-                  if (valor === 'PERSONALIZADO') setCalendarioVisible(true);
-                }}
+          <PanelFiltros>
+            {filtroEntidad !== 'ACCESOS' && (
+              <FilaFiltrosSuperior>
+                <FiltroSegmentado
+                  opciones={[
+                    ...OPCIONES_PERIODO,
+                    {
+                      valor: 'PERSONALIZADO' as const,
+                      etiqueta: periodo === 'PERSONALIZADO' ? etiquetaPeriodo : 'Personalizado',
+                      icono: 'calendar-outline' as const,
+                    },
+                  ]}
+                  valorActivo={periodo}
+                  onCambiar={(valor) => {
+                    setPeriodo(valor);
+                    if (valor === 'PERSONALIZADO') setCalendarioVisible(true);
+                  }}
+                />
+              </FilaFiltrosSuperior>
+            )}
+
+            <FilaSelectores>
+              <SelectorFiltro
+                icono="layers-outline"
+                etiqueta="Tipo de registro"
+                valorTexto={OPCIONES_ENTIDAD.find((o) => o.valor === filtroEntidad)?.etiqueta ?? 'Todos'}
+                onPress={() => setSelectorTipoVisible(true)}
               />
-
-              <View style={styles.buscador}>
-                <Ionicons name="search-outline" size={15} color={COLORES_ADMIN.textoSecundario} />
-                <TextInput
-                  style={styles.buscadorInput}
-                  placeholder="Buscar por usuario, producto o descripción..."
-                  placeholderTextColor={COLORES_ADMIN.textoSecundario}
-                  value={busqueda}
-                  onChangeText={setBusqueda}
-                />
-              </View>
-            </View>
-
-            {/* Fila 2: pills de tipo + restablecer */}
-            <View style={styles.filaPanel}>
-              <View style={styles.pillsFila}>
-                <Text style={styles.pillsEtiqueta}>Filtrar por:</Text>
-                {OPCIONES_ENTIDAD.map((op) => {
-                  const activo = filtroEntidad === op.valor;
-                  return (
-                    <Pressable
-                      key={op.valor}
-                      style={[styles.pill, activo && styles.pillActivo]}
-                      onPress={() => elegirTipo(op.valor)}
-                    >
-                      <Text style={[styles.pillTexto, activo && styles.pillTextoActivo]}>{op.etiqueta}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              {hayFiltrosActivos && (
-                <Pressable onPress={restablecerFiltros}>
-                  <Text style={styles.restablecer}>Restablecer filtros</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {/* Fila 3: selectores tipo dropdown — no aplican en modo Accesos (vista agregada, no filtrada) */}
-            {filtroEntidad !== 'ACCESOS' && (
-              <View style={[styles.filaPanel, styles.filaDropdowns]}>
-                <FilaSelector
-                  icono="person-outline"
-                  etiqueta="Usuario responsable"
-                  valor={nombreActor ?? 'Cualquier usuario (Todos)'}
-                  onPress={() => setSelectorAbierto('ACTOR')}
-                />
-                {muestraAfectado && (
-                  <FilaSelector
-                    icono="locate-outline"
-                    etiqueta="Sobre quién"
-                    valor={nombreAfectado ?? 'Cualquiera'}
-                    onPress={() => setSelectorAbierto('AFECTADO')}
+              {filtroEntidad !== 'ACCESOS' && (
+                <>
+                  <CampoFiltro icono="search-outline" etiqueta="Buscar">
+                    <SearchBar
+                      valor={busqueda}
+                      onCambiar={setBusqueda}
+                      placeholder="Usuario, producto o descripción..."
+                    />
+                  </CampoFiltro>
+                  <SelectorFiltro
+                    icono="person-outline"
+                    etiqueta="Usuario responsable"
+                    valorTexto={nombreActor ?? 'Cualquier usuario'}
+                    onPress={() => setSelectorAbierto('ACTOR')}
                   />
-                )}
-                {muestraProductoCategoria && (
-                  <>
-                    <FilaSelector
-                      icono="pricetag-outline"
-                      etiqueta="Producto o SKU"
-                      valor={nombreProducto ?? 'Cualquier producto (Todos)'}
-                      onPress={() => setSelectorAbierto('PRODUCTO')}
+                  {muestraAfectado && (
+                    <SelectorFiltro
+                      icono="locate-outline"
+                      etiqueta="Sobre quién"
+                      valorTexto={nombreAfectado ?? 'Cualquiera'}
+                      onPress={() => setSelectorAbierto('AFECTADO')}
                     />
-                    <FilaSelector
-                      icono="pricetags-outline"
-                      etiqueta="Categoría de producto"
-                      valor={nombreCategoria ?? 'Cualquier categoría'}
-                      onPress={() => setSelectorAbierto('CATEGORIA')}
-                    />
-                  </>
-                )}
-              </View>
-            )}
-          </View>
+                  )}
+                  {muestraProductoCategoria && (
+                    <>
+                      <SelectorFiltro
+                        icono="pricetag-outline"
+                        etiqueta="Producto o SKU"
+                        valorTexto={nombreProducto ?? 'Cualquier producto'}
+                        onPress={() => setSelectorAbierto('PRODUCTO')}
+                      />
+                      <SelectorFiltro
+                        icono="pricetags-outline"
+                        etiqueta="Categoría"
+                        valorTexto={nombreCategoria ?? 'Cualquier categoría'}
+                        onPress={() => setSelectorAbierto('CATEGORIA')}
+                      />
+                    </>
+                  )}
+                </>
+              )}
+            </FilaSelectores>
 
-          {/* Chips de filtros aplicados + contador */}
-          <View style={styles.resumenFila}>
-            <Text style={styles.resumenEtiqueta}>Filtros aplicados:</Text>
-            {filtroEntidad !== 'ACCESOS' && (
-              <View style={styles.chipResumen}>
-                <Text style={styles.chipResumenTexto}>
-                  Período: <Text style={styles.chipResumenValor}>{etiquetaPeriodo}</Text>
-                </Text>
-              </View>
-            )}
-            <View style={styles.chipResumen}>
-              <Text style={styles.chipResumenTexto}>
-                Tipo:{' '}
-                <Text style={styles.chipResumenValor}>
-                  {OPCIONES_ENTIDAD.find((o) => o.valor === filtroEntidad)?.etiqueta}
-                </Text>
-              </Text>
-            </View>
-            <Text style={styles.resumenContador}>
-              {filtroEntidad === 'ACCESOS'
-                ? `${resumenAccesos.length} dispositivo${resumenAccesos.length === 1 ? '' : 's'} con historial`
-                : `Mostrando ${logsFiltrados.length} de ${logs.length} eventos`}
-            </Text>
-          </View>
+            <FiltrosAplicados
+              onLimpiar={restablecerFiltros}
+              filtros={[
+                filtroEntidad !== 'TODOS' && {
+                  clave: 'tipo',
+                  texto: `Tipo: ${OPCIONES_ENTIDAD.find((o) => o.valor === filtroEntidad)?.etiqueta ?? ''}`,
+                  onQuitar: () => elegirTipo('TODOS'),
+                },
+                busqueda.trim() !== '' && {
+                  clave: 'busqueda',
+                  texto: `Búsqueda: ${busqueda.trim()}`,
+                  onQuitar: () => setBusqueda(''),
+                },
+                nombreActor && { clave: 'actor', texto: `Usuario: ${nombreActor}`, onQuitar: () => setActorId(null) },
+                nombreAfectado && {
+                  clave: 'afectado',
+                  texto: `Sobre: ${nombreAfectado}`,
+                  onQuitar: () => setAfectadoId(null),
+                },
+                nombreProducto && {
+                  clave: 'producto',
+                  texto: `Producto: ${nombreProducto}`,
+                  onQuitar: () => setProductoId(null),
+                },
+                nombreCategoria && {
+                  clave: 'categoria',
+                  texto: `Categoría: ${nombreCategoria}`,
+                  onQuitar: () => setCategoriaId(null),
+                },
+              ].filter((f): f is FiltroAplicado => !!f)}
+            />
+          </PanelFiltros>
+
+          <Text style={styles.resumenContador}>
+            {filtroEntidad === 'ACCESOS'
+              ? `${resumenAccesos.length} dispositivo${resumenAccesos.length === 1 ? '' : 's'} con historial`
+              : `Mostrando ${logsFiltrados.length} de ${logs.length} eventos`}
+          </Text>
 
           {filtroEntidad === 'ACCESOS' ? (
             cargandoAccesos ? (
@@ -558,6 +521,16 @@ export default function Auditoria() {
       </Modal>
 
       <SelectorModal
+        visible={selectorTipoVisible}
+        titulo="Tipo de registro"
+        opciones={OPCIONES_ENTIDAD.filter((o) => o.valor !== 'TODOS').map((o) => ({ id: o.valor, etiqueta: o.etiqueta }))}
+        onElegir={(id) => {
+          elegirTipo((id as FiltroEntidad | null) ?? 'TODOS');
+          setSelectorTipoVisible(false);
+        }}
+        onCerrar={() => setSelectorTipoVisible(false)}
+      />
+      <SelectorModal
         visible={selectorAbierto === 'ACTOR'}
         titulo="Usuario responsable"
         opciones={personal.map((p) => ({ id: p.id, etiqueta: p.nombre }))}
@@ -611,124 +584,6 @@ const styles = StyleSheet.create({
     paddingTop: ESPACIADO_ADMIN.lg,
     gap: ESPACIADO_ADMIN.md,
     flex: 1,
-  },
-  panelFiltros: {
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: RADII_ADMIN.lg,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    overflow: 'hidden',
-  },
-  filaPanel: {
-    padding: ESPACIADO_ADMIN.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES_ADMIN.bordeSuave,
-    gap: ESPACIADO_ADMIN.md,
-  },
-  filaPeriodoBuscador: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  filaDropdowns: {
-    borderBottomWidth: 0,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  buscador: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    minWidth: 180,
-    gap: ESPACIADO_ADMIN.sm,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: ESPACIADO_ADMIN.md,
-    paddingVertical: ESPACIADO_ADMIN.sm,
-  },
-  buscadorInput: {
-    ...TEXTO_ADMIN.cuerpo,
-    flex: 1,
-  },
-  pillsFila: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: ESPACIADO_ADMIN.xs,
-    flex: 1,
-  },
-  pillsEtiqueta: {
-    ...TEXTO_ADMIN.etiqueta,
-    marginRight: 2,
-  },
-  pill: {
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: RADII_ADMIN.pill,
-    paddingHorizontal: ESPACIADO_ADMIN.md,
-    paddingVertical: ESPACIADO_ADMIN.xs + 2,
-  },
-  pillActivo: {
-    backgroundColor: COLORES_ADMIN.vino,
-    borderColor: COLORES_ADMIN.vino,
-  },
-  pillTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  pillTextoActivo: {
-    color: COLORES_ADMIN.textoInverso,
-  },
-  restablecer: {
-    ...TEXTO_ADMIN.boton,
-    color: COLORES_ADMIN.vino,
-    textDecorationLine: 'underline',
-  },
-  dropdown: {
-    minWidth: 180,
-    flex: 1,
-    gap: 2,
-  },
-  dropdownEtiqueta: TEXTO_ADMIN.etiqueta,
-  dropdownValor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ESPACIADO_ADMIN.xs,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: ESPACIADO_ADMIN.sm,
-    paddingVertical: ESPACIADO_ADMIN.sm,
-  },
-  dropdownValorTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    flex: 1,
-    color: COLORES_ADMIN.texto,
-  },
-  resumenFila: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: ESPACIADO_ADMIN.sm,
-    paddingHorizontal: 2,
-  },
-  resumenEtiqueta: TEXTO_ADMIN.cuerpoSecundario,
-  chipResumen: {
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: ESPACIADO_ADMIN.sm,
-    paddingVertical: 3,
-  },
-  chipResumenTexto: TEXTO_ADMIN.cuerpoSecundario,
-  chipResumenValor: {
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.vino,
   },
   resumenContador: {
     ...TEXTO_ADMIN.cuerpoSecundario,
@@ -818,11 +673,6 @@ const styles = StyleSheet.create({
     gap: ESPACIADO_ADMIN.md,
   },
   modalTitulo: TEXTO_ADMIN.tituloSeccion,
-  opcionQuitar: {
-    paddingVertical: ESPACIADO_ADMIN.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES_ADMIN.bordeSuave,
-  },
   botonAplicar: {
     backgroundColor: COLORES_ADMIN.vino,
     borderRadius: RADII_ADMIN.sm,

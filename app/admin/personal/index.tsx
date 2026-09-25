@@ -8,7 +8,9 @@ import { listarPersonalCompleto } from '@/db/personal';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { FilterTabs } from '@/ui/FilterTabs';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
+import { CampoFiltro, FilaFiltrosSuperior, FilaSelectores, FiltrosAplicados, PanelFiltros, SelectorFiltro, type FiltroAplicado } from '@/ui/PanelFiltros';
+import { SelectorModal } from '@/ui/SelectorModal';
 import { ListRow } from '@/ui/ListRow';
 import { SearchBar } from '@/ui/SearchBar';
 import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
@@ -42,6 +44,7 @@ export default function Personal() {
   const [personal, setPersonal] = useState<Persona[]>([]);
   const [filtro, setFiltro] = useState<Filtro>('ACTIVOS');
   const [filtroRol, setFiltroRol] = useState<FiltroRol>('TODOS');
+  const [selectorRolVisible, setSelectorRolVisible] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [cargando, setCargando] = useState(true);
 
@@ -74,6 +77,8 @@ export default function Personal() {
     return p.nombre.toLowerCase().includes(termino) || (p.cedula ?? '').includes(termino);
   });
 
+  const etiquetaRol = OPCIONES_ROL.find((o) => o.valor === filtroRol)?.etiqueta ?? '';
+
   return (
     <View style={styles.contenedor}>
       <Encabezado
@@ -84,9 +89,40 @@ export default function Personal() {
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
-          <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Buscar por nombre o cédula..." />
-          <FilterTabs opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
-          <FilterTabs opciones={OPCIONES_ROL} valorActivo={filtroRol} onCambiar={setFiltroRol} />
+          <PanelFiltros>
+            <FilaFiltrosSuperior>
+              <FiltroSegmentado opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
+            </FilaFiltrosSuperior>
+            <FilaSelectores>
+              <CampoFiltro icono="search-outline" etiqueta="Buscar">
+                <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Nombre o cédula..." />
+              </CampoFiltro>
+              <SelectorFiltro
+                icono="briefcase-outline"
+                etiqueta="Rol"
+                valorTexto={filtroRol === 'TODOS' ? 'Todos los roles' : etiquetaRol}
+                onPress={() => setSelectorRolVisible(true)}
+              />
+            </FilaSelectores>
+            <FiltrosAplicados
+              filtros={[
+                busqueda.trim() !== '' && {
+                  clave: 'busqueda',
+                  texto: `Búsqueda: ${busqueda.trim()}`,
+                  onQuitar: () => setBusqueda(''),
+                },
+                filtroRol !== 'TODOS' && {
+                  clave: 'rol',
+                  texto: `Rol: ${etiquetaRol}`,
+                  onQuitar: () => setFiltroRol('TODOS'),
+                },
+              ].filter((f): f is FiltroAplicado => !!f)}
+              onLimpiar={() => {
+                setBusqueda('');
+                setFiltroRol('TODOS');
+              }}
+            />
+          </PanelFiltros>
         </View>
       </ContenedorAncho>
 
@@ -124,6 +160,16 @@ export default function Personal() {
           />
         </ContenedorAncho>
       )}
+      <SelectorModal
+        visible={selectorRolVisible}
+        titulo="Filtrar por rol"
+        opciones={OPCIONES_ROL.filter((o) => o.valor !== 'TODOS').map((o) => ({ id: o.valor, etiqueta: o.etiqueta }))}
+        onElegir={(id) => {
+          setFiltroRol((id as FiltroRol | null) ?? 'TODOS');
+          setSelectorRolVisible(false);
+        }}
+        onCerrar={() => setSelectorRolVisible(false)}
+      />
     </View>
   );
 }
@@ -136,7 +182,7 @@ const styles = StyleSheet.create({
   controles: {
     paddingHorizontal: ESPACIADO_ADMIN.xl,
     paddingTop: ESPACIADO_ADMIN.lg,
-    gap: ESPACIADO_ADMIN.md,
+    paddingBottom: ESPACIADO_ADMIN.sm,
   },
   centrado: {
     flex: 1,

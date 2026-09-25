@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from './tema';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from './tema';
 
 interface Opcion<T extends string> {
   valor: T;
@@ -15,10 +15,9 @@ interface Props<T extends string> {
 }
 
 /**
- * Tabs de filtro (ej. Activos/Inactivos, Vigentes/Vencidos) — ya era el
- * elemento más consistente entre pantallas (radio 20 en casi todas),
- * formalizado aquí como componente único en vez de repetirlo en cada
- * StyleSheet.
+ * Tabs de filtro (ej. Activos/Inactivos, Vigentes/Vencidos) — mismo aspecto
+ * que el control de período del Dashboard (grupo unido sobre fondo común),
+ * para que todos los filtros de admin se vean iguales.
  */
 export function FilterTabs<T extends string>({ opciones, valorActivo, onCambiar }: Props<T>) {
   return (
@@ -43,27 +42,27 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: ESPACIADO_ADMIN.sm,
+    gap: ESPACIADO_ADMIN.xs,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    padding: ESPACIADO_ADMIN.xs,
+    borderRadius: RADII_ADMIN.sm,
+    alignSelf: 'flex-start',
   },
   tab: {
-    paddingHorizontal: ESPACIADO_ADMIN.lg,
-    paddingVertical: ESPACIADO_ADMIN.sm,
-    borderRadius: RADII_ADMIN.pill,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO_ADMIN.xs,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    paddingVertical: 7,
+    borderRadius: RADII_ADMIN.sm,
   },
   tabActivo: {
     backgroundColor: COLORES_ADMIN.vino,
-    borderColor: COLORES_ADMIN.vino,
   },
   tabTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.boton,
   },
   tabTextoActivo: {
-    color: '#FFFFFF',
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoInverso,
   },
 });

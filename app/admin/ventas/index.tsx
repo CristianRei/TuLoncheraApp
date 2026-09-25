@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -13,9 +12,10 @@ import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { FilterTabs } from '@/ui/FilterTabs';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
+import { FilaFiltrosSuperior, FiltrosAplicados, PanelFiltros } from '@/ui/PanelFiltros';
 import { ListRow } from '@/ui/ListRow';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -114,36 +114,56 @@ export default function Ventas() {
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
-          <FilterTabs opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
-
-          <View style={styles.tabsFecha}>
-            <FilterTabs
-              opciones={[
-                { valor: 'TODOS' as FiltroFecha, etiqueta: 'Todos los días' },
-                { valor: 'HOY' as FiltroFecha, etiqueta: 'Hoy' },
-              ]}
-              valorActivo={filtroFecha === 'ESPECIFICA' ? null : filtroFecha}
-              onCambiar={(valor) => {
-                setFiltroFecha(valor);
-                if (valor === 'TODOS') setFechaEspecifica(null);
+          <PanelFiltros>
+            <FilaFiltrosSuperior
+              separador={false}
+              acciones={<FiltroSegmentado opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />}
+            >
+              <FiltroSegmentado
+                opciones={[
+                  { valor: 'TODOS' as FiltroFecha, etiqueta: 'Todos los días' },
+                  { valor: 'HOY' as FiltroFecha, etiqueta: 'Hoy' },
+                  {
+                    valor: 'ESPECIFICA' as FiltroFecha,
+                    etiqueta:
+                      filtroFecha === 'ESPECIFICA' && fechaEspecifica
+                        ? formatearFechaCorta(fechaEspecifica)
+                        : 'Elegir fecha',
+                    icono: 'calendar-outline',
+                  },
+                ]}
+                valorActivo={filtroFecha}
+                onCambiar={(valor) => {
+                  if (valor === 'ESPECIFICA') {
+                    setCalendarioVisible(true);
+                    return;
+                  }
+                  setFiltroFecha(valor);
+                  if (valor === 'TODOS') setFechaEspecifica(null);
+                }}
+              />
+            </FilaFiltrosSuperior>
+            <FiltrosAplicados
+              filtros={
+                filtroFecha === 'ESPECIFICA' && fechaEspecifica
+                  ? [
+                      {
+                        clave: 'fecha',
+                        texto: `Fecha: ${formatearFechaCorta(fechaEspecifica)}`,
+                        onQuitar: () => {
+                          setFiltroFecha('TODOS');
+                          setFechaEspecifica(null);
+                        },
+                      },
+                    ]
+                  : []
+              }
+              onLimpiar={() => {
+                setFiltroFecha('TODOS');
+                setFechaEspecifica(null);
               }}
             />
-            <Pressable
-              style={[styles.tabFecha, filtroFecha === 'ESPECIFICA' && styles.tabFechaActiva]}
-              onPress={() => setCalendarioVisible(true)}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={13}
-                color={filtroFecha === 'ESPECIFICA' ? COLORES_ADMIN.textoInverso : COLORES_ADMIN.textoSecundario}
-              />
-              <Text style={[styles.tabFechaTexto, filtroFecha === 'ESPECIFICA' && styles.tabFechaTextoActivo]}>
-                {filtroFecha === 'ESPECIFICA' && fechaEspecifica
-                  ? formatearFechaCorta(fechaEspecifica)
-                  : 'Elegir fecha'}
-              </Text>
-            </Pressable>
-          </View>
+          </PanelFiltros>
         </View>
       </ContenedorAncho>
 
@@ -225,35 +245,7 @@ const styles = StyleSheet.create({
   controles: {
     paddingHorizontal: ESPACIADO_ADMIN.xl,
     paddingTop: ESPACIADO_ADMIN.lg,
-    gap: ESPACIADO_ADMIN.sm,
-  },
-  tabsFecha: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: ESPACIADO_ADMIN.sm,
-    alignItems: 'center',
-  },
-  tabFecha: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: ESPACIADO_ADMIN.lg,
-    paddingVertical: ESPACIADO_ADMIN.sm,
-    borderRadius: RADII_ADMIN.pill,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-  },
-  tabFechaActiva: {
-    backgroundColor: COLORES_ADMIN.vino,
-    borderColor: COLORES_ADMIN.vino,
-  },
-  tabFechaTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  tabFechaTextoActivo: {
-    color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    paddingBottom: ESPACIADO_ADMIN.sm,
   },
   exportandoAviso: {
     paddingHorizontal: ESPACIADO_ADMIN.xl,

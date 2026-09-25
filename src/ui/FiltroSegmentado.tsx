@@ -45,7 +45,7 @@ export function FiltroSegmentado<T extends string>({ opciones, valorActivo, onCa
               <Ionicons
                 name={opcion.icono}
                 size={13}
-                color={activo ? '#FFFFFF' : COLORES_ADMIN.textoSecundario}
+                color={activo ? COLORES_ADMIN.textoInverso : COLORES_ADMIN.texto}
               />
             )}
             <Text style={[styles.texto, activo && styles.textoActivo]}>{opcion.etiqueta}</Text>
@@ -60,12 +60,10 @@ const styles = StyleSheet.create({
   grupo: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 2,
+    gap: ESPACIADO_ADMIN.xs,
     backgroundColor: COLORES_ADMIN.superficieBaja,
-    padding: 3,
+    padding: ESPACIADO_ADMIN.xs,
     borderRadius: RADII_ADMIN.sm,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
     alignSelf: 'flex-start',
   },
   boton: {
@@ -73,20 +71,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: ESPACIADO_ADMIN.xs,
     paddingHorizontal: ESPACIADO_ADMIN.md,
-    paddingVertical: ESPACIADO_ADMIN.xs + 2,
-    borderRadius: RADII_ADMIN.sm - 2,
+    paddingVertical: 7,
+    borderRadius: RADII_ADMIN.sm,
   },
   botonActivo: {
     backgroundColor: COLORES_ADMIN.vino,
   },
   texto: {
     ...TEXTO_ADMIN.boton,
-    fontFamily: TEXTO_ADMIN.cuerpo.fontFamily,
-    fontSize: 12,
-    color: COLORES_ADMIN.textoSecundario,
   },
   textoActivo: {
-    color: '#FFFFFF',
-    fontFamily: TEXTO_ADMIN.boton.fontFamily,
+    color: COLORES_ADMIN.textoInverso,
   },
 });

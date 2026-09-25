@@ -20,6 +20,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { ListRow } from '@/ui/ListRow';
+import { CampoFiltro, FilaSelectores, FiltrosAplicados, PanelFiltros } from '@/ui/PanelFiltros';
 import { SearchBar } from '@/ui/SearchBar';
 import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -107,7 +108,21 @@ export default function ClientesAdmin() {
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
-          <SearchBar valor={busqueda} onCambiar={buscar} placeholder="Buscar por nombre, teléfono o empresa..." />
+          <PanelFiltros>
+            <FilaSelectores>
+              <CampoFiltro icono="search-outline" etiqueta="Buscar">
+                <SearchBar valor={busqueda} onCambiar={buscar} placeholder="Nombre, teléfono o empresa..." />
+              </CampoFiltro>
+            </FilaSelectores>
+            <FiltrosAplicados
+              filtros={
+                busqueda.trim() !== ''
+                  ? [{ clave: 'busqueda', texto: `Búsqueda: ${busqueda.trim()}`, onQuitar: () => buscar('') }]
+                  : []
+              }
+              onLimpiar={() => buscar('')}
+            />
+          </PanelFiltros>
         </View>
       </ContenedorAncho>
 
@@ -233,7 +248,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.background,
   },
   controles: {
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
     paddingTop: ESPACIADO_ADMIN.lg,
+    paddingBottom: ESPACIADO_ADMIN.sm,
   },
   centrado: {
     flex: 1,

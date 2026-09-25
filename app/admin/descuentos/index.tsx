@@ -9,7 +9,8 @@ import { desactivarDescuento, listarDescuentos } from '@/db/descuentos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { FilterTabs } from '@/ui/FilterTabs';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
+import { FilaFiltrosSuperior, PanelFiltros } from '@/ui/PanelFiltros';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
 import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -111,7 +112,11 @@ export default function Descuentos() {
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
-          <FilterTabs opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
+          <PanelFiltros>
+            <FilaFiltrosSuperior separador={false}>
+              <FiltroSegmentado opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
+            </FilaFiltrosSuperior>
+          </PanelFiltros>
         </View>
       </ContenedorAncho>
 
@@ -189,7 +194,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.background,
   },
   controles: {
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
     paddingTop: ESPACIADO_ADMIN.lg,
+    paddingBottom: ESPACIADO_ADMIN.sm,
   },
   centrado: {
     flex: 1,

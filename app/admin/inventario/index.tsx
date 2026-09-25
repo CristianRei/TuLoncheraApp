@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { exportarAExcel } from '@/db/exportarExcel';
 import { getDb } from '@/db/client';
@@ -9,8 +9,9 @@ import { listarTodosLosMovimientos } from '@/db/movimientos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
+import { AccionFiltro, CampoFiltro, FilaFiltrosSuperior, FilaSelectores, FiltrosAplicados, PanelFiltros } from '@/ui/PanelFiltros';
 import { SearchBar } from '@/ui/SearchBar';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -107,39 +108,47 @@ export default function Inventario() {
       />
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
-        <View style={styles.accionesExport}>
-          <Pressable
-            style={styles.botonExport}
-            onPress={exportarInventario}
-            disabled={exportando !== null || items.length === 0}
-          >
-            {exportando === 'inventario' ? (
-              <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
-            ) : (
-              <Text style={styles.botonExportTexto}>Exportar inventario a Excel</Text>
-            )}
-          </Pressable>
-          <Pressable
-            style={styles.botonExport}
-            onPress={exportarMovimientos}
-            disabled={exportando !== null}
-          >
-            {exportando === 'movimientos' ? (
-              <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
-            ) : (
-              <Text style={styles.botonExportTexto}>Exportar movimientos a Excel</Text>
-            )}
-          </Pressable>
-        </View>
-        {items.length > 0 && (
-          <View style={styles.busqueda}>
-            <SearchBar
-              valor={busqueda}
-              onCambiar={setBusqueda}
-              placeholder="Buscar por nombre, SKU, código de barras o marca..."
+        <View style={styles.controles}>
+          <PanelFiltros>
+            <FilaFiltrosSuperior
+              acciones={
+                <>
+                  <AccionFiltro
+                    icono="download-outline"
+                    texto="Exportar inventario"
+                    onPress={exportarInventario}
+                    cargando={exportando === 'inventario'}
+                    deshabilitado={exportando !== null || items.length === 0}
+                  />
+                  <AccionFiltro
+                    icono="download-outline"
+                    texto="Exportar movimientos"
+                    onPress={exportarMovimientos}
+                    cargando={exportando === 'movimientos'}
+                    deshabilitado={exportando !== null}
+                  />
+                </>
+              }
             />
-          </View>
-        )}
+            <FilaSelectores>
+              <CampoFiltro icono="search-outline" etiqueta="Buscar">
+                <SearchBar
+                  valor={busqueda}
+                  onCambiar={setBusqueda}
+                  placeholder="Nombre, SKU, código de barras o marca..."
+                />
+              </CampoFiltro>
+            </FilaSelectores>
+            <FiltrosAplicados
+              filtros={
+                busqueda.trim() !== ''
+                  ? [{ clave: 'busqueda', texto: `Búsqueda: ${busqueda.trim()}`, onQuitar: () => setBusqueda('') }]
+                  : []
+              }
+              onLimpiar={() => setBusqueda('')}
+            />
+          </PanelFiltros>
+        </View>
       </ContenedorAncho>
 
       {cargando ? (
@@ -176,33 +185,14 @@ export default function Inventario() {
 }
 
 const styles = StyleSheet.create({
+  controles: {
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
+    paddingTop: ESPACIADO_ADMIN.lg,
+    paddingBottom: ESPACIADO_ADMIN.sm,
+  },
   contenedor: {
     flex: 1,
     backgroundColor: COLORES_ADMIN.background,
-  },
-  accionesExport: {
-    flexDirection: 'row',
-    gap: ESPACIADO_ADMIN.sm,
-    paddingTop: ESPACIADO_ADMIN.lg,
-  },
-  botonExport: {
-    flex: 1,
-    borderRadius: RADII_ADMIN.md,
-    paddingVertical: ESPACIADO_ADMIN.sm + 2,
-    paddingHorizontal: ESPACIADO_ADMIN.sm,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.vino,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  botonExportTexto: {
-    ...TEXTO_ADMIN.boton,
-    color: COLORES_ADMIN.vino,
-    textAlign: 'center',
-  },
-  busqueda: {
-    paddingTop: ESPACIADO_ADMIN.md,
   },
   centrado: {
     flex: 1,

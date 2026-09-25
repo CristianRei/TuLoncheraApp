@@ -26,6 +26,8 @@ import {
   marcarNotificacionLeida,
 } from '@/db/notificaciones';
 import { listarPersonalCompleto } from '@/db/personal';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
+import { FilaFiltrosSuperior, PanelFiltros } from '@/ui/PanelFiltros';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
@@ -251,22 +253,18 @@ export default function NotificacionesYMensajes() {
         <>
           <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
             <View style={styles.tabsFiltro}>
-              <Pressable
-                style={[styles.tabFiltro, filtroAlertas === 'NO_LEIDAS' && styles.tabFiltroActivo]}
-                onPress={() => setFiltroAlertas('NO_LEIDAS')}
-              >
-                <Text style={[styles.tabFiltroTexto, filtroAlertas === 'NO_LEIDAS' && styles.tabFiltroTextoActivo]}>
-                  No leídas
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.tabFiltro, filtroAlertas === 'TODAS' && styles.tabFiltroActivo]}
-                onPress={() => setFiltroAlertas('TODAS')}
-              >
-                <Text style={[styles.tabFiltroTexto, filtroAlertas === 'TODAS' && styles.tabFiltroTextoActivo]}>
-                  Todas
-                </Text>
-              </Pressable>
+              <PanelFiltros>
+                <FilaFiltrosSuperior separador={false}>
+                  <FiltroSegmentado
+                    opciones={[
+                      { valor: 'NO_LEIDAS' as FiltroAlertas, etiqueta: 'No leídas' },
+                      { valor: 'TODAS' as FiltroAlertas, etiqueta: 'Todas' },
+                    ]}
+                    valorActivo={filtroAlertas}
+                    onCambiar={setFiltroAlertas}
+                  />
+                </FilaFiltrosSuperior>
+              </PanelFiltros>
             </View>
           </ContenedorAncho>
 
@@ -522,29 +520,8 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoInverso,
   },
   tabsFiltro: {
-    flexDirection: 'row',
-    gap: 8,
     paddingHorizontal: 20,
     paddingTop: 16,
-  },
-  tabFiltro: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: RADII_ADMIN.lg,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-  },
-  tabFiltroActivo: {
-    backgroundColor: COLORES_ADMIN.vino,
-    borderColor: COLORES_ADMIN.vino,
-  },
-  tabFiltroTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  tabFiltroTextoActivo: {
-    color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   centrado: {
     flex: 1,

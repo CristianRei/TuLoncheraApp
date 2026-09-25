@@ -13,9 +13,9 @@ import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { FilterTabs } from '@/ui/FilterTabs';
 import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
 import { ListRow } from '@/ui/ListRow';
+import { FilaFiltrosSuperior, FilaSelectores, FiltrosAplicados, PanelFiltros, SelectorFiltro, type FiltroAplicado } from '@/ui/PanelFiltros';
 import { SelectorModal } from '@/ui/SelectorModal';
 import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -57,6 +57,7 @@ export default function Turnos() {
   const [calendarioVisible, setCalendarioVisible] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('TODOS');
   const [promotorId, setPromotorId] = useState<string | null>(null);
+  const [selectorEstadoVisible, setSelectorEstadoVisible] = useState(false);
   const [selectorPromotorVisible, setSelectorPromotorVisible] = useState(false);
 
   const rango = useMemo(() => {
@@ -158,34 +159,59 @@ export default function Turnos() {
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
         <View style={styles.panelFiltros}>
-          <FiltroSegmentado
-            opciones={[
-              ...OPCIONES_PERIODO,
-              {
-                valor: 'PERSONALIZADO' as const,
-                etiqueta: periodo === 'PERSONALIZADO' ? etiquetaPeriodo : 'Personalizado',
-                icono: 'calendar-outline' as const,
-              },
-            ]}
-            valorActivo={periodo}
-            onCambiar={(valor) => {
-              setPeriodo(valor);
-              if (valor === 'PERSONALIZADO') setCalendarioVisible(true);
-            }}
-          />
+          <PanelFiltros>
+            <FilaFiltrosSuperior>
+              <FiltroSegmentado
+                opciones={[
+                  ...OPCIONES_PERIODO,
+                  {
+                    valor: 'PERSONALIZADO' as const,
+                    etiqueta: periodo === 'PERSONALIZADO' ? etiquetaPeriodo : 'Personalizado',
+                    icono: 'calendar-outline' as const,
+                  },
+                ]}
+                valorActivo={periodo}
+                onCambiar={(valor) => {
+                  setPeriodo(valor);
+                  if (valor === 'PERSONALIZADO') setCalendarioVisible(true);
+                }}
+              />
+            </FilaFiltrosSuperior>
 
-          <FilterTabs opciones={OPCIONES_ESTADO} valorActivo={filtroEstado} onCambiar={setFiltroEstado} />
+            <FilaSelectores>
+              <SelectorFiltro
+                icono="radio-button-on-outline"
+                etiqueta="Estado"
+                valorTexto={OPCIONES_ESTADO.find((o) => o.valor === filtroEstado)?.etiqueta ?? 'Todos'}
+                onPress={() => setSelectorEstadoVisible(true)}
+              />
+              <SelectorFiltro
+                icono="person-outline"
+                etiqueta="Promotor"
+                valorTexto={promotorFiltrado?.nombre ?? 'Todos los promotores'}
+                onPress={() => setSelectorPromotorVisible(true)}
+              />
+            </FilaSelectores>
 
-          <Pressable style={styles.dropdown} onPress={() => setSelectorPromotorVisible(true)}>
-            <Text style={styles.dropdownEtiqueta}>Promotor</Text>
-            <View style={styles.dropdownValor}>
-              <Ionicons name="person-outline" size={14} color={COLORES_ADMIN.textoSecundario} />
-              <Text style={styles.dropdownValorTexto} numberOfLines={1}>
-                {promotorFiltrado?.nombre ?? 'Todos'}
-              </Text>
-              <Ionicons name="chevron-down" size={14} color={COLORES_ADMIN.textoSecundario} />
-            </View>
-          </Pressable>
+            <FiltrosAplicados
+              filtros={[
+                filtroEstado !== 'TODOS' && {
+                  clave: 'estado',
+                  texto: `Estado: ${OPCIONES_ESTADO.find((o) => o.valor === filtroEstado)?.etiqueta ?? ''}`,
+                  onQuitar: () => setFiltroEstado('TODOS'),
+                },
+                promotorFiltrado && {
+                  clave: 'promotor',
+                  texto: `Promotor: ${promotorFiltrado.nombre}`,
+                  onQuitar: () => setPromotorId(null),
+                },
+              ].filter((f): f is FiltroAplicado => !!f)}
+              onLimpiar={() => {
+                setFiltroEstado('TODOS');
+                setPromotorId(null);
+              }}
+            />
+          </PanelFiltros>
         </View>
 
         {promotoresConVariosEnCurso > 0 && (
@@ -257,6 +283,16 @@ export default function Turnos() {
         }}
         onCerrar={() => setSelectorPromotorVisible(false)}
       />
+      <SelectorModal
+        visible={selectorEstadoVisible}
+        titulo="Filtrar por estado"
+        opciones={OPCIONES_ESTADO.filter((o) => o.valor !== 'TODOS').map((o) => ({ id: o.valor, etiqueta: o.etiqueta }))}
+        onElegir={(id) => {
+          setFiltroEstado((id as FiltroEstado | null) ?? 'TODOS');
+          setSelectorEstadoVisible(false);
+        }}
+        onCerrar={() => setSelectorEstadoVisible(false)}
+      />
     </View>
   );
 }
@@ -271,32 +307,9 @@ const styles = StyleSheet.create({
     paddingTop: ESPACIADO_ADMIN.sm,
   },
   panelFiltros: {
-    gap: ESPACIADO_ADMIN.md,
     paddingHorizontal: ESPACIADO_ADMIN.xl,
-    paddingTop: ESPACIADO_ADMIN.md,
+    paddingTop: ESPACIADO_ADMIN.lg,
     paddingBottom: ESPACIADO_ADMIN.sm,
-  },
-  dropdown: {
-    gap: 2,
-  },
-  dropdownEtiqueta: TEXTO_ADMIN.etiqueta,
-  dropdownValor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ESPACIADO_ADMIN.xs,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: ESPACIADO_ADMIN.sm,
-    paddingVertical: ESPACIADO_ADMIN.sm,
-    alignSelf: 'flex-start',
-    minWidth: 180,
-  },
-  dropdownValorTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    flex: 1,
-    color: COLORES_ADMIN.texto,
   },
   avisoDuplicado: {
     flexDirection: 'row',
@@ -344,11 +357,6 @@ const styles = StyleSheet.create({
   },
   modalTitulo: {
     ...TEXTO_ADMIN.tituloSeccion,
-  },
-  opcionQuitar: {
-    paddingVertical: ESPACIADO_ADMIN.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES_ADMIN.bordeSuave,
   },
   botonAplicar: {
     backgroundColor: COLORES_ADMIN.vino,

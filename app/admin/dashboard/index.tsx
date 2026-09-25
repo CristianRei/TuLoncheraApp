@@ -57,6 +57,8 @@ import { listarMarcasDistintas, listarProductos } from '@/db/productos';
 import { listarPuntos } from '@/db/puntos';
 import { listarPromotores } from '@/db/usuarios';
 import { CalendarioRango } from '@/ui/CalendarioRango';
+import { AccionFiltro, FilaFiltrosSuperior, FilaSelectores, FiltrosAplicados, PanelFiltros, SelectorFiltro, type FiltroAplicado } from '@/ui/PanelFiltros';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontales';
 import { GraficoCircular } from '@/ui/graficas/GraficoCircular';
@@ -397,7 +399,6 @@ export default function Dashboard() {
     });
   }
 
-  const cantidadFiltrosActivos = Object.keys(filtros).length;
   const filtrosExtra: CampoFiltro[] = ['categoria', 'marca', 'producto'];
   const cantidadFiltrosExtra = filtrosExtra.filter((campo) => {
     if (campo === 'categoria') return !!filtros.categoriaId;
@@ -586,135 +587,126 @@ export default function Dashboard() {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
           <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
-            <View style={styles.filtrosTarjeta}>
-              <View style={styles.filtrosFilaSuperior}>
-                <View style={styles.tabs}>
-                  {(Object.keys(ETIQUETAS_PERIODO) as Exclude<Periodo, 'PERSONALIZADO'>[]).map((p) => (
-                    <Pressable
-                      key={p}
-                      style={[styles.tab, periodo === p && styles.tabActivo]}
-                      onPress={() => setPeriodo(p)}
-                    >
-                      <Text style={[styles.tabTexto, periodo === p && styles.tabTextoActivo]}>
-                        {ETIQUETAS_PERIODO[p]}
-                      </Text>
-                    </Pressable>
-                  ))}
-                  <Pressable
-                    style={[styles.tab, periodo === 'PERSONALIZADO' && styles.tabActivo]}
-                    onPress={() => {
-                      setPeriodo('PERSONALIZADO');
-                      setCalendarioVisible(true);
+            <View style={styles.filtrosMargen}>
+              <PanelFiltros>
+                <FilaFiltrosSuperior
+                  acciones={
+                    <>
+                      <View style={styles.actualizadoFila}>
+                        <View style={styles.actualizadoPunto} />
+                        <Text style={styles.actualizadoTexto}>
+                          {minutosDesdeActualizacion === 0
+                            ? 'Actualizado hace instantes'
+                            : `Actualizado hace ${minutosDesdeActualizacion} min`}
+                        </Text>
+                      </View>
+                      <AccionFiltro icono="sync-outline" texto="Actualizar" onPress={cargar} />
+                      {exportando ? (
+                        <ActivityIndicator size="small" color={COLORES_ADMIN.textoSecundario} />
+                      ) : (
+                        <AccionFiltro
+                          icono="download-outline"
+                          texto="Exportar informe"
+                          onPress={exportarInforme}
+                          deshabilitado={!resumen || resumen.cantidadVentas === 0}
+                        />
+                      )}
+                    </>
+                  }
+                >
+                  <FiltroSegmentado
+                    opciones={[
+                      ...(Object.keys(ETIQUETAS_PERIODO) as Exclude<Periodo, 'PERSONALIZADO'>[]).map((p) => ({
+                        valor: p as Periodo,
+                        etiqueta: ETIQUETAS_PERIODO[p],
+                      })),
+                      {
+                        valor: 'PERSONALIZADO' as Periodo,
+                        etiqueta:
+                          periodo === 'PERSONALIZADO' && desdePersonalizado && hastaPersonalizado
+                            ? `${desdePersonalizado} — ${hastaPersonalizado}`
+                            : 'Rango personalizado',
+                        icono: 'calendar-outline' as const,
+                      },
+                    ]}
+                    valorActivo={periodo}
+                    onCambiar={(p) => {
+                      setPeriodo(p);
+                      if (p === 'PERSONALIZADO') setCalendarioVisible(true);
                     }}
-                  >
-                    <Ionicons
-                      name="calendar-outline"
-                      size={13}
-                      color={periodo === 'PERSONALIZADO' ? COLORES_ADMIN.textoInverso : COLORES_ADMIN.textoSecundario}
-                    />
-                    <Text
-                      style={[styles.tabTexto, periodo === 'PERSONALIZADO' && styles.tabTextoActivo]}
-                    >
-                      {' '}
-                      {periodo === 'PERSONALIZADO' && desdePersonalizado && hastaPersonalizado
-                        ? `${desdePersonalizado} — ${hastaPersonalizado}`
-                        : 'Rango personalizado'}
-                    </Text>
-                  </Pressable>
-                </View>
-                <View style={styles.actualizadoFila}>
-                  <View style={styles.actualizadoPunto} />
-                  <Text style={styles.actualizadoTexto}>
-                    {minutosDesdeActualizacion === 0
-                      ? 'Actualizado hace instantes'
-                      : `Actualizado hace ${minutosDesdeActualizacion} min`}
-                  </Text>
-                  <Pressable style={styles.botonRefrescar} onPress={cargar}>
-                    <Ionicons name="sync-outline" size={15} color={COLORES_ADMIN.textoSecundario} />
-                    <Text style={styles.botonRefrescarTexto}>Actualizar</Text>
-                  </Pressable>
-                  <Pressable
-                    style={styles.botonRefrescar}
-                    onPress={exportarInforme}
-                    disabled={exportando || !resumen || resumen.cantidadVentas === 0}
-                  >
-                    {exportando ? (
-                      <ActivityIndicator size="small" color={COLORES_ADMIN.textoSecundario} />
-                    ) : (
-                      <>
-                        <Ionicons name="download-outline" size={15} color={COLORES_ADMIN.textoSecundario} />
-                        <Text style={styles.botonRefrescarTexto}>Exportar informe</Text>
-                      </>
+                  />
+                </FilaFiltrosSuperior>
+
+                <FilaSelectores>
+                  <SelectorFiltro
+                    icono={ICONOS_FILTRO.punto}
+                    etiqueta={ETIQUETAS_FILTRO.punto}
+                    valorTexto={
+                      nombrePuntoFiltro
+                        ? `${nombrePuntoFiltro.empresaNombre} · ${nombrePuntoFiltro.nombre}`
+                        : 'Todos los puntos'
+                    }
+                    onPress={() => setModalFiltroVisible('punto')}
+                  />
+                  <SelectorFiltro
+                    icono={ICONOS_FILTRO.promotor}
+                    etiqueta={ETIQUETAS_FILTRO.promotor}
+                    valorTexto={nombrePromotorFiltro ?? 'Todos los promotores'}
+                    onPress={() => setModalFiltroVisible('promotor')}
+                  />
+                  <SelectorFiltro
+                    icono={ICONOS_FILTRO.metodoPago}
+                    etiqueta={ETIQUETAS_FILTRO.metodoPago}
+                    valorTexto={filtros.metodoPago ? ETIQUETAS_METODO[filtros.metodoPago] : 'Todos los métodos'}
+                    onPress={() => setModalFiltroVisible('metodoPago')}
+                  />
+                  <Pressable style={styles.masFiltrosBoton} onPress={() => setModalFiltroVisible('categoria')}>
+                    <Ionicons name="options-outline" size={16} color={COLORES_ADMIN.textoSecundario} />
+                    <Text style={styles.masFiltrosTexto}>Más filtros</Text>
+                    {cantidadFiltrosExtra > 0 && (
+                      <View style={styles.masFiltrosBadge}>
+                        <Text style={styles.masFiltrosBadgeTexto}>{cantidadFiltrosExtra}</Text>
+                      </View>
                     )}
                   </Pressable>
-                </View>
-              </View>
+                </FilaSelectores>
 
-              <View style={styles.selectoresFila}>
-                <SelectorFiltro
-                  campo="punto"
-                  valorTexto={
-                    nombrePuntoFiltro
-                      ? `${nombrePuntoFiltro.empresaNombre} · ${nombrePuntoFiltro.nombre}`
-                      : 'Todos los puntos'
-                  }
-                  onPress={() => setModalFiltroVisible('punto')}
+                <FiltrosAplicados
+                  onLimpiar={() => setFiltros({})}
+                  filtros={[
+                    filtros.promotorId && {
+                      clave: 'promotorId',
+                      texto: `Promotor: ${nombrePromotorFiltro ?? ''}`,
+                      onQuitar: () => quitarFiltro('promotorId'),
+                    },
+                    filtros.puntoId && {
+                      clave: 'puntoId',
+                      texto: `Punto: ${nombrePuntoFiltro ? `${nombrePuntoFiltro.empresaNombre} · ${nombrePuntoFiltro.nombre}` : ''}`,
+                      onQuitar: () => quitarFiltro('puntoId'),
+                    },
+                    filtros.categoriaId && {
+                      clave: 'categoriaId',
+                      texto: `Categoría: ${nombreCategoriaFiltro ?? ''}`,
+                      onQuitar: () => quitarFiltro('categoriaId'),
+                    },
+                    filtros.marca && {
+                      clave: 'marca',
+                      texto: `Marca: ${filtros.marca}`,
+                      onQuitar: () => quitarFiltro('marca'),
+                    },
+                    filtros.productoId && {
+                      clave: 'productoId',
+                      texto: `Producto: ${nombreProductoFiltro ?? ''}`,
+                      onQuitar: () => quitarFiltro('productoId'),
+                    },
+                    filtros.metodoPago && {
+                      clave: 'metodoPago',
+                      texto: `Pago: ${ETIQUETAS_METODO[filtros.metodoPago]}`,
+                      onQuitar: () => quitarFiltro('metodoPago'),
+                    },
+                  ].filter((f): f is FiltroAplicado => !!f)}
                 />
-                <SelectorFiltro
-                  campo="promotor"
-                  valorTexto={nombrePromotorFiltro ?? 'Todos los promotores'}
-                  onPress={() => setModalFiltroVisible('promotor')}
-                />
-                <SelectorFiltro
-                  campo="metodoPago"
-                  valorTexto={filtros.metodoPago ? ETIQUETAS_METODO[filtros.metodoPago] : 'Todos los métodos'}
-                  onPress={() => setModalFiltroVisible('metodoPago')}
-                />
-                <Pressable style={styles.masFiltrosBoton} onPress={() => setModalFiltroVisible('categoria')}>
-                  <Ionicons name="options-outline" size={16} color={COLORES_ADMIN.textoSecundario} />
-                  <Text style={styles.masFiltrosTexto}>Más filtros</Text>
-                  {cantidadFiltrosExtra > 0 && (
-                    <View style={styles.masFiltrosBadge}>
-                      <Text style={styles.masFiltrosBadgeTexto}>{cantidadFiltrosExtra}</Text>
-                    </View>
-                  )}
-                </Pressable>
-              </View>
-
-              {cantidadFiltrosActivos > 0 && (
-                <View style={styles.chipsFila}>
-                  <Text style={styles.chipsEtiqueta}>Filtros aplicados:</Text>
-                  {filtros.promotorId && (
-                    <Chip texto={`Promotor: ${nombrePromotorFiltro ?? ''}`} onQuitar={() => quitarFiltro('promotorId')} />
-                  )}
-                  {filtros.puntoId && (
-                    <Chip
-                      texto={`Punto: ${nombrePuntoFiltro ? `${nombrePuntoFiltro.empresaNombre} · ${nombrePuntoFiltro.nombre}` : ''}`}
-                      onQuitar={() => quitarFiltro('puntoId')}
-                    />
-                  )}
-                  {filtros.categoriaId && (
-                    <Chip
-                      texto={`Categoría: ${nombreCategoriaFiltro ?? ''}`}
-                      onQuitar={() => quitarFiltro('categoriaId')}
-                    />
-                  )}
-                  {filtros.marca && <Chip texto={`Marca: ${filtros.marca}`} onQuitar={() => quitarFiltro('marca')} />}
-                  {filtros.productoId && (
-                    <Chip texto={`Producto: ${nombreProductoFiltro ?? ''}`} onQuitar={() => quitarFiltro('productoId')} />
-                  )}
-                  {filtros.metodoPago && (
-                    <Chip
-                      texto={`Pago: ${ETIQUETAS_METODO[filtros.metodoPago]}`}
-                      onQuitar={() => quitarFiltro('metodoPago')}
-                    />
-                  )}
-                  <Pressable style={styles.limpiarFiltrosBoton} onPress={() => setFiltros({})}>
-                    <Ionicons name="refresh-outline" size={13} color={COLORES_ADMIN.vino} />
-                    <Text style={styles.limpiarFiltrosTexto}>Limpiar todos</Text>
-                  </Pressable>
-                </View>
-              )}
+              </PanelFiltros>
             </View>
 
             {cargando || !resumen || !saldoBodega ? (
@@ -1446,31 +1438,6 @@ export default function Dashboard() {
   );
 }
 
-function SelectorFiltro({
-  campo,
-  valorTexto,
-  onPress,
-}: {
-  campo: CampoFiltro;
-  valorTexto: string;
-  onPress: () => void;
-}) {
-  return (
-    <View style={styles.selector}>
-      <View style={styles.selectorLabelFila}>
-        <Ionicons name={ICONOS_FILTRO[campo]} size={12} color={COLORES_ADMIN.dorado} />
-        <Text style={styles.selectorLabel}>{ETIQUETAS_FILTRO[campo]}</Text>
-      </View>
-      <Pressable style={styles.selectorBoton} onPress={onPress}>
-        <Text style={styles.selectorBotonTexto} numberOfLines={1}>
-          {valorTexto}
-        </Text>
-        <Ionicons name="chevron-down" size={16} color={COLORES_ADMIN.textoSecundario} />
-      </Pressable>
-    </View>
-  );
-}
-
 function TarjetaKpi({
   icono,
   etiqueta,
@@ -1518,17 +1485,6 @@ function TarjetaKpi({
         {onPress && <Ionicons name="chevron-forward" size={13} color={COLORES_ADMIN.textoSecundario} />}
       </View>
     </Pressable>
-  );
-}
-
-function Chip({ texto, onQuitar }: { texto: string; onQuitar: () => void }) {
-  return (
-    <View style={styles.chip}>
-      <Text style={styles.chipTexto}>{texto}</Text>
-      <Pressable onPress={onQuitar}>
-        <Ionicons name="close" size={13} color={COLORES_ADMIN.error} />
-      </Pressable>
-    </View>
   );
 }
 
@@ -1626,50 +1582,9 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: 40,
   },
-  filtrosTarjeta: {
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: RADII_ADMIN.md,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
+  filtrosMargen: {
     margin: 20,
     marginBottom: 16,
-    padding: 16,
-    gap: 14,
-  },
-  filtrosFilaSuperior: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 10,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES_ADMIN.superficie,
-  },
-  tabs: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    padding: 4,
-    borderRadius: RADII_ADMIN.sm,
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: RADII_ADMIN.sm,
-  },
-  tabActivo: {
-    backgroundColor: COLORES_ADMIN.vino,
-  },
-  tabTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  tabTextoActivo: {
-    color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   actualizadoFila: {
     flexDirection: 'row',
@@ -1684,53 +1599,6 @@ const styles = StyleSheet.create({
   },
   actualizadoTexto: {
     ...TEXTO_ADMIN.datoSecundario,
-  },
-  botonRefrescar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    height: 28,
-    borderRadius: RADII_ADMIN.sm,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    paddingHorizontal: 10,
-  },
-  botonRefrescarTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  selectoresFila: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  selector: {
-    flex: 1,
-    minWidth: 180,
-    gap: 4,
-  },
-  selectorLabelFila: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  selectorLabel: {
-    ...TEXTO_ADMIN.etiqueta,
-    letterSpacing: 0.5,
-  },
-  selectorBoton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.superficie,
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  selectorBotonTexto: {
-    ...TEXTO_ADMIN.boton,
-    flex: 1,
-    color: COLORES_ADMIN.vino,
   },
   masFiltrosBoton: {
     flexDirection: 'row',
@@ -1760,42 +1628,6 @@ const styles = StyleSheet.create({
   masFiltrosBadgeTexto: {
     fontSize: 11,
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
-    color: COLORES_ADMIN.vino,
-  },
-  chipsFila: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: COLORES_ADMIN.superficie,
-  },
-  chipsEtiqueta: {
-    ...TEXTO_ADMIN.boton,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: COLORES_ADMIN.superficie,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: RADII_ADMIN.lg,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  chipTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  limpiarFiltrosBoton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginLeft: 4,
-  },
-  limpiarFiltrosTexto: {
-    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   cuerpo: {

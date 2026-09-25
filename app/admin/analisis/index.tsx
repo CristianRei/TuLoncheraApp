@@ -36,6 +36,8 @@ import {
   obtenerVentasPorTemporada,
 } from '@/db/analisis';
 import { getDb } from '@/db/client';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
+import { FilaFiltrosSuperior, PanelFiltros } from '@/ui/PanelFiltros';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontales';
 import { GraficoDispersion } from '@/ui/graficas/GraficoDispersion';
@@ -511,38 +513,38 @@ export default function Analisis() {
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
           <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
-            <View style={styles.tabs}>
-              {(Object.keys(ETIQUETAS_PERIODO) as Periodo[]).map((p) => (
-                <Pressable
-                  key={p}
-                  style={[styles.tab, periodo === p && styles.tabActivo]}
-                  onPress={() => setPeriodo(p)}
+            <View style={styles.filtrosMargen}>
+              <PanelFiltros>
+                <FilaFiltrosSuperior
+                  separador={false}
+                  acciones={
+                    <FiltroSegmentado
+                      opciones={[
+                        {
+                          valor: 'RECOMENDACIONES' as const,
+                          etiqueta:
+                            recomendaciones.length > 0
+                              ? `Recomendaciones (${recomendaciones.length})`
+                              : 'Recomendaciones',
+                          icono: 'bulb-outline' as const,
+                        },
+                        { valor: 'GRAFICAS' as const, etiqueta: 'Gráficas', icono: 'bar-chart-outline' as const },
+                      ]}
+                      valorActivo={vista}
+                      onCambiar={setVista}
+                    />
+                  }
                 >
-                  <Text style={[styles.tabTexto, periodo === p && styles.tabTextoActivo]}>
-                    {ETIQUETAS_PERIODO[p]}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <View style={styles.tabsVista}>
-              {(
-                [
-                  ['RECOMENDACIONES', 'Recomendaciones'],
-                  ['GRAFICAS', 'Gráficas'],
-                ] as const
-              ).map(([valor, etiqueta]) => (
-                <Pressable
-                  key={valor}
-                  style={[styles.tabVista, vista === valor && styles.tabVistaActivo]}
-                  onPress={() => setVista(valor)}
-                >
-                  <Text style={[styles.tabVistaTexto, vista === valor && styles.tabVistaTextoActivo]}>
-                    {etiqueta}
-                    {valor === 'RECOMENDACIONES' && recomendaciones.length > 0 ? ` (${recomendaciones.length})` : ''}
-                  </Text>
-                </Pressable>
-              ))}
+                  <FiltroSegmentado
+                    opciones={(Object.keys(ETIQUETAS_PERIODO) as Periodo[]).map((p) => ({
+                      valor: p,
+                      etiqueta: ETIQUETAS_PERIODO[p],
+                    }))}
+                    valorActivo={periodo}
+                    onCambiar={setPeriodo}
+                  />
+                </FilaFiltrosSuperior>
+              </PanelFiltros>
             </View>
 
             {cargando ? (
@@ -690,6 +692,10 @@ export default function Analisis() {
 }
 
 const styles = StyleSheet.create({
+  filtrosMargen: {
+    margin: 20,
+    marginBottom: 12,
+  },
   contenedor: {
     flex: 1,
     backgroundColor: COLORES_ADMIN.background,
@@ -744,57 +750,6 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingBottom: 40,
-  },
-  tabs: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    padding: 4,
-    borderRadius: RADII_ADMIN.sm,
-    margin: 20,
-    marginBottom: 8,
-    alignSelf: 'flex-start',
-  },
-  tab: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: RADII_ADMIN.sm,
-  },
-  tabActivo: {
-    backgroundColor: COLORES_ADMIN.vino,
-  },
-  tabTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  tabTextoActivo: {
-    color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-  },
-  tabsVista: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  tabVista: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: RADII_ADMIN.pill,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-  },
-  tabVistaActivo: {
-    backgroundColor: COLORES_ADMIN.vino,
-    borderColor: COLORES_ADMIN.vino,
-  },
-  tabVistaTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  tabVistaTextoActivo: {
-    color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   cuerpo: {
     paddingHorizontal: 20,

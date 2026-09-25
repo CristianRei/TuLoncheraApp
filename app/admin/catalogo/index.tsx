@@ -22,7 +22,9 @@ import { asignarCategoriaAProductos, listarProductos } from '@/db/productos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { FilterTabs } from '@/ui/FilterTabs';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
+import { AccionFiltro, CampoFiltro, FilaFiltrosSuperior, FilaSelectores, FiltrosAplicados, PanelFiltros, SelectorFiltro, type FiltroAplicado } from '@/ui/PanelFiltros';
+import { SelectorModal } from '@/ui/SelectorModal';
 import { SearchBar } from '@/ui/SearchBar';
 import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
@@ -43,6 +45,7 @@ export default function CatalogoProductos() {
   const [cargando, setCargando] = useState(true);
   const [filtro, setFiltro] = useState<Filtro>('ACTIVOS');
   const [filtroCategoria, setFiltroCategoria] = useState<FiltroCategoria>('TODAS');
+  const [selectorCategoriaVisible, setSelectorCategoriaVisible] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [exportando, setExportando] = useState(false);
   const [modoSeleccion, setModoSeleccion] = useState(false);
@@ -130,6 +133,13 @@ export default function CatalogoProductos() {
     }
   }
 
+  const nombreFiltroCategoria =
+    filtroCategoria === 'TODAS'
+      ? null
+      : filtroCategoria === 'SIN_CATEGORIA'
+        ? 'Sin categoría'
+        : (categorias.find((c) => c.id === filtroCategoria)?.nombre ?? null);
+
   return (
     <View style={styles.contenedor}>
       <Encabezado
@@ -153,69 +163,50 @@ export default function CatalogoProductos() {
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
-          <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Buscar producto..." />
-          <View style={styles.filaFiltroExportar}>
-            <FilterTabs opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
-            <Pressable
-              style={styles.botonExportar}
-              onPress={exportar}
-              disabled={exportando || filtrados.length === 0}
+          <PanelFiltros>
+            <FilaFiltrosSuperior
+              acciones={
+                <AccionFiltro
+                  icono="download-outline"
+                  texto="Exportar"
+                  onPress={exportar}
+                  cargando={exportando}
+                  deshabilitado={filtrados.length === 0}
+                />
+              }
             >
-              {exportando ? (
-                <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
-              ) : (
-                <Text style={styles.botonExportarTexto}>Exportar</Text>
-              )}
-            </Pressable>
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsCategoria}>
-            <Pressable
-              style={[styles.chipCategoria, filtroCategoria === 'TODAS' && styles.chipCategoriaActivo]}
-              onPress={() => setFiltroCategoria('TODAS')}
-            >
-              <Text
-                style={[
-                  styles.chipCategoriaTexto,
-                  filtroCategoria === 'TODAS' && styles.chipCategoriaTextoActivo,
-                ]}
-              >
-                Todas
-              </Text>
-            </Pressable>
-            <Pressable
-              style={[
-                styles.chipCategoria,
-                filtroCategoria === 'SIN_CATEGORIA' && styles.chipCategoriaActivo,
-              ]}
-              onPress={() => setFiltroCategoria('SIN_CATEGORIA')}
-            >
-              <Text
-                style={[
-                  styles.chipCategoriaTexto,
-                  filtroCategoria === 'SIN_CATEGORIA' && styles.chipCategoriaTextoActivo,
-                ]}
-              >
-                Sin categoría
-              </Text>
-            </Pressable>
-            {categorias.map((c) => (
-              <Pressable
-                key={c.id}
-                style={[styles.chipCategoria, filtroCategoria === c.id && styles.chipCategoriaActivo]}
-                onPress={() => setFiltroCategoria(c.id)}
-              >
-                <Text
-                  style={[
-                    styles.chipCategoriaTexto,
-                    filtroCategoria === c.id && styles.chipCategoriaTextoActivo,
-                  ]}
-                >
-                  {c.nombre}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+              <FiltroSegmentado opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
+            </FilaFiltrosSuperior>
+            <FilaSelectores>
+              <CampoFiltro icono="search-outline" etiqueta="Buscar">
+                <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Nombre del producto..." />
+              </CampoFiltro>
+              <SelectorFiltro
+                icono="pricetags-outline"
+                etiqueta="Categoría"
+                valorTexto={nombreFiltroCategoria ?? 'Todas las categorías'}
+                onPress={() => setSelectorCategoriaVisible(true)}
+              />
+            </FilaSelectores>
+            <FiltrosAplicados
+              filtros={[
+                busqueda.trim() !== '' && {
+                  clave: 'busqueda',
+                  texto: `Búsqueda: ${busqueda.trim()}`,
+                  onQuitar: () => setBusqueda(''),
+                },
+                nombreFiltroCategoria && {
+                  clave: 'categoria',
+                  texto: `Categoría: ${nombreFiltroCategoria}`,
+                  onQuitar: () => setFiltroCategoria('TODAS'),
+                },
+              ].filter((f): f is FiltroAplicado => !!f)}
+              onLimpiar={() => {
+                setBusqueda('');
+                setFiltroCategoria('TODAS');
+              }}
+            />
+          </PanelFiltros>
         </View>
       </ContenedorAncho>
 
@@ -320,6 +311,19 @@ export default function CatalogoProductos() {
           </View>
         </View>
       </Modal>
+      <SelectorModal
+        visible={selectorCategoriaVisible}
+        titulo="Filtrar por categoría"
+        opciones={[
+          { id: 'SIN_CATEGORIA', etiqueta: 'Sin categoría' },
+          ...categorias.map((c) => ({ id: c.id, etiqueta: c.nombre })),
+        ]}
+        onElegir={(id) => {
+          setFiltroCategoria(id ?? 'TODAS');
+          setSelectorCategoriaVisible(false);
+        }}
+        onCerrar={() => setSelectorCategoriaVisible(false)}
+      />
     </View>
   );
 }
@@ -343,49 +347,8 @@ const styles = StyleSheet.create({
   },
   controles: {
     paddingHorizontal: ESPACIADO_ADMIN.xl,
-    paddingTop: ESPACIADO_ADMIN.md,
-    gap: ESPACIADO_ADMIN.md,
-  },
-  filaFiltroExportar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: ESPACIADO_ADMIN.sm,
-  },
-  botonExportar: {
-    paddingHorizontal: ESPACIADO_ADMIN.md,
-    paddingVertical: ESPACIADO_ADMIN.sm,
-    borderRadius: RADII_ADMIN.pill,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-  },
-  botonExportarTexto: {
-    ...TEXTO_ADMIN.boton,
-  },
-  chipsCategoria: {
-    flexDirection: 'row',
-  },
-  chipCategoria: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: RADII_ADMIN.lg,
-    backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    marginRight: 8,
-  },
-  chipCategoriaActivo: {
-    backgroundColor: COLORES_ADMIN.dorado,
-    borderColor: COLORES_ADMIN.dorado,
-  },
-  chipCategoriaTexto: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORES_ADMIN.textoSecundario,
-  },
-  chipCategoriaTextoActivo: {
-    color: COLORES_ADMIN.texto,
+    paddingTop: ESPACIADO_ADMIN.lg,
+    paddingBottom: ESPACIADO_ADMIN.sm,
   },
   centrado: {
     flex: 1,
