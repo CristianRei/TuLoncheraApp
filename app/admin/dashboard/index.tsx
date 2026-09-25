@@ -550,9 +550,13 @@ export default function Dashboard() {
           <View style={styles.encabezadoFila}>
             <View style={styles.encabezadoIzquierda}>
               {!anchaPantalla && (
-                <Pressable style={styles.volverBoton} onPress={() => router.back()}>
-                  <Ionicons name="chevron-back" size={16} color="#FFE9E2" />
-                  <Text style={styles.volverTexto}>Admin</Text>
+                <Pressable
+                  style={styles.volverBoton}
+                  onPress={() => router.back()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Volver a Admin"
+                >
+                  <Ionicons name="chevron-back" size={24} color={COLORES_ADMIN.textoInverso} />
                 </Pressable>
               )}
               <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>Dashboard</Text>
@@ -578,16 +582,9 @@ export default function Dashboard() {
         </ContenedorAncho>
       </View>
 
-      {!anchaPantalla ? (
-        <View style={styles.centrado}>
-          <Text style={styles.avisoAngosto}>
-            Este panel está optimizado para pantalla ancha. Ábrelo desde un computador o tablet.
-          </Text>
-        </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll}>
           <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
-            <View style={styles.filtrosMargen}>
+            <View style={[styles.filtrosMargen, !anchaPantalla && styles.filtrosMargenMovil]}>
               <PanelFiltros>
                 <FilaFiltrosSuperior
                   acciones={
@@ -637,7 +634,7 @@ export default function Dashboard() {
                   />
                 </FilaFiltrosSuperior>
 
-                <FilaSelectores>
+                <FilaSelectores activos={Object.keys(filtros).length}>
                   <SelectorFiltro
                     icono={ICONOS_FILTRO.punto}
                     etiqueta={ETIQUETAS_FILTRO.punto}
@@ -714,7 +711,7 @@ export default function Dashboard() {
                 <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
               </View>
             ) : (
-              <View style={styles.cuerpo}>
+              <View style={[styles.cuerpo, !anchaPantalla && styles.cuerpoMovil]}>
                 <View style={styles.filaKpis}>
                   <TarjetaKpi
                     icono="cash-outline"
@@ -1232,7 +1229,6 @@ export default function Dashboard() {
             )}
           </ContenedorAncho>
         </ScrollView>
-      )}
 
       <Modal visible={calendarioVisible} animationType="fade" transparent>
         <View style={styles.fondoModal}>
@@ -1453,6 +1449,7 @@ function TarjetaKpi({
   variacionPct?: number | null;
   onPress?: () => void;
 }) {
+  const anchaPantalla = useEsPantallaAncha();
   return (
     <Pressable style={styles.kpi} onPress={onPress} disabled={!onPress}>
       <View style={styles.kpiEncabezado}>
@@ -1460,7 +1457,7 @@ function TarjetaKpi({
         <Ionicons name={icono} size={17} color={COLORES_ADMIN.textoSecundario} />
       </View>
       <View style={styles.kpiValorFila}>
-        <Text style={styles.kpiValor}>{valor}</Text>
+        <Text style={[styles.kpiValor, !anchaPantalla && styles.kpiValorMovil]}>{valor}</Text>
         {variacionPct !== undefined && variacionPct !== null && (
           <View style={styles.kpiVariacionChip}>
             <Ionicons
@@ -1516,17 +1513,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   volverBoton: {
-    flexDirection: 'row',
+    width: 40,
+    height: 40,
+    marginLeft: -8,
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-  },
-  volverTexto: {
-    ...TEXTO_ADMIN.boton,
-    color: COLORES_ADMIN.superficie,
+    justifyContent: 'center',
   },
   titulo: {
     ...TEXTO_ADMIN.tituloSeccion,
@@ -1572,12 +1563,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-  },
-  avisoAngosto: {
-    ...TEXTO_ADMIN.cuerpo,
-    color: COLORES_ADMIN.textoSecundario,
-    textAlign: 'center',
-    maxWidth: 320,
   },
   scroll: {
     paddingBottom: 40,
@@ -1634,6 +1619,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 16,
   },
+  cuerpoMovil: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  filtrosMargenMovil: {
+    margin: 16,
+    marginBottom: 12,
+  },
   filaKpis: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -1641,7 +1634,7 @@ const styles = StyleSheet.create({
   },
   kpi: {
     flex: 1,
-    minWidth: 200,
+    minWidth: 150,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
@@ -1668,6 +1661,9 @@ const styles = StyleSheet.create({
     ...TEXTO_ADMIN.datoGrande,
     color: COLORES_ADMIN.vino,
   },
+  kpiValorMovil: {
+    fontSize: 19,
+  },
   kpiVariacionChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1692,7 +1688,7 @@ const styles = StyleSheet.create({
   },
   tarjeta: {
     flex: 1,
-    minWidth: 320,
+    minWidth: 280,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
@@ -1714,14 +1710,18 @@ const styles = StyleSheet.create({
   },
   seccionEncabezadoFila: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 8,
     marginBottom: 14,
   },
   seccionEncabezadoIcono: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
   },
   seccionTitulo: {
     ...TEXTO_ADMIN.tituloSeccion,
@@ -2063,9 +2063,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 1,
   },
   piePaginaTexto: {
     ...TEXTO_ADMIN.cuerpoSecundario,
+    flexShrink: 1,
   },
   piePaginaEnlace: {
     flexDirection: 'row',

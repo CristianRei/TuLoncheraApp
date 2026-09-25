@@ -178,7 +178,7 @@ export default function Turnos() {
               />
             </FilaFiltrosSuperior>
 
-            <FilaSelectores>
+            <FilaSelectores activos={(filtroEstado !== 'TODOS' ? 1 : 0) + (promotorFiltrado ? 1 : 0)}>
               <SelectorFiltro
                 icono="radio-button-on-outline"
                 etiqueta="Estado"

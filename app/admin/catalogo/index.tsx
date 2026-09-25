@@ -177,7 +177,7 @@ export default function CatalogoProductos() {
             >
               <FiltroSegmentado opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
             </FilaFiltrosSuperior>
-            <FilaSelectores>
+            <FilaSelectores activos={nombreFiltroCategoria ? 1 : 0}>
               <CampoFiltro icono="search-outline" etiqueta="Buscar">
                 <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Nombre del producto..." />
               </CampoFiltro>

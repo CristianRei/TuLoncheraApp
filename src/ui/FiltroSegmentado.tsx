@@ -89,6 +89,8 @@ const styles = StyleSheet.create({
     padding: ESPACIADO_ADMIN.xs,
     borderRadius: RADII_ADMIN.sm,
     alignSelf: 'flex-start',
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   boton: {
     flexDirection: 'row',

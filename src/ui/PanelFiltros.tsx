@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import type { ReactNode } from 'react';
+import { Children, isValidElement, type ReactNode } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from './tema';
+import { useEsPantallaAncha } from './useEsPantallaAncha';
 
 /**
  * Tarjeta de filtros estándar de admin — el patrón del Dashboard: fila
@@ -49,9 +51,43 @@ export function PeriodoFijo({ desde, hasta }: { desde: string; hasta: string }) 
   );
 }
 
-/** Fila de selectores/buscador que se reparten el ancho. */
-export function FilaSelectores({ children }: { children: ReactNode }) {
-  return <View style={styles.filaSelectores}>{children}</View>;
+/**
+ * Fila de selectores/buscador que se reparten el ancho. En celular quedan
+ * plegados detrás de un botón "Filtros" — desplegados ocupaban media
+ * pantalla antes del primer dato.
+ */
+export function FilaSelectores({ children, activos = 0 }: { children: ReactNode; activos?: number }) {
+  const anchaPantalla = useEsPantallaAncha();
+  const [abierto, setAbierto] = useState(false);
+  if (anchaPantalla) return <View style={styles.filaSelectores}>{children}</View>;
+
+  // El buscador (CampoFiltro) queda siempre a la vista; solo se pliegan los selectores.
+  const lista = Children.toArray(children);
+  const campos = lista.filter((h) => isValidElement(h) && h.type === CampoFiltro);
+  const selectores = lista.filter((h) => !(isValidElement(h) && h.type === CampoFiltro));
+  if (selectores.length === 0) return <View style={styles.filaSelectores}>{campos}</View>;
+
+  return (
+    <View style={styles.plegable}>
+      {campos}
+      <Pressable
+        style={styles.botonPlegar}
+        onPress={() => setAbierto((a) => !a)}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: abierto }}
+      >
+        <Ionicons name="options-outline" size={16} color={COLORES_ADMIN.vino} />
+        <Text style={styles.botonPlegarTexto}>{abierto ? 'Ocultar filtros' : 'Filtros'}</Text>
+        {activos > 0 && (
+          <View style={styles.contador}>
+            <Text style={styles.contadorTexto}>{activos}</Text>
+          </View>
+        )}
+        <Ionicons name={abierto ? 'chevron-up' : 'chevron-down'} size={16} color={COLORES_ADMIN.textoSecundario} />
+      </Pressable>
+      {abierto && <View style={styles.filaSelectores}>{selectores}</View>}
+    </View>
+  );
 }
 
 export function SelectorFiltro({
@@ -166,8 +202,8 @@ const styles = StyleSheet.create({
     borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
-    padding: ESPACIADO_ADMIN.lg,
-    gap: 14,
+    padding: ESPACIADO_ADMIN.md,
+    gap: ESPACIADO_ADMIN.md,
   },
   filaSuperior: {
     flexDirection: 'row',
@@ -188,12 +224,49 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 10,
+    maxWidth: '100%',
+    flexShrink: 1,
+  },
+  plegable: {
+    gap: 10,
+  },
+  botonPlegar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: ESPACIADO_ADMIN.sm,
+    minHeight: 40,
+    paddingHorizontal: ESPACIADO_ADMIN.md,
+    borderRadius: RADII_ADMIN.sm,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.superficie,
+  },
+  botonPlegarTexto: {
+    ...TEXTO_ADMIN.boton,
+    color: COLORES_ADMIN.vino,
+    flex: 1,
+  },
+  contador: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORES_ADMIN.vino,
+  },
+  contadorTexto: {
+    ...TEXTO_ADMIN.datoDestacado,
+    fontSize: 11,
+    color: COLORES_ADMIN.textoInverso,
   },
   acciones: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: ESPACIADO_ADMIN.sm,
+    maxWidth: '100%',
+    flexShrink: 1,
   },
   periodoFijo: {
     flexDirection: 'row',

@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatearPesos } from '@/core/dinero';
 import { formatearRangoHoras } from '@/core/horas';
 import type { Evento, MetodoPago, Turno } from '@/core/tipos';
@@ -39,6 +40,7 @@ import { useVentaEnCurso } from '@/ui/VentaEnCursoContext';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 export default function HomePromotor() {
+  const insets = useSafeAreaInsets();
   const usuario = useRequiereSesion(['PROMOTOR']);
   const { cerrarSesion } = useSesion();
   const carrito = useCarrito();
@@ -144,6 +146,7 @@ export default function HomePromotor() {
     return (
       <PantallaIniciarTurno
         promotorId={usuarioActual.id}
+        nombre={usuarioActual.nombre}
         onIniciado={() => cargarTurno(usuarioActual.id)}
         onCerrarSesion={salir}
       />
@@ -301,7 +304,7 @@ export default function HomePromotor() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
+      <View style={[styles.encabezado, { paddingTop: insets.top + 16 }]}>
         <View style={styles.encabezadoTexto}>
           <Text style={styles.saludo}>Hola, {usuario.nombre}</Text>
           {eventoHoy && (
@@ -599,7 +602,6 @@ const styles = StyleSheet.create({
   },
   encabezado: {
     backgroundColor: COLORES.primario,
-    paddingTop: 64,
     paddingHorizontal: 20,
     paddingBottom: 16,
     flexDirection: 'row',

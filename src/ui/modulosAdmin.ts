@@ -26,7 +26,6 @@ export const MODULOS_ADMIN: ModuloAdmin[] = [
     icono: 'bar-chart-outline',
     badge: 'Métricas clave',
     destacada: true,
-    soloPantallaAncha: true,
   },
   {
     ruta: '/admin/calendario',

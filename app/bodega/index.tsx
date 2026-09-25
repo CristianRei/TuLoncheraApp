@@ -1,6 +1,10 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
+import { listarCarguesPendientes } from '@/db/cargues';
+import { getDb } from '@/db/client';
+import { listarTrasladosPendientes } from '@/db/traslados';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { EncabezadoInicio } from '@/ui/EncabezadoInicio';
 import { useSesion } from '@/ui/SesionContext';
@@ -8,11 +12,26 @@ import { TarjetaModulo } from '@/ui/TarjetaModulo';
 import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 export default function HomeBodega() {
   const usuario = useRequiereSesion(['BODEGA']);
   const { cerrarSesion } = useSesion();
   const anchaPantalla = useEsPantallaAncha();
+  const [pendientes, setPendientes] = useState<number | null>(null);
+
+  const contarPendientes = useCallback(async () => {
+    const db = await getDb();
+    const [cargues, traslados] = await Promise.all([listarCarguesPendientes(db), listarTrasladosPendientes(db)]);
+    setPendientes(cargues.length + traslados.length);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      contarPendientes();
+    }, [contarPendientes])
+  );
+  useRecargarConDatosNuevos(contarPendientes);
 
   if (!usuario) return null;
 
@@ -39,6 +58,7 @@ export default function HomeBodega() {
               icono="arrow-up-circle-outline"
               titulo="Entregar cargues"
               descripcion="Entrega a cada promotor lo que admin ya planeó."
+              badge={pendientes ? `${pendientes} por entregar` : undefined}
               destacada
               ancha={anchaPantalla}
               onPress={() => router.push('/bodega/cargues')}

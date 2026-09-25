@@ -1,12 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from './tema';
+import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN, TIPOGRAFIA_ADMIN } from './tema';
 
 interface Props {
   titulo: string;
   subtitulo?: string;
   badge?: string;
+  /** Cifra principal de la fila (ej. total de la venta), a la derecha — nunca se corta. */
+  valor?: string;
   onPress: () => void;
 }
 
@@ -17,9 +19,9 @@ interface Props {
  * shadow) o de COLORES_ADMIN (12px, sin sombra). Un solo estilo: plano,
  * borde 1px, sin sombra — filosofía de COLORES_ADMIN.
  */
-export function ListRow({ titulo, subtitulo, badge, onPress }: Props) {
+export function ListRow({ titulo, subtitulo, badge, valor, onPress }: Props) {
   return (
-    <Pressable style={styles.fila} onPress={onPress}>
+    <Pressable style={styles.fila} onPress={onPress} accessibilityRole="button">
       <View style={styles.texto}>
         <View style={styles.tituloFila}>
           <Text style={styles.titulo} numberOfLines={1}>
@@ -32,11 +34,12 @@ export function ListRow({ titulo, subtitulo, badge, onPress }: Props) {
           )}
         </View>
         {subtitulo && (
-          <Text style={styles.subtitulo} numberOfLines={1}>
+          <Text style={styles.subtitulo} numberOfLines={2}>
             {subtitulo}
           </Text>
         )}
       </View>
+      {valor && <Text style={styles.valor}>{valor}</Text>}
       <Ionicons name="chevron-forward" size={18} color={COLORES_ADMIN.textoSecundario} />
     </Pressable>
   );
@@ -52,6 +55,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: ESPACIADO_ADMIN.md,
+    minHeight: 56,
     gap: ESPACIADO_ADMIN.md,
   },
   texto: {
@@ -73,6 +77,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
+  },
+  valor: {
+    ...TEXTO_ADMIN.datoDestacado,
+    fontSize: 14,
   },
   badge: {
     backgroundColor: COLORES_ADMIN.superficieBaja,

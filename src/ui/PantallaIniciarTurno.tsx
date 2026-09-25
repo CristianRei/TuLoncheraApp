@@ -11,10 +11,12 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { guardarFotoSelfie } from '@/db/fotos';
 import { iniciarTurno } from '@/db/turnos';
 import { COLORES, TEXTO_PROMOTOR } from '@/ui/colores';
-import { RADII_ADMIN } from './tema';
+import { EncabezadoInicio } from '@/ui/EncabezadoInicio';
+import { ANCHO_ADMIN, RADII_ADMIN } from './tema';
 
 interface Props {
   promotorId: string;
+  nombre: string;
   onIniciado: () => void;
   onCerrarSesion: () => void;
 }
@@ -29,7 +31,7 @@ const TIMEOUT_UBICACION_MS = 15000;
  * ellos no se puede vender). El id del turno se genera aquí (R3) porque la
  * selfie se guarda con ese id antes de insertar el turno.
  */
-export function PantallaIniciarTurno({ promotorId, onIniciado, onCerrarSesion }: Props) {
+export function PantallaIniciarTurno({ promotorId, nombre, onIniciado, onCerrarSesion }: Props) {
   const [procesando, setProcesando] = useState(false);
 
   async function iniciar() {
@@ -99,19 +101,18 @@ export function PantallaIniciarTurno({ promotorId, onIniciado, onCerrarSesion }:
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezadoAcciones}>
-        <Pressable
-          onPress={() => router.push('/promotor/calendario')}
-          accessibilityRole="button"
-          accessibilityLabel="Ver mi calendario"
-        >
-          <Text style={styles.enlace}>Mi calendario</Text>
-        </Pressable>
-        <Pressable onPress={onCerrarSesion} accessibilityRole="button" accessibilityLabel="Cerrar sesión">
-          <Text style={styles.enlace}>Cerrar sesión</Text>
-        </Pressable>
-      </View>
+      <EncabezadoInicio
+        variante="promotor"
+        rol="Promotor"
+        titulo={`Hola, ${nombre}`}
+        onCerrarSesion={onCerrarSesion}
+        anchoMaximo={ANCHO_ADMIN.formulario}
+        acciones={[
+          { icono: 'calendar-outline', etiqueta: 'Ver mi calendario', onPress: () => router.push('/promotor/calendario') },
+        ]}
+      />
 
+      <View style={styles.cuerpo}>
       <View style={styles.tarjeta}>
         <View style={styles.icono}>
           <Ionicons name="camera-outline" size={36} color={COLORES.primario} />
@@ -136,6 +137,7 @@ export function PantallaIniciarTurno({ promotorId, onIniciado, onCerrarSesion }:
           </Pressable>
         )}
       </View>
+      </View>
     </View>
   );
 }
@@ -144,21 +146,12 @@ const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
     backgroundColor: COLORES.fondo,
+  },
+  cuerpo: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-  },
-  encabezadoAcciones: {
-    position: 'absolute',
-    top: 56,
-    right: 20,
-    flexDirection: 'row',
-    gap: 16,
-  },
-  enlace: {
-    ...TEXTO_PROMOTOR.boton,
-    color: COLORES.oscuro,
-    textDecorationLine: 'underline',
   },
   tarjeta: {
     backgroundColor: COLORES.superficie,
@@ -168,6 +161,8 @@ const styles = StyleSheet.create({
     gap: 12,
     width: '100%',
     maxWidth: 360,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
   },
   icono: {
     width: 64,

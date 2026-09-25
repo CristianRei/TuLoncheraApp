@@ -13,7 +13,7 @@ import { contarPromotoresConPuntoVigente } from '@/db/eventos';
 import { contarNotificacionesNoLeidas, generarNotificaciones } from '@/db/notificaciones';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { MODULOS_ADMIN } from '@/ui/modulosAdmin';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { TarjetaModulo } from '@/ui/TarjetaModulo';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useSesion } from '@/ui/SesionContext';
@@ -108,19 +108,18 @@ export default function HomeAdmin() {
           <View style={styles.banner}>
             <View style={styles.bannerEyebrowFila}>
               <View style={styles.bannerPunto} />
-              <Text style={styles.bannerEyebrow}>Panel operativo central</Text>
+              <Text style={styles.bannerEyebrow}>Hoy en la operación</Text>
             </View>
-            <Text style={styles.bannerTitulo}>Portal de módulos administrativos</Text>
-            <Text style={styles.bannerDescripcion}>
-              Gestiona el inventario de bodega, despachos a promotores, cobros en puntos de
-              venta y cuadres diarios.
-            </Text>
 
             {indicadores && (
               <View style={styles.indicadoresFila}>
                 <View style={styles.indicador}>
-                  <Text style={styles.indicadorEtiqueta}>Promotores con punto asignado</Text>
+                  <Text style={styles.indicadorValor}>{indicadores.ventasHoy}</Text>
+                  <Text style={styles.indicadorEtiqueta}>Ventas</Text>
+                </View>
+                <View style={styles.indicador}>
                   <Text style={styles.indicadorValor}>{indicadores.promotoresConPunto}</Text>
+                  <Text style={styles.indicadorEtiqueta}>Promotores en punto</Text>
                 </View>
                 <View
                   style={[
@@ -128,7 +127,6 @@ export default function HomeAdmin() {
                     indicadores.conteosConDescuadre > 0 && styles.indicadorAlerta,
                   ]}
                 >
-                  <Text style={styles.indicadorEtiqueta}>Conteos con descuadre hoy</Text>
                   <Text
                     style={[
                       styles.indicadorValor,
@@ -137,16 +135,14 @@ export default function HomeAdmin() {
                   >
                     {indicadores.conteosConDescuadre}
                   </Text>
-                </View>
-                <View style={styles.indicador}>
-                  <Text style={styles.indicadorEtiqueta}>Ventas registradas hoy</Text>
-                  <Text style={styles.indicadorValor}>{indicadores.ventasHoy}</Text>
+                  <Text style={styles.indicadorEtiqueta}>Descuadres</Text>
                 </View>
               </View>
             )}
           </View>
 
-          <View style={[styles.grilla, anchaPantalla && styles.grillaAncha]}>
+          <Text style={styles.seccionTitulo}>Módulos</Text>
+          <View style={styles.grilla}>
             {MODULOS_ADMIN.filter((modulo) => !modulo.soloPantallaAncha || anchaPantalla).map(
               (modulo) => {
                 const badge =
@@ -161,7 +157,7 @@ export default function HomeAdmin() {
                     descripcion={modulo.descripcion}
                     badge={badge}
                     destacada={modulo.destacada}
-                    ancha={anchaPantalla}
+                    compacta
                     onPress={() => router.push(modulo.ruta as Parameters<typeof router.push>[0])}
                   />
                 );
@@ -175,6 +171,12 @@ export default function HomeAdmin() {
 }
 
 const styles = StyleSheet.create({
+  seccionTitulo: {
+    ...TEXTO_ADMIN.etiqueta,
+    marginHorizontal: ESPACIADO_ADMIN.lg,
+    marginTop: ESPACIADO_ADMIN.xl,
+    marginBottom: ESPACIADO_ADMIN.sm,
+  },
   contenedor: {
     flex: 1,
     backgroundColor: COLORES_ADMIN.background,
@@ -252,10 +254,10 @@ const styles = StyleSheet.create({
     borderRadius: RADII_ADMIN.lg,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
-    margin: 20,
-    marginBottom: 12,
-    padding: 20,
-    gap: 6,
+    marginHorizontal: ESPACIADO_ADMIN.lg,
+    marginTop: ESPACIADO_ADMIN.lg,
+    padding: ESPACIADO_ADMIN.lg,
+    gap: ESPACIADO_ADMIN.md,
   },
   bannerEyebrowFila: {
     flexDirection: 'row',
@@ -272,55 +274,40 @@ const styles = StyleSheet.create({
     ...TEXTO_ADMIN.etiqueta,
     letterSpacing: 1,
   },
-  bannerTitulo: {
-    fontSize: 24,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: COLORES_ADMIN.vino,
-  },
-  bannerDescripcion: {
-    ...TEXTO_ADMIN.cuerpo,
-    color: COLORES_ADMIN.textoSecundario,
-    lineHeight: 20,
-    maxWidth: 600,
-  },
   indicadoresFila: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 10,
+    gap: ESPACIADO_ADMIN.sm,
   },
   indicador: {
     flex: 1,
-    minWidth: 160,
     backgroundColor: COLORES_ADMIN.superficieBaja,
     borderRadius: RADII_ADMIN.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: ESPACIADO_ADMIN.sm,
+    paddingVertical: ESPACIADO_ADMIN.md,
+    alignItems: 'center',
     gap: 2,
   },
   indicadorAlerta: {
     backgroundColor: ESTADO_ADMIN.error.fondo,
   },
   indicadorEtiqueta: {
+    ...TEXTO_ADMIN.nota,
     fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
+    textAlign: 'center',
   },
   indicadorValor: {
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    ...TEXTO_ADMIN.datoGrande,
+    fontSize: 22,
     color: COLORES_ADMIN.vino,
   },
   indicadorValorAlerta: {
     color: COLORES_ADMIN.error,
   },
   grilla: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  grillaAncha: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    rowGap: ESPACIADO_ADMIN.md,
+    paddingHorizontal: ESPACIADO_ADMIN.lg,
   },
 });

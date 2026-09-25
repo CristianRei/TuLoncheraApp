@@ -201,7 +201,8 @@ export default function Ventas() {
                 titulo={item.promotorNombre}
                 subtitulo={`${item.numeroRecibo} · ${formatearFecha(item.tsCliente)} · ${
                   item.metodoPago.charAt(0) + item.metodoPago.slice(1).toLowerCase()
-                } · ${formatearPesos(item.total)}`}
+                }`}
+                valor={formatearPesos(item.total)}
                 badge={item.anulada ? 'Anulada' : undefined}
                 onPress={() => router.push(`/admin/ventas/${item.id}`)}
               />

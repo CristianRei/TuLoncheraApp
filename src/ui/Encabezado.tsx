@@ -52,21 +52,33 @@ export function Encabezado({
     <View
       style={[
         anchaPantalla ? styles.encabezadoAncho : styles.encabezado,
-        { paddingTop: anchaPantalla ? ESPACIADO_ADMIN.xl : insets.top + ESPACIADO_ADMIN.xl },
+        { paddingTop: anchaPantalla ? ESPACIADO_ADMIN.xl : insets.top + ESPACIADO_ADMIN.md },
       ]}
     >
       <ContenedorAncho anchoMaximo={anchoMaximo}>
         <View style={styles.fila}>
           <View style={styles.izquierda}>
             {!anchaPantalla && rutaVolverTexto && (
-              <Pressable onPress={onVolver ?? (() => router.back())}>
-                <Text style={styles.volver}>‹ {rutaVolverTexto}</Text>
+              <Pressable
+                onPress={onVolver ?? (() => router.back())}
+                style={styles.botonVolver}
+                hitSlop={4}
+                accessibilityRole="button"
+                accessibilityLabel={`Volver a ${rutaVolverTexto}`}
+              >
+                <Ionicons name="chevron-back" size={24} color={COLORES_ADMIN.textoInverso} />
               </Pressable>
             )}
-            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo}>{titulo}</Text>
+            <Text style={anchaPantalla ? styles.tituloAncho : styles.titulo} numberOfLines={1}>
+              {titulo}
+            </Text>
           </View>
           {accion && (
-            <Pressable style={styles.botonAccion} onPress={accion.onPress}>
+            <Pressable
+              style={[styles.botonAccion, !anchaPantalla && styles.botonAccionMovil]}
+              onPress={accion.onPress}
+              accessibilityRole="button"
+            >
               <Ionicons name={accion.icono} size={16} color={COLORES_ADMIN.textoInverso} />
               {accion.texto && <Text style={styles.botonAccionTexto}>{accion.texto}</Text>}
             </Pressable>
@@ -80,8 +92,8 @@ export function Encabezado({
 const styles = StyleSheet.create({
   encabezado: {
     backgroundColor: COLORES_ADMIN.vino,
-    paddingHorizontal: ESPACIADO_ADMIN.xl,
-    paddingBottom: ESPACIADO_ADMIN.lg,
+    paddingHorizontal: ESPACIADO_ADMIN.lg,
+    paddingBottom: ESPACIADO_ADMIN.md,
   },
   encabezadoAncho: {
     backgroundColor: 'transparent',
@@ -97,17 +109,21 @@ const styles = StyleSheet.create({
   izquierda: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: ESPACIADO_ADMIN.md,
+    gap: ESPACIADO_ADMIN.xs,
     flexShrink: 1,
   },
-  volver: {
-    ...TEXTO_ADMIN.cuerpo,
-    color: COLORES_ADMIN.textoInverso,
-    textDecorationLine: 'underline',
+  botonVolver: {
+    width: 40,
+    height: 40,
+    marginLeft: -ESPACIADO_ADMIN.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADII_ADMIN.pill,
   },
   titulo: {
     ...TEXTO_ADMIN.tituloSeccion,
-    fontSize: 17,
+    fontSize: 18,
+    flexShrink: 1,
     color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
@@ -122,6 +138,12 @@ const styles = StyleSheet.create({
     borderRadius: RADII_ADMIN.pill,
     paddingHorizontal: ESPACIADO_ADMIN.md,
     paddingVertical: ESPACIADO_ADMIN.sm,
+  },
+  botonAccionMovil: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    minHeight: 36,
   },
   botonAccionTexto: {
     ...TEXTO_ADMIN.boton,

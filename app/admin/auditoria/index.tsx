@@ -296,7 +296,9 @@ export default function Auditoria() {
               </FilaFiltrosSuperior>
             )}
 
-            <FilaSelectores>
+            <FilaSelectores
+              activos={[filtroEntidad !== 'TODOS', actorId, afectadoId, productoId, categoriaId].filter(Boolean).length}
+            >
               <SelectorFiltro
                 icono="layers-outline"
                 etiqueta="Tipo de registro"
@@ -304,14 +306,16 @@ export default function Auditoria() {
                 onPress={() => setSelectorTipoVisible(true)}
               />
               {filtroEntidad !== 'ACCESOS' && (
+                <CampoFiltro icono="search-outline" etiqueta="Buscar">
+                  <SearchBar
+                    valor={busqueda}
+                    onCambiar={setBusqueda}
+                    placeholder="Usuario, producto o descripción..."
+                  />
+                </CampoFiltro>
+              )}
+              {filtroEntidad !== 'ACCESOS' && (
                 <>
-                  <CampoFiltro icono="search-outline" etiqueta="Buscar">
-                    <SearchBar
-                      valor={busqueda}
-                      onCambiar={setBusqueda}
-                      placeholder="Usuario, producto o descripción..."
-                    />
-                  </CampoFiltro>
                   <SelectorFiltro
                     icono="person-outline"
                     etiqueta="Usuario responsable"

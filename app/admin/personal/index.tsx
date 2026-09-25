@@ -93,7 +93,7 @@ export default function Personal() {
             <FilaFiltrosSuperior>
               <FiltroSegmentado opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
             </FilaFiltrosSuperior>
-            <FilaSelectores>
+            <FilaSelectores activos={filtroRol !== 'TODOS' ? 1 : 0}>
               <CampoFiltro icono="search-outline" etiqueta="Buscar">
                 <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Nombre o cédula..." />
               </CampoFiltro>

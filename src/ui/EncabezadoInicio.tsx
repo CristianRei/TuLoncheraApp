@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { COLORES, TEXTO_PROMOTOR } from './colores';
 import { ContenedorAncho } from './ContenedorAncho';
 import { COLORES_ADMIN, RADII_ADMIN, TEXTO_ADMIN, TIPOGRAFIA_ADMIN } from './tema';
 
@@ -12,6 +13,10 @@ interface Props {
   titulo: string;
   onCerrarSesion: () => void;
   anchoMaximo: number;
+  /** 'promotor': franja dorada de marca y texto café, en vez de vino. */
+  variante?: 'admin' | 'promotor';
+  /** Botones de ícono extra antes de "cerrar sesión" (ej. calendario). */
+  acciones?: { icono: keyof typeof Ionicons.glyphMap; etiqueta: string; onPress: () => void }[];
 }
 
 /**
@@ -19,10 +24,19 @@ interface Props {
  * cerrar sesión) — el mismo del menú de admin, para que Bodega arranque
  * igual. Las subpantallas usan `Encabezado`.
  */
-export function EncabezadoInicio({ rol, titulo, onCerrarSesion, anchoMaximo }: Props) {
+export function EncabezadoInicio({
+  rol,
+  titulo,
+  onCerrarSesion,
+  anchoMaximo,
+  variante = 'admin',
+  acciones = [],
+}: Props) {
   const insets = useSafeAreaInsets();
+  const promotor = variante === 'promotor';
+  const colorTexto = promotor ? COLORES.textoSobreOscuro : COLORES_ADMIN.textoInverso;
   return (
-    <View style={[styles.encabezado, { paddingTop: insets.top + 16 }]}>
+    <View style={[styles.encabezado, promotor && estilosPromotor.encabezado, { paddingTop: insets.top + 16 }]}>
       <ContenedorAncho anchoMaximo={anchoMaximo}>
         <View style={styles.fila}>
           <View style={styles.marca}>
@@ -34,14 +48,34 @@ export function EncabezadoInicio({ rol, titulo, onCerrarSesion, anchoMaximo }: P
               />
             </View>
             <View>
-              <Text style={styles.rol}>{rol}</Text>
-              <Text style={styles.titulo}>{titulo}</Text>
+              <Text style={[styles.rol, promotor && estilosPromotor.rol]}>{rol}</Text>
+              <Text style={[styles.titulo, promotor && estilosPromotor.titulo]} numberOfLines={1}>
+                {titulo}
+              </Text>
             </View>
           </View>
-          <Pressable style={styles.botonCerrarSesion} onPress={onCerrarSesion}>
-            <Ionicons name="log-out-outline" size={15} color={COLORES_ADMIN.textoInverso} />
-            <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
-          </Pressable>
+          <View style={styles.acciones}>
+            {acciones.map((a) => (
+              <Pressable
+                key={a.etiqueta}
+                style={[styles.botonIcono, promotor && estilosPromotor.boton]}
+                onPress={a.onPress}
+                accessibilityRole="button"
+                accessibilityLabel={a.etiqueta}
+              >
+                <Ionicons name={a.icono} size={20} color={colorTexto} />
+              </Pressable>
+            ))}
+            <Pressable
+              style={[styles.botonCerrarSesion, promotor && estilosPromotor.boton]}
+              onPress={onCerrarSesion}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar sesión"
+            >
+              <Ionicons name="log-out-outline" size={15} color={colorTexto} />
+              <Text style={[styles.cerrarSesion, { color: colorTexto }]}>Salir</Text>
+            </Pressable>
+          </View>
         </View>
       </ContenedorAncho>
     </View>
@@ -65,6 +99,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flexShrink: 1,
+  },
+  acciones: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  botonIcono: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: RADII_ADMIN.pill,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   logo: {
     width: 40,
@@ -99,10 +149,27 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.25)',
     borderRadius: RADII_ADMIN.pill,
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    height: 40,
   },
   cerrarSesion: {
     ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
+  },
+});
+
+const estilosPromotor = StyleSheet.create({
+  encabezado: {
+    backgroundColor: COLORES.primario,
+  },
+  rol: {
+    color: COLORES.oscuro,
+  },
+  titulo: {
+    ...TEXTO_PROMOTOR.tituloSeccion,
+    color: COLORES.textoSobreOscuro,
+  },
+  boton: {
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderColor: 'rgba(58,36,0,0.15)',
   },
 });

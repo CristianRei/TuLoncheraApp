@@ -17,7 +17,6 @@ import { Encabezado } from '@/ui/Encabezado';
 import { FilaFiltrosSuperior, PanelFiltros, PeriodoFijo } from '@/ui/PanelFiltros';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
 import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
-import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETAS_TIPO: Partial<Record<TipoMovimiento, string>> = {
@@ -46,7 +45,6 @@ function calcularSerieNeta(movimientos: MovimientoBodegaDetallado[]): SaldoNetoD
 
 export default function DetalleBodega() {
   const usuario = useRequiereSesion(['ADMIN']);
-  const anchaPantalla = useEsPantallaAncha();
   const { desde, hasta } = useLocalSearchParams<{ desde: string; hasta: string }>();
   const rango = useMemo(() => ({ desde, hasta }), [desde, hasta]);
 
@@ -83,25 +81,17 @@ export default function DetalleBodega() {
     <View style={styles.contenedor}>
       <Encabezado titulo="Saldo en bodega" rutaVolverTexto="Dashboard" anchoMaximo={ANCHO_ADMIN.tablero} />
 
-      {anchaPantalla && (
-        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
-          <View style={styles.filtrosMargen}>
-            <PanelFiltros>
-              <FilaFiltrosSuperior separador={false}>
-                <PeriodoFijo desde={desde} hasta={hasta} />
-              </FilaFiltrosSuperior>
-            </PanelFiltros>
-          </View>
-        </ContenedorAncho>
-      )}
-
-      {!anchaPantalla ? (
-        <View style={styles.centrado}>
-          <Text style={styles.avisoAngosto}>
-            Esta sección está optimizada para pantalla ancha. Ábrela desde un computador o tablet.
-          </Text>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
+        <View style={styles.filtrosMargen}>
+          <PanelFiltros>
+            <FilaFiltrosSuperior separador={false}>
+              <PeriodoFijo desde={desde} hasta={hasta} />
+            </FilaFiltrosSuperior>
+          </PanelFiltros>
         </View>
-      ) : cargando ? (
+      </ContenedorAncho>
+
+      {cargando ? (
         <View style={styles.centrado}>
           <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
@@ -187,12 +177,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-  },
-  avisoAngosto: {
-    ...TEXTO_ADMIN.cuerpo,
-    color: COLORES_ADMIN.textoSecundario,
-    textAlign: 'center',
-    maxWidth: 320,
   },
   scroll: {
     paddingBottom: 40,
