@@ -686,7 +686,13 @@ nivel_objetivo   = demanda_diaria_esperada × dias_cobertura × (1 + factor_serv
    (`CristianRei/TuLoncheraApp`). Al empezar cualquier tarea: `git pull`
    primero y revisar `git log` por commits que no reconozcas antes de asumir
    que el estado local es el actual — puede haber cambiado por fuera de esta
-   sesión.
+   sesión. **Si el pull trajo cambios en `package.json` o
+   `package-lock.json`** (revisar con `git diff --name-only ORIG_HEAD HEAD`),
+   correr `npm install` y arrancar el servidor con `npx expo start -c`
+   (borra la caché de Metro). Si no, Expo Go puede mostrar
+   `Cannot find native module 'ExpoAsset'` + `"main" has not been
+   registered`: es la caché vieja de Metro, no un error del código (pasó el
+   2026-09-24 en iPhone, ver expo/expo#48950).
 7. **Antes de dar una tarea por terminada**, corre las verificaciones:
    `npx tsc --noEmit`, `npm test` (property tests de `src/core`, `node --test`),
    `npm run lint` (ESLint, `eslint-config-expo` — configurado desde
