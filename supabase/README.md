@@ -41,6 +41,11 @@ corre una vez en orden:
 8. `migraciones/0015_descuentos.sql` — descuentos (por producto, punto y/o
    promotor, con fecha y hora) para que el celular del promotor cobre con
    ellos, con Realtime. Idempotente; después de 0012.
+9. `migraciones/0016_realtime_turnos_arqueos.sql` — agrega `turnos` y
+   `arqueos_caja` a Realtime (0009 solo cubrió ventas/cargues/movimientos/
+   conteos) y un índice único parcial: un promotor no puede tener más de un
+   turno abierto (`hora_fin is null`) a la vez — evita el bug real de
+   turnos duplicados por una carrera entre dos dispositivos. Idempotente.
 
 Todo se valida contra un Postgres real en memoria con `npm run test:sql`.
 

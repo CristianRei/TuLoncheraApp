@@ -248,6 +248,60 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   });
 }
 
+console.log('\n== 0016 (Realtime en turnos/arqueos_caja + índice único de turno abierto) encima de 0015, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  const U = () => crypto.randomUUID();
+  await paso(`0016 aplica sin error y es idempotente (proyecto ${nombre})`, async () => {
+    await db.exec(leer('0016_realtime_turnos_arqueos.sql'));
+    await db.exec(leer('0016_realtime_turnos_arqueos.sql'));
+  });
+  await paso(`Realtime habilitado en turnos y arqueos_caja (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime'`);
+    const t = new Set(r.rows.map((x) => x.tablename));
+    for (const n of ['turnos', 'arqueos_caja']) assert.ok(t.has(n), `no está ${n}`);
+  });
+  await paso(`un promotor no puede tener dos turnos abiertos a la vez (proyecto ${nombre})`, async () => {
+    await db.exec('set role authenticated');
+    try {
+      const promotor = U();
+      const disp1 = U();
+      const disp2 = U();
+      await db.query(
+        `insert into turnos (id, promotor_id, promotor_nombre, selfie_path, hora_inicio, ts_cliente, dispositivo_id)
+         values ($1,$2,'Cristian','a.jpg',now(),now(),$3)`,
+        [U(), promotor, disp1]
+      );
+      await assert.rejects(
+        db.query(
+          `insert into turnos (id, promotor_id, promotor_nombre, selfie_path, hora_inicio, ts_cliente, dispositivo_id)
+           values ($1,$2,'Cristian','b.jpg',now(),now(),$3)`,
+          [U(), promotor, disp2]
+        ),
+        /idx_turnos_un_abierto_por_promotor|duplicate key/,
+        'debió rechazar el segundo turno abierto del mismo promotor'
+      );
+    } finally { await db.exec('reset role'); }
+  });
+  await paso(`cerrar el primer turno permite abrir uno nuevo del mismo promotor (proyecto ${nombre})`, async () => {
+    await db.exec('set role authenticated');
+    try {
+      const promotor = U();
+      const idViejo = U();
+      await db.query(
+        `insert into turnos (id, promotor_id, promotor_nombre, selfie_path, hora_inicio, ts_cliente, dispositivo_id)
+         values ($1,$2,'Cristian','c.jpg',now(),now(),$3)`,
+        [idViejo, promotor, U()]
+      );
+      await db.query(`update turnos set hora_fin = now() where id = $1`, [idViejo]);
+      await db.query(
+        `insert into turnos (id, promotor_id, promotor_nombre, selfie_path, hora_inicio, ts_cliente, dispositivo_id)
+         values ($1,$2,'Cristian','d.jpg',now(),now(),$3)`,
+        [U(), promotor, U()]
+      );
+    } finally { await db.exec('reset role'); }
+  });
+}
+
 for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   console.log(`\n== Comportamiento (proyecto ${nombre}) ==`);
   const U = () => crypto.randomUUID();
