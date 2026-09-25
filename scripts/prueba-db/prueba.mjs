@@ -103,8 +103,46 @@ function crearFake() {
     }
   }
 
+  // Credenciales privadas (0018): PIN y datos personales nunca en `usuarios`.
+  const credenciales = new Map();
+  const adminPorPin = (pin) =>
+    [...t('usuarios').values()].find((u) => u.rol === 'ADMIN' && u.activo && credenciales.get(u.id)?.pin === pin)?.id ?? null;
+  const rpcs = {
+    verificar_pin({ p_pin, p_roles }) {
+      const u = [...t('usuarios').values()].find((x) => x.activo && p_roles.includes(x.rol) && credenciales.get(x.id)?.pin === p_pin);
+      return u ? [{ id: u.id, nombre: u.nombre, rol: u.rol, credencial_version: u.credencial_version, ts_cliente: u.ts_cliente, dispositivo_id: u.dispositivo_id }] : [];
+    },
+    guardar_usuario({ p_admin_pin, p_usuario: u }) {
+      if (!adminPorPin(p_admin_pin)) return false;
+      const previo = t('usuarios').get(u.id);
+      const cambioPin = (credenciales.get(u.id)?.pin ?? null) !== (u.pin ?? null);
+      guardar('usuarios', {
+        id: u.id, nombre: u.nombre, rol: u.rol, activo: u.activo, ts_cliente: u.ts_cliente, dispositivo_id: u.dispositivo_id,
+        credencial_version: previo ? previo.credencial_version + (cambioPin ? 1 : 0) : 1,
+      });
+      credenciales.set(u.id, { pin: u.pin ?? null, cedula: u.cedula ?? null, celular: u.celular ?? null, direccion: u.direccion ?? null });
+      return true;
+    },
+    eliminar_usuario({ p_admin_pin, p_id }) {
+      if (!adminPorPin(p_admin_pin)) return false;
+      t('usuarios').delete(p_id); credenciales.delete(p_id);
+      return true;
+    },
+    desbloquear_dispositivo({ p_admin_pin, p_id, p_dispositivo_id, p_modo, p_ts_cliente }) {
+      const admin = adminPorPin(p_admin_pin);
+      if (!admin) return false;
+      guardar('desbloqueos_pin', { id: p_id, dispositivo_id: p_dispositivo_id, modo: p_modo, admin_id: admin, ts_cliente: p_ts_cliente, verificado: true });
+      return true;
+    },
+  };
+  function registrarAdmin(id, nombre, pin) {
+    guardar('usuarios', { id, nombre, rol: 'ADMIN', activo: true, ts_cliente: ahora(), dispositivo_id: id, credencial_version: 1 });
+    credenciales.set(id, { pin });
+  }
+
   return {
-    tablas, capturas, canales,
+    tablas, capturas, canales, credenciales, registrarAdmin,
+    async rpc(nombre, params) { return { data: rpcs[nombre](params), error: null }; },
     storage: { from: () => ({ upload: async () => ({ error: null }) }) },
     channel() {
       const c = { handlers: [], on(_tipo, filtro, cb) { this.handlers.push({ filtro, cb }); return this; }, subscribe(cb) { cb?.('SUBSCRIBED'); return this; } };
@@ -114,7 +152,7 @@ function crearFake() {
     removeChannel(c) { const i = canales.indexOf(c); if (i >= 0) canales.splice(i, 1); },
     from(nombre) {
       const consulta = new Consulta(nombre);
-      consulta.upsert = async (rows) => {
+      consulta.upsert = async (rows, opciones) => {
         // Simula el índice único parcial real de supabase/migraciones/0015:
         // turnos.promotor_id no puede repetirse con hora_fin IS NULL.
         if (nombre === 'turnos') {
@@ -127,7 +165,12 @@ function crearFake() {
             }
           }
         }
-        for (const r of Array.isArray(rows) ? rows : [rows]) { guardar(nombre, r); capturas.push({ tabla: nombre, fila: r }); }
+        for (let r of Array.isArray(rows) ? rows : [rows]) {
+          if (opciones?.ignoreDuplicates && r.id && t(nombre).has(r.id)) continue;
+          // Trigger de 0018: lo que la app inserta directo nunca queda verificado.
+          if (nombre === 'desbloqueos_pin') r = { ...r, verificado: false };
+          guardar(nombre, r); capturas.push({ tabla: nombre, fila: r });
+        }
         return { error: null };
       };
       consulta.insert = consulta.upsert;
@@ -284,9 +327,34 @@ await paso('contratar promotor (PIN derivado de cédula) y un segundo admin', as
 
 console.log('\n== D. Drenar la cola contra un Supabase falso ==');
 const { drenarColaSync } = await imp('sync/motor.ts');
+const { establecerAdminDeSesion } = await imp('db/adminSesion.ts');
+const { verificarPinEnServidor } = await imp('db/usuarios.ts');
+// Como en app/index.tsx: primero el celular; si no conoce el PIN, el servidor.
+async function entrar(db, pin, roles) {
+  const local = await (await imp('db/usuarios.ts')).buscarUsuarioPorPin(db, pin, roles);
+  if (local) return local;
+  const r = await verificarPinEnServidor(db, pin, roles);
+  return r.tipo === 'OK' ? r.usuario : null;
+}
 const fake = crearFake();
 globalThis.__db = dbA;
 globalThis.__supabase = fake;
+await paso('sin admin en sesión, el personal NO sube (queda pendiente con mensaje claro)', async () => {
+  establecerAdminDeSesion(null);
+  await drenarColaSync();
+  const pend = await dbA.getAllAsync(`SELECT ultimo_error FROM _sync_pendiente WHERE tabla='usuarios' AND completado_ts IS NULL`);
+  assert.ok(pend.length > 0);
+  assert.match(pend[0].ultimo_error, /administrador inicie sesión/);
+});
+await paso('admin con sesión pero sin registrar en Supabase: rechazado, sigue pendiente', async () => {
+  establecerAdminDeSesion(admin.id);
+  await drenarColaSync();
+  const pend = await dbA.getAllAsync(`SELECT ultimo_error FROM _sync_pendiente WHERE tabla='usuarios' AND completado_ts IS NULL`);
+  assert.ok(pend.length > 0);
+  assert.match(pend[0].ultimo_error, /registrar_admin/);
+});
+// registrar_admin desde el SQL Editor (0018), con el PIN que usa este admin.
+fake.registrarAdmin(admin.id, 'Admin (registrado en SQL Editor)', '000000');
 await drenarColaSync();
 await paso('no queda ninguna tarea pendiente ni con error', async () => {
   const pend = await dbA.getAllAsync('SELECT tabla, tipo_tarea, ultimo_error FROM _sync_pendiente WHERE completado_ts IS NULL');
@@ -306,12 +374,14 @@ await paso('lo que se subió coincide con el esquema SQL de Supabase (columnas y
   console.log('       tablas subidas:', [...vistas].sort().join(', '));
   assert.deepEqual([...new Set(problemas)], []);
 });
-await paso('el PIN derivado de cédula NO viaja; el de admin sí', async () => {
+await paso('PIN y cédula nunca quedan en la tabla pública usuarios; sí en credenciales', async () => {
   const u = [...fake.tablas.get('usuarios').values()];
   const prom = u.find((x) => x.nombre === 'Nuevo Promotor');
   const adm = u.find((x) => x.nombre === 'Otro Admin');
-  assert.equal(prom.pin, null);
-  assert.equal(adm.pin, '123456');
+  for (const fila of [prom, adm]) for (const k of ['pin', 'cedula', 'celular', 'direccion']) assert.ok(!(k in fila), `usuarios.${k} viajó`);
+  assert.equal(fake.credenciales.get(prom.id).pin, '5432');
+  assert.equal(fake.credenciales.get(prom.id).cedula, '1098765432');
+  assert.equal(fake.credenciales.get(adm.id).pin, '123456');
 });
 await paso('los usuarios de prueba (seed) no se subieron', async () => {
   assert.ok(![...fake.tablas.get('usuarios').values()].some((x) => ['Cristian', 'Bodega', 'Admin'].includes(x.nombre)));
@@ -368,12 +438,30 @@ await paso('no se duplicaron productos ni categorías', async () => {
   assert.equal(p.n, 124);
   assert.equal(c.n, 8);
 });
-await paso('el promotor nuevo puede iniciar sesión con el PIN derivado de su cédula', async () => {
-  const u = await buscarUsuarioPorPin(dbB, '5432', ['PROMOTOR']);
-  assert.equal(u?.nombre, 'Nuevo Promotor');
+await paso('la bajada trae al personal SIN PIN: este celular no lo conoce todavía', async () => {
+  const f = await dbB.getFirstAsync(`SELECT pin, cedula, credencial_version FROM usuarios WHERE nombre='Nuevo Promotor'`);
+  assert.equal(f.pin, null);
+  assert.equal(f.cedula, null);
+  assert.equal(f.credencial_version, 1);
+  assert.equal(await buscarUsuarioPorPin(dbB, '5432', ['PROMOTOR']), null);
 });
-await paso('el admin nuevo llega con su PIN manual', async () => {
-  assert.equal((await buscarUsuarioPorPin(dbB, '123456', ['ADMIN']))?.nombre, 'Otro Admin');
+await paso('primera entrada: el servidor verifica el PIN y el celular lo recuerda', async () => {
+  assert.equal((await entrar(dbB, '5432', ['PROMOTOR']))?.nombre, 'Nuevo Promotor');
+  globalThis.__supabase = { rpc: async () => { throw new Error('Network request failed'); } };
+  assert.equal((await buscarUsuarioPorPin(dbB, '5432', ['PROMOTOR']))?.nombre, 'Nuevo Promotor', 'sin red ya entra desde el celular');
+  globalThis.__supabase = fake;
+});
+await paso('el servidor no reconoce un PIN de otro rol ni uno inventado', async () => {
+  assert.equal((await verificarPinEnServidor(dbB, '123456', ['PROMOTOR'])).tipo, 'NO_ENCONTRADO');
+  assert.equal((await verificarPinEnServidor(dbB, '0001', ['PROMOTOR'])).tipo, 'NO_ENCONTRADO');
+});
+await paso('sin red y PIN desconocido: SIN_CONEXION (no inventa un usuario)', async () => {
+  globalThis.__supabase = { rpc: async () => { throw new Error('Network request failed'); } };
+  assert.equal((await verificarPinEnServidor(dbB, '123456', ['ADMIN'])).tipo, 'SIN_CONEXION');
+  globalThis.__supabase = fake;
+});
+await paso('el admin nuevo entra con su PIN manual, verificado en el servidor', async () => {
+  assert.equal((await entrar(dbB, '123456', ['ADMIN']))?.nombre, 'Otro Admin');
 });
 await paso('el usuario de prueba local sigue intacto', async () => {
   assert.equal((await buscarUsuarioPorPin(dbB, '8509', ['PROMOTOR']))?.nombre, 'Cristian');
@@ -385,11 +473,29 @@ await paso('descargar otra vez es idempotente', async () => {
   await descargarDatosDeAdmin(dbB);
   assert.equal((await dbB.getFirstAsync('SELECT count(*) n FROM productos')).n, 124);
 });
-await paso('una fila con PIN repetido no impide aplicar el resto del personal', async () => {
-  fake.tablas.get('usuarios').set('clash', { id: 'clash', nombre: 'Choca', rol: 'PROMOTOR', activo: true, cedula: '99998509', celular: null, direccion: null, pin: '8509', ts_cliente: '2026-01-01T00:00:00Z', dispositivo_id: dispA });
-  fake.tablas.get('usuarios').set('ok2', { id: 'ok2', nombre: 'Sigue', rol: 'BODEGA', activo: true, cedula: '7770001111', celular: null, direccion: null, pin: null, ts_cliente: '2026-01-01T00:00:00Z', dispositivo_id: dispA });
+await paso('admin le cambia el PIN a alguien: el celular olvida el viejo en la siguiente bajada', async () => {
+  const prom = [...fake.tablas.get('usuarios').values()].find((x) => x.nombre === 'Nuevo Promotor');
+  prom.credencial_version += 1;
+  fake.credenciales.get(prom.id).pin = '9999';
   await descargarDatosDeAdmin(dbB);
-  assert.equal((await buscarUsuarioPorPin(dbB, '1111', ['BODEGA']))?.nombre, 'Sigue');
+  assert.equal(await buscarUsuarioPorPin(dbB, '5432', ['PROMOTOR']), null, 'el PIN viejo ya no abre');
+  assert.equal((await entrar(dbB, '9999', ['PROMOTOR']))?.nombre, 'Nuevo Promotor');
+});
+await paso('dar de baja libera el PIN en el celular', async () => {
+  const prom = [...fake.tablas.get('usuarios').values()].find((x) => x.nombre === 'Nuevo Promotor');
+  prom.activo = false;
+  await descargarDatosDeAdmin(dbB);
+  assert.equal(await buscarUsuarioPorPin(dbB, '9999', ['PROMOTOR']), null);
+  prom.activo = true;
+});
+await paso('si el PIN verificado lo tenía otra fila local (usuario de prueba), el servidor manda', async () => {
+  const otro = randomUUID();
+  fake.tablas.get('usuarios').set(otro, { id: otro, nombre: 'Real 8509', rol: 'PROMOTOR', activo: true, credencial_version: 1, ts_cliente: '2026-01-01T00:00:00Z', dispositivo_id: dispA });
+  fake.credenciales.set(otro, { pin: '8509' });
+  const r = await verificarPinEnServidor(dbB, '8509', ['PROMOTOR']);
+  assert.equal(r.tipo, 'OK');
+  assert.equal((await buscarUsuarioPorPin(dbB, '8509', ['PROMOTOR']))?.nombre, 'Real 8509');
+  fake.tablas.get('usuarios').delete(otro);
 });
 await paso('producto con categoría desconocida NO borra la categoría local', async () => {
   fake.tablas.get('productos').set('x', { id: 'x', sku: 'TL001', codigo_barras: null, nombre: 'CHOCO', categoria_id: 'no-existe', marca: 'Ramo', es_licor: false, es_perecedero: false, precio: 3400, costo: null, unidad_empaque: 1, activo: true, ts_cliente: '2026-01-01T00:00:00Z', dispositivo_id: dispA });
@@ -493,6 +599,8 @@ console.log('\n== H. Tres dispositivos: admin (computador), bodega y promotor (c
   const adminId = randomUUID();
   await dbAdmin.runAsync(`INSERT INTO usuarios (id,nombre,rol,activo,pin,ts_cliente,dispositivo_id) VALUES (?, 'Admin Real', 'ADMIN', 1, '654321', ?, ?)`, [adminId, new Date().toISOString(), dAdm]);
   const sesionAdmin = { id: adminId, nombre: 'Admin Real', rol: 'ADMIN' };
+  nube.registrarAdmin(adminId, 'Admin Real', '654321');
+  establecerAdminDeSesion(adminId);
   const conNube = (db, fn) => { globalThis.__db = db; globalThis.__supabase = nube; return fn(); };
   const subir = (db) => conNube(db, () => drenarColaSync());
   const sesion = (u) => ({ id: u.id, nombre: u.nombre, rol: u.rol });
@@ -517,7 +625,8 @@ console.log('\n== H. Tres dispositivos: admin (computador), bodega y promotor (c
   await paso('el celular de bodega descarga personal, catálogo y el stock de bodega', async () => {
     await conNube(dbBodega, () => sincronizarDatosRemotos(dbBodega, sesion(beto)));
     assert.equal((await obtenerSaldosBodega(dbBodega)).get((await skuUno(dbBodega)).id), 50);
-    assert.equal((await buscarUsuarioPorPin(dbBodega, '7002', ['BODEGA']))?.nombre, 'Beto Bodega');
+    assert.equal(await buscarUsuarioPorPin(dbBodega, '7002', ['BODEGA']), null, 'el PIN no llega con la bajada');
+    assert.equal((await conNube(dbBodega, () => entrar(dbBodega, '7002', ['BODEGA'])))?.nombre, 'Beto Bodega');
   });
   await paso('admin planea un cargue de 10 unidades para Pedro', async () => {
     await crearCargue(dbAdmin, { promotorId: pedro.id, promotorNombre: pedro.nombre, items: [{ productoId: (await skuUno(dbAdmin)).id, cantidad: 10 }], creadoPor: adminId }, dAdm);
@@ -847,6 +956,8 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
   await sembrarUsuariosDePrueba(dbAdm, dAdm);
   await sembrarUsuariosDePrueba(dbPro, dPro);
   const adminK = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+  nube.registrarAdmin(adminK.id, 'Admin (SQL Editor)', '000000');
+  establecerAdminDeSesion(adminK.id);
   const cristianAdm = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='8509'`);
   const cristianPro = await dbPro.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
   const conNube = (db, fn) => { globalThis.__db = db; globalThis.__supabase = nube; return fn(); };
@@ -1209,6 +1320,8 @@ console.log('\n== M. Descuentos por promotor: admin los asigna, el celular cobra
   await sembrarUsuariosDePrueba(dbAdm, dAdm);
   await sembrarUsuariosDePrueba(dbPro, dPro);
   const adminM = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+  nube.registrarAdmin(adminM.id, 'Admin (SQL Editor)', '000000');
+  establecerAdminDeSesion(adminM.id);
   const cristianAdm = await dbAdm.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
   const cristianPro = await dbPro.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
   const prod = async (db, sku) => db.getFirstAsync(`SELECT id, precio FROM productos WHERE sku = ?`, [sku]);
@@ -1371,6 +1484,8 @@ console.log('\n== N. Meta del día del EQUIPO y ventas de los compañeros de eve
   const dAdm = await getDispositivoId(dbAdm);
   await sembrarUsuariosDePrueba(dbAdm, dAdm);
   const adminN = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+  nube.registrarAdmin(adminN.id, 'Admin (SQL Editor)', '000000');
+  establecerAdminDeSesion(adminN.id);
   const conNube = (db, fn) => { globalThis.__db = db; globalThis.__supabase = nube; return fn(); };
   const hoy = fechaHoyBogota();
 
@@ -1447,6 +1562,63 @@ console.log('\n== N. Meta del día del EQUIPO y ventas de los compañeros de eve
     assert.deepEqual(deEquipo.promotorIds.slice().sort(), [ana.id, beto.id].sort());
     assert.deepEqual([deEquipo.totalVendidoHoy, deEquipo.progresoPct], [500000, 50]);
     assert.equal(filas.find((f) => f.promotorIds.includes(carla.id)).progresoPct, Math.round((999000 / 400000) * 100));
+  });
+}
+
+console.log('\n== S. Seguridad de credenciales (migración remota 0018) ==');
+{
+  const { registrarDesbloqueo } = await imp('db/intentosPin.ts');
+  const { huboDesbloqueoRemotoReciente } = await imp('db/intentosPinRemotos.ts');
+  const { crearPersona, eliminarPersona, eliminarPersonaPermanente } = await imp('db/personal.ts');
+  const nube = crearFake();
+  const dbAdm = crearDb();
+  await aplicar(dbAdm, migs);
+  const dAdm = await getDispositivoId(dbAdm);
+  const adminS = randomUUID();
+  await dbAdm.runAsync(`INSERT INTO usuarios (id,nombre,rol,activo,pin,ts_cliente,dispositivo_id) VALUES (?, 'Admin S', 'ADMIN', 1, '135790', ?, ?)`, [adminS, new Date().toISOString(), dAdm]);
+  nube.registrarAdmin(adminS, 'Admin S', '135790');
+  globalThis.__db = dbAdm;
+  globalThis.__supabase = nube;
+  const celularBloqueado = randomUUID();
+  const hace = new Date(Date.now() - 60_000).toISOString();
+
+  await paso('un desbloqueo insertado a mano (anon key) NO destraba el celular', async () => {
+    await nube.from('desbloqueos_pin').upsert({ id: randomUUID(), dispositivo_id: celularBloqueado, modo: 'PROMOTOR', admin_id: adminS, ts_cliente: new Date().toISOString(), verificado: true });
+    assert.equal(await huboDesbloqueoRemotoReciente(celularBloqueado, 'PROMOTOR', hace), null);
+  });
+  await paso('el desbloqueo que firma un admin registrado sí llega verificado y destraba', async () => {
+    await registrarDesbloqueo(dbAdm, celularBloqueado, 'PROMOTOR', adminS);
+    const r = await huboDesbloqueoRemotoReciente(celularBloqueado, 'PROMOTOR', hace);
+    assert.equal(r?.adminId, adminS);
+  });
+  await paso('la cola vuelve a subir el mismo desbloqueo sin quitarle el verificado', async () => {
+    establecerAdminDeSesion(adminS);
+    await drenarColaSync();
+    const filas = [...nube.tablas.get('desbloqueos_pin').values()].filter((f) => f.dispositivo_id === celularBloqueado && f.admin_id === adminS && f.verificado);
+    assert.equal(filas.length, 1);
+  });
+  await paso('un admin cuyo PIN el servidor no reconoce no puede desbloquear', async () => {
+    const otroAdmin = randomUUID();
+    const otroCelular = randomUUID();
+    await dbAdm.runAsync(`INSERT INTO usuarios (id,nombre,rol,activo,pin,ts_cliente,dispositivo_id) VALUES (?, 'Admin Falso', 'ADMIN', 1, '999999', ?, ?)`, [otroAdmin, new Date().toISOString(), dAdm]);
+    await registrarDesbloqueo(dbAdm, otroCelular, 'PROMOTOR', otroAdmin);
+    assert.equal(await huboDesbloqueoRemotoReciente(otroCelular, 'PROMOTOR', hace), null);
+  });
+  await paso('eliminar definitivamente borra en el servidor solo con admin en sesión', async () => {
+    const p = await crearPersona(dbAdm, { nombre: 'Error de Captura', rol: 'PROMOTOR', cedula: '5550001234' }, dAdm, adminS);
+    await drenarColaSync();
+    assert.ok(nube.tablas.get('usuarios').has(p.id));
+    await eliminarPersona(dbAdm, p.id, dAdm, adminS);
+    establecerAdminDeSesion(null);
+    await eliminarPersonaPermanente(dbAdm, p.id);
+    assert.ok(nube.tablas.get('usuarios').has(p.id), 'sin admin en sesión no se borra en el servidor');
+    const q = await crearPersona(dbAdm, { nombre: 'Otro Error', rol: 'PROMOTOR', cedula: '5550009876' }, dAdm, adminS);
+    establecerAdminDeSesion(adminS);
+    await drenarColaSync();
+    await eliminarPersona(dbAdm, q.id, dAdm, adminS);
+    await eliminarPersonaPermanente(dbAdm, q.id);
+    assert.ok(!nube.tablas.get('usuarios').has(q.id));
+    assert.ok(!nube.credenciales.has(q.id), 'también se borran sus credenciales');
   });
 }
 

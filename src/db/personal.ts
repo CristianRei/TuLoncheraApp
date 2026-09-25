@@ -5,6 +5,7 @@ import { mensajeDeError } from '@/core/errores';
 import { modoPinParaRol, pinDesdeCedula, pinManualValido } from '@/core/pin';
 import type { Persona, Rol } from '@/core/tipos';
 import { encolarSync } from '@/db/syncCola';
+import { obtenerPinAdminDeSesion, PinAdminNoRegistradoError, SinAdminEnSesionError } from '@/db/adminSesion';
 import { getSupabaseClient } from '@/sync/supabaseClient';
 
 import { registrarAccionAuditoria } from './auditoria';
@@ -86,9 +87,10 @@ function calcularPin(rol: Rol, cedula: string | null, pinManual: string | null |
  * `usuarios` sincronizara (nadie lo encoló nunca — sin esto, alguien contratado
  * antes no podría iniciar sesión en su propio celular hasta que el admin lo
  * editara). Idempotente: solo encola a quien no tenga ninguna tarea en la
- * cola. Excluye ADMIN a propósito: su PIN es manual (no derivable) y viajaría
- * en claro por la red — solo debe subir cuando el propio admin lo edita
- * (decisión explícita, ver `pinParaSincronizar`). Se llama solo desde el
+ * cola. Excluye ADMIN a propósito: un admin nuevo se registra en Supabase
+ * cuando el propio admin lo edita, o con `registrar_admin` desde el SQL
+ * Editor. PIN y cédula solo llegan a `usuarios_credenciales`, que la app no
+ * puede leer (supabase/migraciones/0018). Se llama solo desde el
  * dispositivo de admin y solo fuera de `__DEV__` (app/index.tsx): los
  * usuarios de prueba de `seed.ts` nunca deben llegar a Supabase.
  */
@@ -356,9 +358,14 @@ export async function eliminarPersonaPermanente(db: SQLiteDatabase, id: string):
   // Supabase directo, best-effort, igual que `marcarMensajeLeido`. Si la fila
   // nunca llegó a subir (se creó y se borró rápido), el DELETE remoto
   // simplemente no afecta ninguna fila.
+  // Supabase exige el PIN del admin que firma (migración remota 0018).
   try {
+    const pinAdmin = await obtenerPinAdminDeSesion(db);
+    if (!pinAdmin) throw new SinAdminEnSesionError();
     const supabase = await getSupabaseClient();
-    await supabase.from('usuarios').delete().eq('id', id);
+    const { data: aceptado, error } = await supabase.rpc('eliminar_usuario', { p_admin_pin: pinAdmin, p_id: id });
+    if (error) throw error;
+    if (aceptado !== true) throw new PinAdminNoRegistradoError();
   } catch (error) {
     console.log('[personal] no se pudo borrar en remoto:', mensajeDeError(error));
   }

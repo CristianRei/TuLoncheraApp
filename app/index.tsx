@@ -23,8 +23,7 @@ import {
 import { huboDesbloqueoRemotoReciente } from '@/db/intentosPinRemotos';
 import { encolarPersonalSinSubir } from '@/db/personal';
 import { encolarEmpresasYPuntosSinSubir } from '@/db/puntos';
-import { buscarUsuarioPorPin } from '@/db/usuarios';
-import { descargarDatosDeAdminConLimite } from '@/sync/bajada';
+import { buscarUsuarioPorPin, verificarPinEnServidor } from '@/db/usuarios';
 import { registrarPushToken } from '@/sync/push';
 import { CampoPin } from '@/ui/CampoPin';
 import { FondoFlotante, HaloResplandor } from '@/ui/FondoAnimado';
@@ -203,22 +202,36 @@ export default function Login() {
         let usuario = await buscarUsuarioPorPin(db, pin, rolesPermitidosPara(modo));
         if (cancelado) return;
 
-        // Si no se encontró y no es modo admin, puede ser personal contratado
-        // después de instalar la app en este celular (ver CLAUDE.md sección
-        // 11) — se intenta una descarga fresca del personal antes de rendirse.
-        // El dispositivo de admin nunca hace esto: su base local ya es la
-        // fuente de verdad de `usuarios`, no la de otro dispositivo.
-        if (!usuario && modo !== 'ADMIN') {
-          await descargarDatosDeAdminConLimite(db, 8000);
+        // PIN que este celular no conoce (primera vez de esta persona aquí, o
+        // admin le cambió el PIN): se verifica en Supabase, que nunca entrega
+        // el PIN — ver `verificarPinEnServidor` y supabase/migraciones/0018.
+        let avisoSinConexion = false;
+        if (!usuario) {
+          const resultado = await verificarPinEnServidor(db, pin, rolesPermitidosPara(modo));
           if (cancelado) return;
-          usuario = await buscarUsuarioPorPin(db, pin, rolesPermitidosPara(modo));
-          if (cancelado) return;
+          if (resultado.tipo === 'OK') {
+            usuario = resultado.usuario;
+          } else if (resultado.tipo === 'DEMASIADOS_INTENTOS') {
+            setError('Demasiados intentos. Espera unos minutos.');
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            setVerificando(false);
+            setPin('');
+            return;
+          } else if (resultado.tipo === 'SIN_CONEXION') {
+            avisoSinConexion = true;
+          }
         }
 
         if (!usuario) {
+          // Sin red también cuenta como fallo local: si no, poner el celular
+          // en modo avión permitiría probar PINs sin el bloqueo progresivo.
           await registrarIntentoFallido(db, dispositivoId, modo);
           if (cancelado) return;
-          setError('Código no encontrado');
+          setError(
+            avisoSinConexion
+              ? 'Código no encontrado en este celular. Si es tu primera vez aquí, conéctate a internet.'
+              : 'Código no encontrado'
+          );
           setIntentoFallido((n) => n + 1);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           await refrescarEstadoIntentos(dispositivoId, modo);

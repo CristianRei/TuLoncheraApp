@@ -46,8 +46,54 @@ corre una vez en orden:
    conteos) y un índice único parcial: un promotor no puede tener más de un
    turno abierto (`hora_fin is null`) a la vez — evita el bug real de
    turnos duplicados por una carrera entre dos dispositivos. Idempotente.
+10. `migraciones/0017_evidencia_sin_sobrescritura.sql` — quita el UPDATE de
+    los buckets `selfies-turnos` y `comprobantes-venta`: una foto subida ya
+    no se puede reemplazar. Idempotente.
+11. `migraciones/0018_credenciales_privadas.sql` — **seguridad de PIN y datos
+    personales** (auditoría 2026-09-25). Idempotente. Ver "Credenciales"
+    abajo antes de correrla.
 
 Todo se valida contra un Postgres real en memoria con `npm run test:sql`.
+
+**Ojo:** volver a correr `0009` después de `0018` reabre la escritura en
+`usuarios` (0009 aplica políticas abiertas). Si alguna vez se repite 0009,
+correr 0018 otra vez justo después.
+
+### Credenciales (0018)
+
+Después de 0018, el PIN, la cédula, el celular y la dirección viven en
+`usuarios_credenciales`, que la app no puede leer ni escribir. `usuarios`
+queda solo con id, nombre, rol y activo, y solo se lee. Lo que antes subía
+directo pasa por funciones que verifica el servidor:
+
+- `verificar_pin` — login con un PIN que el celular no conoce (primera vez
+  de esa persona en ese celular). Límite: 10 fallos cada 10 min por sesión,
+  60 por minuto en total.
+- `guardar_usuario` / `eliminar_usuario` — cambios de personal desde el
+  dispositivo de admin, firmados con el PIN del admin que tiene la sesión.
+- `desbloquear_dispositivo` — desbloqueo remoto; el celular bloqueado solo
+  acepta los verificados.
+
+**Pasos, en este orden:**
+
+1. Actualizar la app en TODOS los dispositivos (la versión vieja pide el PIN
+   y la cédula a `usuarios` y deja de poder descargar el personal).
+2. Correr `0018` en el SQL Editor. Copia a `usuarios_credenciales` lo que
+   ya estaba en Supabase y lo borra de `usuarios`.
+3. Registrar a cada admin que use la app, con el PIN que usa para entrar:
+
+   ```sql
+   select registrar_admin('Nombre del admin', '123456');
+   ```
+
+   Solo se puede ejecutar desde el SQL Editor. Sin ningún admin registrado,
+   el personal nuevo o editado queda pendiente en `app/admin/sync/` con el
+   mensaje "Supabase no reconoce el PIN de este administrador". Si un admin
+   cambia su PIN desde la app, hay que volver a correr `registrar_admin` con
+   el PIN nuevo (el servidor todavía conoce el viejo y rechaza la firma).
+4. Desde ese momento, la **primera vez** que alguien entra en un celular
+   necesita internet (el servidor verifica su PIN). Después puede entrar en
+   ese celular sin conexión, como siempre.
 
 **Detalle histórico (ya incluido en 0009):** los archivos `0003` a `0008`
 siguen aquí como referencia de cómo se fue construyendo. Si prefieres correrlos

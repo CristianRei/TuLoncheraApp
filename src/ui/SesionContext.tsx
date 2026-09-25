@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
 import type { UsuarioSesion } from '@/core/tipos';
+import { establecerAdminDeSesion } from '@/db/adminSesion';
 
 interface SesionContextValor {
   usuario: UsuarioSesion | null;
@@ -19,8 +20,14 @@ export function SesionProvider({ children }: { children: ReactNode }) {
 
   const valor: SesionContextValor = {
     usuario,
-    iniciarSesion: setUsuario,
-    cerrarSesion: () => setUsuario(null),
+    iniciarSesion: (u) => {
+      establecerAdminDeSesion(u.rol === 'ADMIN' ? u.id : null);
+      setUsuario(u);
+    },
+    cerrarSesion: () => {
+      establecerAdminDeSesion(null);
+      setUsuario(null);
+    },
   };
 
   return <SesionContext.Provider value={valor}>{children}</SesionContext.Provider>;

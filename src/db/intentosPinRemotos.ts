@@ -105,6 +105,9 @@ export async function huboDesbloqueoRemotoReciente(
     .select('id, admin_id, ts_cliente')
     .eq('dispositivo_id', dispositivoId)
     .eq('modo', modo)
+    // Solo los verificados por Supabase con PIN de admin (migración 0018): un
+    // desbloqueo insertado a mano con la anon key no destraba nada.
+    .eq('verificado', true)
     .gt('ts_cliente', desdeTs)
     .order('ts_cliente', { ascending: false })
     .limit(1)

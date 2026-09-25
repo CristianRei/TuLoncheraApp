@@ -35,7 +35,9 @@ computador ya la confirmó el usuario con dispositivos reales (2026-09-23); el
 resto está probado con SQLite y Postgres reales de laboratorio (`npm run
 test:db`, `npm run test:sql`). En el Supabase real ya están aplicadas 0009 y
 0010; faltan 0011 (traslados), 0012 (empresas/puntos), 0013 (push desde el
-servidor), 0014 (eventos) y 0015 (descuentos) — ver sección 11.
+servidor), 0014 (eventos), 0015 (descuentos), 0017 (evidencia sin
+sobrescritura) y 0018 (credenciales privadas: PIN y datos personales fuera de
+`usuarios`, con pasos manuales) — ver sección 11.
 
 ---
 
@@ -267,7 +269,8 @@ tulonchera/
       seguridadPin/                      ← backoff/bloqueo de PIN
       tipos/                                ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0032, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`; la 0030 agrega DESBLOQUEO_PIN + columna `modo` a `notificaciones`; la 0031 agrega `promotor_id` a `descuentos`; la 0032 agrega horario y meta diaria a `eventos`)
+      migraciones/                ← 0001 a 0033, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`; la 0030 agrega DESBLOQUEO_PIN + columna `modo` a `notificaciones`; la 0031 agrega `promotor_id` a `descuentos`; la 0032 agrega horario y meta diaria a `eventos`; la 0033 agrega `usuarios.credencial_version`)
+      adminSesion.ts               ← qué admin tiene la sesión: la cola de sync firma con su PIN los cambios de personal y desbloqueos (Supabase 0018)
       arqueos.ts                   ← registra y lee el arqueo de caja de un turno (una fila por turno)
       arqueosRemotos.ts             ← lectura desde Supabase, para cuando el turno no se abrió en este dispositivo
       cargues.ts                   ← planear/reducir/entregar cargue (cabecera + líneas)
@@ -371,14 +374,17 @@ usuarios          (id, nombre, rol, activo, pin, cedula[opcional],
                     pantalla de inicio (src/db/usuarios.ts,
                     `descargarUsuariosNuevos`) — nunca el dispositivo de
                     admin, que ya es la fuente de verdad local de esta tabla.
-                    El PIN casi nunca viaja por la red: para roles
-                    DESDE_CEDULA se recalcula en cada dispositivo a partir de
-                    `cedula` (`src/core/pin`, `pinParaSincronizar`/
-                    `pinDesdeDescarga`) — solo viaja de verdad para ADMIN o
-                    un override manual por colisión, riesgo aceptado y
-                    documentado ahí mismo. "Eliminar definitivamente" hace
-                    también un DELETE remoto best-effort (fuera de la cola de
-                    sync, ver `eliminarPersonaPermanente`).
+                    Desde la migración remota 0018 el PIN, la cédula, el
+                    celular y la dirección NUNCA bajan: viven en
+                    `usuarios_credenciales` (Supabase, ilegible para la app).
+                    Un celular conoce el PIN de alguien solo si esa persona
+                    ya entró ahí y el servidor lo verificó
+                    (`verificarPinEnServidor`, función `verificar_pin` con
+                    límite de intentos). `credencial_version` (local desde la
+                    0033) detecta que admin cambió el PIN y hace olvidar el
+                    viejo. La subida (`guardar_usuario`) y "eliminar
+                    definitivamente" (`eliminar_usuario`) van firmadas con el
+                    PIN del admin en sesión (`src/db/adminSesion.ts`).
 ubicaciones       (id, tipo[BODEGA|CAMION|PROMOTOR], nombre, responsable_id)
                   ← BODEGA es una sola fila (singleton); cada promotor tiene
                     la suya. Ambas se crean perezosamente, no por migración.
@@ -1362,14 +1368,24 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   primero). El dispositivo de admin NUNCA descarga esta tabla — su base local
   ya es la fuente de verdad, descargarla ahí podría pisar una edición propia
   recién hecha que todavía no subió; por eso mismo esta rebanada no necesita
-  resolver conflictos de escritura concurrente. El PIN real casi nunca viaja
-  por la red: para Promotor/Conductor/Bodega (PIN derivado de cédula) cada
-  dispositivo lo recalcula localmente a partir de `cedula` en vez de leerlo
-  de Supabase — importante porque la anon key es pública dentro del `.apk`,
-  así que sin esto cualquiera que la extrajera podría leer el PIN de cada
-  empleado sin tocar ningún celular. Solo viaja de verdad para ADMIN (PIN
-  manual, no derivable) o un override manual por colisión — riesgo aceptado,
-  ver `pinParaSincronizar`/`pinDesdeDescarga` en `src/core/pin`.
+  resolver conflictos de escritura concurrente. **Credenciales (desde la
+  migración remota 0018, auditoría de seguridad 2026-09-25):** la anon key es
+  pública dentro del `.apk`, así que antes cualquiera podía leer el PIN de
+  admin y la cédula de todos (el PIN de los demás = últimos 4 dígitos),
+  cambiarse el rol o falsificar un desbloqueo. Ahora el PIN y los datos
+  personales viven en `usuarios_credenciales` (sin políticas: la app no la
+  lee ni la escribe) y `usuarios` solo se lee. La bajada trae id/nombre/rol/
+  activo/`credencial_version`, nunca el PIN; el login con un PIN que el
+  celular no conoce lo verifica el servidor (`verificarPinEnServidor` →
+  `verificar_pin`, 10 fallos/10 min por sesión y 60/min en total) y desde ahí
+  esa persona entra sin conexión en ese celular. Sin conexión, un PIN
+  desconocido cuenta igual como intento fallido local (si no, el modo avión
+  saltaría el bloqueo progresivo). Subir/eliminar personal y desbloquear a
+  distancia exigen el PIN del admin en sesión (`src/db/adminSesion.ts`,
+  funciones `guardar_usuario`/`eliminar_usuario`/`desbloquear_dispositivo`);
+  el celular bloqueado solo acepta desbloqueos `verificado = true`. El primer
+  admin se registra con `registrar_admin` desde el SQL Editor (ver
+  `supabase/README.md`, "Credenciales").
 - **Sincronización de bajada — catálogo** (`src/db/productos.ts`,
   `src/db/categorias.ts`, `src/sync/bajada.ts`,
   `supabase/migraciones/0007_catalogo.sql`): segunda rebanada de bajada,
@@ -1560,6 +1576,18 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [ ] **Correr `supabase/migraciones/0015_descuentos.sql`** (idempotente,
       después de 0012). Sin esto, los descuentos quedan pendientes en la
       cola y el celular del promotor cobra sin ellos.
+- [ ] **Correr `supabase/migraciones/0018_credenciales_privadas.sql`** —
+      seguridad de PIN y datos personales. **Orden obligatorio:** (1)
+      actualizar la app en todos los dispositivos, (2) correr 0018, (3)
+      registrar a cada admin con `select registrar_admin('Nombre', 'PIN');`
+      en el SQL Editor. Detalle en `supabase/README.md`, "Credenciales".
+      Desde ahí, la primera entrada de cada persona en cada celular necesita
+      internet.
+- [ ] **Push falsos "del administrador" y escritura abierta en ventas/
+      movimientos/mensajes** (auditoría 2026-09-25): siguen abiertos. Sin
+      cuentas por persona, el servidor no distingue al admin de quien tenga
+      la anon key. Cerrarlo es la opción B (autenticación real por persona:
+      sesión de Supabase por empleado, RLS por rol) — sin decidir todavía.
 - [ ] **Correr `supabase/migraciones/0017_evidencia_sin_sobrescritura.sql`**
       (idempotente, cualquier orden). Quita el UPDATE de los buckets
       `selfies-turnos` y `comprobantes-venta`: la evidencia ya no se puede

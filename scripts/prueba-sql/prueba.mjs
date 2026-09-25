@@ -22,6 +22,8 @@ async function nuevaBase() {
   // Lo que Supabase ya trae de fábrica:
   await db.exec(`create role authenticated nologin; create role anon nologin; create publication supabase_realtime;`);
   await db.exec(`grant usage on schema public to authenticated; alter default privileges in schema public grant all on tables to authenticated;`);
+  await db.exec(`create schema auth; grant usage on schema auth to authenticated;
+    create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('prueba.uid', true), '')::uuid $$;`);
   return db;
 }
 
@@ -435,6 +437,135 @@ console.log('\n== 0017 (selfies/comprobantes sin sobrescritura) sobre las polít
     assert.ok(!cmds.includes('UPDATE'), `quedó una política UPDATE: ${JSON.stringify(r.rows)}`);
     assert.equal(cmds.filter((c) => c === 'INSERT').length, 2);
     assert.equal(cmds.filter((c) => c === 'SELECT').length, 2);
+  });
+}
+
+console.log('\n== 0018 (credenciales privadas + verificación en el servidor) encima de todo, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  const U = () => crypto.randomUUID();
+  const ahora = new Date().toISOString();
+  const admin = U(), prom = U(), promOverride = U();
+  const comoApp = async (fn, uid = U()) => {
+    await db.exec(`set prueba.uid = '${uid}'; set role authenticated`);
+    try { return await fn(); } finally { await db.exec('reset role'); }
+  };
+  await paso(`datos viejos expuestos antes de la migración (proyecto ${nombre})`, async () => {
+    const ins = `insert into usuarios (id, nombre, rol, activo, cedula, celular, direccion, pin, ts_cliente, dispositivo_id) values ($1,$2,$3,true,$4,$5,null,$6,now(),$7)`;
+    await db.query(ins, [admin, 'Admin Real', 'ADMIN', null, '3001112233', '654321', U()]);
+    await db.query(ins, [prom, 'Pedro', 'PROMOTOR', '1.234.565.432', null, null, U()]);
+    await db.query(ins, [promOverride, 'Choque', 'PROMOTOR', '99991111', null, '7777', U()]);
+  });
+  await paso(`0018 aplica sin error y es idempotente (proyecto ${nombre})`, async () => {
+    await db.exec(leer('0018_credenciales_privadas.sql'));
+    await db.exec(leer('0018_credenciales_privadas.sql'));
+  });
+  await paso(`PIN, cédula y celular salieron de usuarios y quedaron en credenciales (proyecto ${nombre})`, async () => {
+    const u = await db.query(`select count(*)::int n from usuarios where pin is not null or cedula is not null or celular is not null or direccion is not null`);
+    assert.equal(u.rows[0].n, 0);
+    const c = await db.query(`select usuario_id, pin, cedula, celular from usuarios_credenciales where usuario_id = any($1)`, [[admin, prom, promOverride]]);
+    const porId = Object.fromEntries(c.rows.map((r) => [r.usuario_id, r]));
+    assert.equal(porId[admin].pin, '654321');
+    assert.equal(porId[admin].celular, '3001112233');
+    assert.equal(porId[prom].pin, '5432', 'el PIN derivado de cédula se reconstruye');
+    assert.equal(porId[prom].cedula, '1.234.565.432');
+    assert.equal(porId[promOverride].pin, '7777', 'el override manual gana sobre la cédula');
+  });
+  await paso(`la app ya no puede leer PIN/cédula ni la tabla de credenciales (proyecto ${nombre})`, async () => {
+    await comoApp(async () => {
+      await assert.rejects(db.query(`select pin from usuarios`), /permission denied/);
+      await assert.rejects(db.query(`select cedula from usuarios`), /permission denied/);
+      await assert.rejects(db.query(`select * from usuarios_credenciales`), /permission denied/);
+      const r = await db.query(`select id, nombre, rol, activo, credencial_version from usuarios where id = $1`, [prom]);
+      assert.equal(r.rows[0].nombre, 'Pedro');
+    });
+  });
+  await paso(`la app ya no puede escribir en usuarios (ej. cambiarse el rol) (proyecto ${nombre})`, async () => {
+    await comoApp(async () => {
+      await assert.rejects(db.query(`update usuarios set rol = 'ADMIN' where id = $1`, [prom]), /permission denied/);
+      await assert.rejects(db.query(`insert into usuarios (id, nombre, rol, activo, ts_cliente, dispositivo_id) values ($1,'X','ADMIN',true,now(),$1)`, [U()]), /permission denied/);
+      await assert.rejects(db.query(`delete from usuarios where id = $1`, [prom]), /permission denied/);
+    });
+  });
+  await paso(`verificar_pin: devuelve a la persona correcta, respeta los roles, nunca el PIN (proyecto ${nombre})`, async () => {
+    await comoApp(async () => {
+      const ok = await db.query(`select * from verificar_pin('5432', array['PROMOTOR'])`);
+      assert.deepEqual(ok.rows.map((r) => r.id), [prom]);
+      assert.ok(!('pin' in ok.rows[0]));
+      const otroRol = await db.query(`select * from verificar_pin('654321', array['PROMOTOR'])`);
+      assert.equal(otroRol.rows.length, 0, 'un PIN de admin no abre modo promotor');
+      const mal = await db.query(`select * from verificar_pin('0000', array['PROMOTOR'])`);
+      assert.equal(mal.rows.length, 0);
+    });
+  });
+  await paso(`verificar_pin: tras 10 fallos en 10 min, la sesión queda frenada (proyecto ${nombre})`, async () => {
+    const sesion = U();
+    await comoApp(async () => {
+      for (let i = 0; i < 10; i++) await db.query(`select * from verificar_pin($1, array['PROMOTOR'])`, [String(1000 + i)]);
+      await assert.rejects(db.query(`select * from verificar_pin('5432', array['PROMOTOR'])`), /DEMASIADOS_INTENTOS/);
+    }, sesion);
+    // Otra sesión sigue pudiendo (el tope global es más alto).
+    await comoApp(async () => {
+      const ok = await db.query(`select * from verificar_pin('5432', array['PROMOTOR'])`);
+      assert.equal(ok.rows.length, 1);
+    });
+  });
+  await paso(`guardar_usuario: sin PIN de admin válido no hace nada y cuenta como fallo (proyecto ${nombre})`, async () => {
+    const nuevo = U();
+    const sesion = U();
+    await comoApp(async () => {
+      const r = await db.query(`select guardar_usuario('000000', $1::jsonb) ok`, [JSON.stringify({ id: nuevo, nombre: 'Intruso', rol: 'ADMIN', activo: true, pin: '111111', ts_cliente: ahora, dispositivo_id: U() })]);
+      assert.equal(r.rows[0].ok, false);
+    }, sesion);
+    const n = await db.query(`select count(*)::int n from usuarios where id = $1`, [nuevo]);
+    assert.equal(n.rows[0].n, 0);
+    const f = await db.query(`select count(*)::int n from intentos_verificacion_pin where sesion = $1`, [sesion]);
+    assert.equal(f.rows[0].n, 1, 'el fallo quedó registrado (no se deshizo)');
+  });
+  await paso(`guardar_usuario: con PIN de admin crea, y la versión sube solo si cambia el PIN (proyecto ${nombre})`, async () => {
+    const nuevo = U();
+    const datos = (pin) => JSON.stringify({ id: nuevo, nombre: 'Laura', rol: 'BODEGA', activo: true, pin, cedula: '55554321', celular: null, direccion: 'Calle 1', ts_cliente: ahora, dispositivo_id: U() });
+    await comoApp(async () => {
+      assert.equal((await db.query(`select guardar_usuario('654321', $1::jsonb) ok`, [datos('4321')])).rows[0].ok, true);
+      assert.equal((await db.query(`select guardar_usuario('654321', $1::jsonb) ok`, [datos('4321')])).rows[0].ok, true);
+      assert.equal((await db.query(`select credencial_version v from usuarios where id = $1`, [nuevo])).rows[0].v, 1);
+      assert.equal((await db.query(`select guardar_usuario('654321', $1::jsonb) ok`, [datos('9876')])).rows[0].ok, true);
+      assert.equal((await db.query(`select credencial_version v from usuarios where id = $1`, [nuevo])).rows[0].v, 2);
+      assert.equal((await db.query(`select * from verificar_pin('9876', array['BODEGA'])`)).rows[0].id, nuevo);
+    });
+    const c = await db.query(`select direccion from usuarios_credenciales where usuario_id = $1`, [nuevo]);
+    assert.equal(c.rows[0].direccion, 'Calle 1');
+  });
+  await paso(`eliminar_usuario exige PIN de admin (proyecto ${nombre})`, async () => {
+    await comoApp(async () => {
+      assert.equal((await db.query(`select eliminar_usuario('999999', $1) ok`, [promOverride])).rows[0].ok, false);
+      assert.equal((await db.query(`select count(*)::int n from usuarios where id = $1`, [promOverride])).rows[0].n, 1);
+      assert.equal((await db.query(`select eliminar_usuario('654321', $1) ok`, [promOverride])).rows[0].ok, true);
+      assert.equal((await db.query(`select count(*)::int n from usuarios where id = $1`, [promOverride])).rows[0].n, 0);
+    });
+  });
+  await paso(`un desbloqueo insertado directo nunca queda verificado; el de la función sí (proyecto ${nombre})`, async () => {
+    const disp = U(), falso = U(), real = U(), malo = U();
+    await comoApp(async () => {
+      await db.query(`insert into desbloqueos_pin (id, dispositivo_id, modo, admin_id, ts_cliente, verificado) values ($1,$2,'PROMOTOR',$3,now(),true)`, [falso, disp, admin]);
+      assert.equal((await db.query(`select desbloquear_dispositivo('000001', $1, $2, 'PROMOTOR', now()) ok`, [malo, disp])).rows[0].ok, false);
+      assert.equal((await db.query(`select desbloquear_dispositivo('654321', $1, $2, 'PROMOTOR', now()) ok`, [real, disp])).rows[0].ok, true);
+    });
+    const r = await db.query(`select id, verificado, admin_id from desbloqueos_pin where dispositivo_id = $1`, [disp]);
+    const porId = Object.fromEntries(r.rows.map((x) => [x.id, x]));
+    assert.equal(porId[falso].verificado, false);
+    assert.equal(porId[real].verificado, true);
+    assert.equal(porId[real].admin_id, admin);
+    assert.ok(!porId[malo], 'con PIN inválido no se inserta nada');
+  });
+  await paso(`registrar_admin solo desde el SQL Editor, nunca desde la app (proyecto ${nombre})`, async () => {
+    await comoApp(async () => {
+      await assert.rejects(db.query(`select registrar_admin('Hacker', '111111')`), /permission denied/);
+      await assert.rejects(db.query(`select _admin_por_pin('654321')`), /permission denied/);
+    });
+    const id = (await db.query(`select registrar_admin('Dueña', '246810') id`)).rows[0].id;
+    await comoApp(async () => {
+      assert.equal((await db.query(`select * from verificar_pin('246810', array['ADMIN'])`)).rows[0].id, id);
+    });
   });
 }
 

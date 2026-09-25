@@ -2,7 +2,7 @@ import { File } from 'expo-file-system';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
-import { pinParaSincronizar } from '@/core/pin';
+import { obtenerPinAdminDeSesion, PinAdminNoRegistradoError, SinAdminEnSesionError } from '@/db/adminSesion';
 import { obtenerArqueoPorId } from '@/db/arqueos';
 import { normalizar as normalizarNombreCategoria, obtenerCategoria } from '@/db/categorias';
 import { getDb } from '@/db/client';
@@ -436,20 +436,28 @@ async function subirFila(
     case 'usuarios': {
       const persona = await obtenerPersona(db, tarea.entidad_id);
       if (!persona) return; // se eliminó (DELETE real) después de encolarse — nada que subir
-      const { error } = await supabase.from('usuarios').upsert({
-        id: persona.id,
-        nombre: persona.nombre,
-        rol: persona.rol,
-        activo: persona.activo,
-        cedula: persona.cedula,
-        celular: persona.celular,
-        direccion: persona.direccion,
-        // Nunca el PIN derivable de cédula — ver src/core/pin, pinParaSincronizar.
-        pin: pinParaSincronizar(persona.rol, persona.cedula, persona.pin),
-        ts_cliente: persona.tsCliente,
-        dispositivo_id: dispositivoId,
+      // PIN y datos personales van a `usuarios_credenciales`, que la app no
+      // puede leer; el servidor exige el PIN del admin que firma el cambio
+      // (supabase/migraciones/0018_credenciales_privadas.sql).
+      const pinAdmin = await obtenerPinAdminDeSesion(db);
+      if (!pinAdmin) throw new SinAdminEnSesionError();
+      const { data: aceptado, error } = await supabase.rpc('guardar_usuario', {
+        p_admin_pin: pinAdmin,
+        p_usuario: {
+          id: persona.id,
+          nombre: persona.nombre,
+          rol: persona.rol,
+          activo: persona.activo,
+          pin: persona.pin,
+          cedula: persona.cedula,
+          celular: persona.celular,
+          direccion: persona.direccion,
+          ts_cliente: persona.tsCliente,
+          dispositivo_id: dispositivoId,
+        },
       });
       if (error) throw error;
+      if (aceptado !== true) throw new PinAdminNoRegistradoError();
       return;
     }
 
@@ -672,15 +680,19 @@ async function subirFila(
         tarea.entidad_id,
       ]);
       if (!fila) return;
-      // Idempotente con el insert directo que ya intenta `registrarDesbloqueo`
-      // (ver src/db/intentosPin.ts) — si ya llegó, este upsert es un no-op.
-      const { error } = await supabase.from('desbloqueos_pin').upsert({
-        id: fila.id,
-        dispositivo_id: fila.dispositivo_id,
-        modo: fila.modo,
-        admin_id: fila.admin_id,
-        ts_cliente: fila.ts_cliente,
-      });
+      // Queda como registro (sin verificar). Si `registrarDesbloqueo` ya lo
+      // subió verificado por `desbloquear_dispositivo`, no se toca: insertar
+      // solo si no existe (y así tampoco hace falta permiso de UPDATE).
+      const { error } = await supabase.from('desbloqueos_pin').upsert(
+        {
+          id: fila.id,
+          dispositivo_id: fila.dispositivo_id,
+          modo: fila.modo,
+          admin_id: fila.admin_id,
+          ts_cliente: fila.ts_cliente,
+        },
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
       if (error) throw error;
       return;
     }

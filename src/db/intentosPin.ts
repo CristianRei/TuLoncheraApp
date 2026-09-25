@@ -74,8 +74,8 @@ export async function registrarLoginExitoso(
 /**
  * Un admin desbloquea una combinación dispositivo+modo, reseteando el
  * contador. Sincroniza a Supabase por la cola normal (para que quede
- * registrado incluso sin red), pero ADEMÁS intenta un insert directo a
- * Supabase best-effort: si el dispositivo bloqueado es OTRO (ej. admin
+ * registrado incluso sin red), pero ADEMÁS pide a Supabase un desbloqueo
+ * verificado, best-effort: si el dispositivo bloqueado es OTRO (ej. admin
  * desbloqueando desde su panel a un promotor), ese dispositivo nunca lee
  * este SQLite local — solo puede enterarse consultando Supabase (ver
  * `app/index.tsx`, chequeo de desbloqueo remoto mientras está BLOQUEADO).
@@ -98,12 +98,25 @@ export async function registrarDesbloqueo(
     await encolarSync(db, { tabla: 'desbloqueos_pin', entidadId: id, tipoTarea: 'FILA' });
   });
 
+  // Para que OTRO dispositivo lo acepte, el desbloqueo tiene que venir
+  // verificado por Supabase con el PIN de este admin (supabase/migraciones/
+  // 0018): un insert directo queda como simple registro, sin efecto remoto.
   try {
+    const admin = await db.getFirstAsync<{ pin: string | null }>(
+      "SELECT pin FROM usuarios WHERE id = ? AND rol = 'ADMIN'",
+      [adminId]
+    );
+    if (!admin?.pin) throw new Error('el PIN de este admin no está en este dispositivo');
     const supabase = await getSupabaseClient();
-    const { error } = await supabase
-      .from('desbloqueos_pin')
-      .upsert({ id, dispositivo_id: dispositivoId, modo, admin_id: adminId, ts_cliente: tsCliente });
+    const { data: aceptado, error } = await supabase.rpc('desbloquear_dispositivo', {
+      p_admin_pin: admin.pin,
+      p_id: id,
+      p_dispositivo_id: dispositivoId,
+      p_modo: modo,
+      p_ts_cliente: tsCliente,
+    });
     if (error) throw error;
+    if (aceptado !== true) throw new Error('Supabase no reconoce el PIN de este admin (registrar_admin)');
   } catch (error) {
     console.log('[intentosPin] desbloqueo remoto inmediato falló, queda en la cola:', mensajeDeError(error));
   }

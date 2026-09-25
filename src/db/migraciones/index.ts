@@ -32,6 +32,7 @@ import { migracion0029Traslados } from './0029_traslados';
 import { migracion0030NotificacionesModo } from './0030_notificaciones_modo';
 import { migracion0031DescuentosPromotor } from './0031_descuentos_promotor';
 import { migracion0032EventoHorarioMeta } from './0032_evento_horario_meta';
+import { migracion0033CredencialVersion } from './0033_credencial_version';
 
 export interface Migracion {
   version: number;
@@ -75,6 +76,7 @@ const migraciones: Migracion[] = [
   migracion0030NotificacionesModo,
   migracion0031DescuentosPromotor,
   migracion0032EventoHorarioMeta,
+  migracion0033CredencialVersion,
 ];
 
 /**
