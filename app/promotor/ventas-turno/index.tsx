@@ -11,7 +11,10 @@ import { obtenerProgresoMetaDelPromotor, type ProgresoMetaDiaria } from '@/db/me
 import { obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { listarVentasEquipoHoy, listarVentasTurno } from '@/db/ventas';
 import { BarraMetaDiaria } from '@/ui/BarraMetaDiaria';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { EncabezadoPromotor } from '@/ui/EncabezadoPromotor';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -111,34 +114,19 @@ export default function VentasTurno() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.botonIcono}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-        >
-          <Ionicons name="chevron-back" size={22} color={COLORES.textoSobreOscuro} />
-        </Pressable>
-        <Text style={styles.titulo}>Ventas del turno</Text>
-        <View style={styles.botonIcono} />
-      </View>
+      <EncabezadoPromotor titulo="Ventas del turno" />
 
       {equipo && !sinTurno && (
         <View style={styles.pestanas}>
-          {(['MIAS', 'EQUIPO'] as const).map((valor) => (
-            <Pressable
-              key={valor}
-              style={[styles.pestana, pestana === valor && styles.pestanaActiva]}
-              onPress={() => setPestana(valor)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: pestana === valor }}
-            >
-              <Text style={[styles.pestanaTexto, pestana === valor && styles.pestanaTextoActiva]}>
-                {valor === 'MIAS' ? 'Mis ventas' : 'Todo el equipo'}
-              </Text>
-            </Pressable>
-          ))}
+          <FiltroSegmentado
+            variante="promotor"
+            opciones={[
+              { valor: 'MIAS' as Pestana, etiqueta: 'Mis ventas' },
+              { valor: 'EQUIPO' as Pestana, etiqueta: 'Todo el equipo' },
+            ]}
+            valorActivo={pestana}
+            onCambiar={setPestana}
+          />
         </View>
       )}
 
@@ -251,52 +239,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORES.fondo,
   },
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 64,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  botonIcono: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titulo: {
-    fontSize: 17,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: COLORES.textoSobreOscuro,
-  },
   pestanas: {
-    flexDirection: 'row',
     marginHorizontal: 16,
     marginTop: 14,
-    backgroundColor: COLORES.superficie,
-    borderRadius: 12,
-    padding: 4,
-    gap: 4,
-  },
-  pestana: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 9,
-  },
-  pestanaActiva: {
-    backgroundColor: COLORES.primario,
-  },
-  pestanaTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
-    color: COLORES.textoSecundario,
-  },
-  pestanaTextoActiva: {
-    color: COLORES.textoSobreOscuro,
   },
   resumenFila: {
     flexDirection: 'row',
@@ -313,9 +258,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORES.borde,
   },
   desgloseTexto: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.nota,
   },
   desgloseCifra: {
     fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
@@ -330,14 +273,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES.superficie,
     marginHorizontal: 16,
     marginTop: 16,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     paddingVertical: 16,
     paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
   },
   resumenDivisor: {
     width: 1,
@@ -345,9 +285,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES.borde,
   },
   resumenEtiqueta: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.nota,
     marginBottom: 2,
   },
   resumenValor: {
@@ -362,9 +300,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   vacio: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textAlign: 'center',
   },
   lista: {
@@ -378,8 +314,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 28,
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
+    borderTopLeftRadius: RADII_ADMIN.lg,
+    borderTopRightRadius: RADII_ADMIN.lg,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 10,
@@ -390,39 +326,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORES.superficie,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     padding: 12,
     gap: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
   },
   icono: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADII_ADMIN.lg,
     backgroundColor: 'rgba(243,167,18,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconoAnulado: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: COLORES.superficieBaja,
   },
   tarjetaTexto: {
     flex: 1,
     gap: 2,
   },
   tarjetaRecibo: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   tarjetaDetalle: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.nota,
   },
   tarjetaClienteFila: {
     flexDirection: 'row',
@@ -431,8 +361,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   tarjetaCliente: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
+    ...TEXTO_PROMOTOR.nota,
     color: COLORES.primario,
     flexShrink: 1,
   },
@@ -441,8 +370,7 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   tarjetaTotal: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    ...TEXTO_PROMOTOR.datoDestacado,
     color: COLORES.textoSobreOscuro,
   },
   tarjetaTotalAnulado: {
@@ -454,7 +382,7 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
     color: COLORES.error,
     backgroundColor: 'rgba(220,53,69,0.1)',
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },

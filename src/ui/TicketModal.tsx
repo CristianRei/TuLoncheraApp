@@ -2,7 +2,8 @@ import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native
 
 import type { Cliente } from '@/core/tipos';
 import { formatearPesos } from '@/core/dinero';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from './tema';
 
 import { etiquetaDescuento } from './etiquetaDescuento';
 import type { ItemCarrito } from './useCarrito';
@@ -174,8 +175,8 @@ const styles = StyleSheet.create({
   },
   hoja: {
     backgroundColor: COLORES.superficie,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADII_ADMIN.lg,
+    borderTopRightRadius: RADII_ADMIN.lg,
     maxHeight: '80%',
     padding: 20,
   },
@@ -186,8 +187,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   titulo: {
-    fontSize: 18,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.tituloSeccion,
     color: COLORES.textoSobreOscuro,
   },
   filaCliente: {
@@ -195,16 +195,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORES.fondo,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 12,
     paddingVertical: 9,
     marginBottom: 12,
   },
   filaClienteTexto: {
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     flex: 1,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
     marginRight: 8,
   },
   filaClienteNombre: {
@@ -212,19 +210,15 @@ const styles = StyleSheet.create({
     color: COLORES.textoSobreOscuro,
   },
   filaClienteQuitar: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.boton,
     color: COLORES.error,
   },
   filaClienteAsignar: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.boton,
     color: COLORES.primario,
   },
   cerrar: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textDecorationLine: 'underline',
   },
   vacio: {
@@ -232,9 +226,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   vacioTexto: {
-    color: COLORES.textoSecundario,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    fontSize: 14,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
   },
   lista: {
     maxHeight: 320,
@@ -252,13 +244,11 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   filaNombre: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   filaDetalle: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    ...TEXTO_PROMOTOR.datoDestacado,
     color: COLORES.textoSecundario,
   },
   filaDescuento: {
@@ -268,47 +258,41 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   filaPrecioLista: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.datoSecundario,
     textDecorationLine: 'line-through',
   },
   filaDescuentoEtiqueta: {
     fontSize: 11,
     fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: '#FFF',
+    color: COLORES.textoInverso,
     backgroundColor: COLORES.positivo,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 6,
     paddingVertical: 1,
     overflow: 'hidden',
   },
   ahorroEtiqueta: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.positivo,
   },
   ahorroValor: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    ...TEXTO_PROMOTOR.datoDestacado,
     color: COLORES.positivo,
   },
   botonQuitar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
-    backgroundColor: '#F0F0F0',
+    borderRadius: RADII_ADMIN.lg,
+    backgroundColor: COLORES.superficieBaja,
     alignItems: 'center',
     justifyContent: 'center',
   },
   botonQuitarTexto: {
-    fontSize: 18,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
     color: COLORES.textoSecundario,
   },
   vaciar: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.boton,
     color: COLORES.error,
     textAlign: 'center',
     marginTop: 10,
@@ -322,8 +306,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   totalEtiqueta: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   totalValor: {
@@ -332,13 +315,12 @@ const styles = StyleSheet.create({
     color: COLORES.textoSobreOscuro,
   },
   botonCobrar: {
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 14,
     alignItems: 'center',
   },
   botonCobrarTexto: {
-    color: '#FFF',
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
   },
 });

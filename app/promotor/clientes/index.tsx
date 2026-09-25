@@ -1,13 +1,16 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Cliente } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarClientes } from '@/db/clientes';
 import { asignarClienteAVenta } from '@/db/ventas';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { EncabezadoPromotor } from '@/ui/EncabezadoPromotor';
+import { SearchBar } from '@/ui/SearchBar';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useVentaEnCurso } from '@/ui/VentaEnCursoContext';
 
@@ -80,34 +83,17 @@ export default function ClientesPromotor() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.botonIcono}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-        >
-          <Ionicons name="chevron-back" size={22} color={COLORES.textoSobreOscuro} />
-        </Pressable>
-        <Text style={styles.titulo}>{modoSeleccion ? 'Elegir cliente' : 'Clientes'}</Text>
-        <Pressable
-          onPress={() => router.push('/promotor/clientes/nuevo')}
-          style={styles.botonIcono}
-          accessibilityRole="button"
-          accessibilityLabel="Nuevo cliente"
-        >
-          <Ionicons name="add" size={26} color={COLORES.textoSobreOscuro} />
-        </Pressable>
-      </View>
+      <EncabezadoPromotor
+        titulo={modoSeleccion ? 'Elegir cliente' : 'Clientes'}
+        accion={{ icono: 'add', etiqueta: 'Nuevo cliente', onPress: () => router.push('/promotor/clientes/nuevo') }}
+      />
 
       <View style={styles.barraBusqueda}>
-        <Ionicons name="search-outline" size={18} color={COLORES.textoSecundario} />
-        <TextInput
-          style={styles.inputBusqueda}
+        <SearchBar
+          variante="promotor"
+          valor={busqueda}
+          onCambiar={buscar}
           placeholder="Buscar por nombre, teléfono o empresa..."
-          placeholderTextColor={COLORES.textoSecundario}
-          value={busqueda}
-          onChangeText={buscar}
         />
       </View>
 
@@ -179,7 +165,7 @@ export default function ClientesPromotor() {
                   accessibilityRole="button"
                   accessibilityLabel={`Facturar la venta actual a ${clienteVerDetalle.nombreCompleto}`}
                 >
-                  <Ionicons name="receipt-outline" size={18} color="#FFF" />
+                  <Ionicons name="receipt-outline" size={18} color={COLORES.textoInverso} />
                   <Text style={styles.botonFacturarTexto}>Facturar a este cliente</Text>
                 </Pressable>
               </>
@@ -205,45 +191,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORES.fondo,
   },
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 64,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  botonIcono: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titulo: {
-    fontSize: 17,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: COLORES.textoSobreOscuro,
-  },
   barraBusqueda: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: COLORES.superficie,
     marginHorizontal: 16,
     marginTop: 14,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderWidth: 1,
-    borderColor: COLORES.borde,
-  },
-  inputBusqueda: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSobreOscuro,
   },
   filaQuitar: {
     flexDirection: 'row',
@@ -253,15 +203,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     backgroundColor: COLORES.superficie,
     borderWidth: 1,
     borderColor: COLORES.borde,
     alignSelf: 'flex-start',
   },
   filaQuitarTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.boton,
     color: COLORES.textoSecundario,
   },
   centrado: {
@@ -271,9 +220,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   vacio: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textAlign: 'center',
   },
   lista: {
@@ -284,19 +231,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORES.superficie,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     padding: 12,
     gap: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
   },
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADII_ADMIN.lg,
     backgroundColor: COLORES.oscuro,
     alignItems: 'center',
     justifyContent: 'center',
@@ -304,21 +248,18 @@ const styles = StyleSheet.create({
   avatarTexto: {
     fontSize: 16,
     fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: '#FFF',
+    color: COLORES.textoInverso,
   },
   tarjetaTexto: {
     flex: 1,
     gap: 2,
   },
   tarjetaNombre: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   tarjetaDetalle: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.nota,
   },
   fondoModal: {
     flex: 1,
@@ -327,8 +268,8 @@ const styles = StyleSheet.create({
   },
   hoja: {
     backgroundColor: COLORES.superficie,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: RADII_ADMIN.lg,
+    borderTopRightRadius: RADII_ADMIN.lg,
     padding: 20,
     gap: 12,
   },
@@ -339,31 +280,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   hojaNombre: {
-    fontSize: 17,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.tituloSeccion,
     color: COLORES.textoSobreOscuro,
     flexShrink: 1,
     marginRight: 12,
   },
   cerrar: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textDecorationLine: 'underline',
   },
   campoDetalle: {
     gap: 2,
   },
   campoEtiqueta: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
-    color: COLORES.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
+    ...TEXTO_PROMOTOR.etiqueta,
   },
   campoValor: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
+    ...TEXTO_PROMOTOR.cuerpo,
     color: COLORES.textoSobreOscuro,
   },
   botonFacturar: {
@@ -372,13 +305,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     backgroundColor: COLORES.primario,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 14,
     marginTop: 8,
   },
   botonFacturarTexto: {
-    color: '#FFF',
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
   },
 });

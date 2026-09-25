@@ -23,7 +23,9 @@ import { obtenerProgresoMetaDelPromotor, type ProgresoMetaDiaria } from '@/db/me
 import { finalizarTurno, obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { formatearPesos, parsearPesos } from '@/core/dinero';
 import type { Evento, Turno } from '@/core/tipos';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { EncabezadoPromotor } from '@/ui/EncabezadoPromotor';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 interface ResumenJornada {
@@ -159,13 +161,7 @@ export default function CierreJornada() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()} style={styles.botonIcono} accessibilityLabel="Volver">
-          <Ionicons name="chevron-back" size={22} color={COLORES.textoSobreOscuro} />
-        </Pressable>
-        <Text style={styles.titulo}>Cierre de jornada</Text>
-        <View style={styles.botonIcono} />
-      </View>
+      <EncabezadoPromotor titulo="Cierre de jornada" />
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -216,7 +212,7 @@ export default function CierreJornada() {
               onChangeText={(texto) => setEfectivoContadoTexto(texto.replace(/\D/g, ''))}
               keyboardType="number-pad"
               placeholder="$ 0"
-              placeholderTextColor="#B89999"
+              placeholderTextColor={COLORES.textoSecundario}
             />
             {diferencia !== null && (
               <Text
@@ -236,7 +232,7 @@ export default function CierreJornada() {
 
           {sinConteoHoy && (
             <View style={styles.avisoConteo}>
-              <Ionicons name="alert-circle-outline" size={16} color="#976200" />
+              <Ionicons name="alert-circle-outline" size={16} color={ESTADO_ADMIN.alerta.texto} />
               <Text style={styles.avisoConteoTexto}>Todavía no has hecho tu conteo de cierre hoy.</Text>
             </View>
           )}
@@ -247,7 +243,7 @@ export default function CierreJornada() {
             onPress={cerrarTurno}
           >
             {cerrando ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <ActivityIndicator color={COLORES.textoInverso} size="small" />
             ) : (
               <Text style={styles.botonCerrarTexto}>Cerrar turno</Text>
             )}
@@ -260,35 +256,34 @@ export default function CierreJornada() {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: COLORES.fondo },
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 64,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  botonIcono: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  titulo: { fontSize: 17, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  vacio: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario, textAlign: 'center' },
+  vacio: {
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
+    textAlign: 'center',
+  },
   scroll: { padding: 16, gap: 12, paddingBottom: 40 },
   tarjeta: {
     backgroundColor: COLORES.superficie,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     padding: 16,
     gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
   },
-  tarjetaTitulo: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita, color: COLORES.oscuro },
-  tarjetaDescripcion: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
-  metaPct: { fontSize: 28, fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita, color: COLORES.oscuro },
-  metaDetalle: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
+  tarjetaTitulo: {
+    ...TEXTO_PROMOTOR.tituloTarjeta,
+    color: COLORES.oscuro,
+  },
+  tarjetaDescripcion: {
+    ...TEXTO_PROMOTOR.nota,
+  },
+  metaPct: {
+    ...TEXTO_PROMOTOR.datoGrande,
+    color: COLORES.oscuro,
+  },
+  metaDetalle: {
+    ...TEXTO_PROMOTOR.nota,
+  },
   filaResumen: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -297,9 +292,17 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORES.borde,
   },
   filaResumenDestacada: { borderBottomWidth: 0, paddingTop: 10 },
-  filaResumenEtiqueta: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
-  filaResumenValor: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita, color: COLORES.textoSobreOscuro },
-  filaResumenEtiquetaDestacada: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita, color: COLORES.oscuro },
+  filaResumenEtiqueta: {
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
+  },
+  filaResumenValor: {
+    ...TEXTO_PROMOTOR.datoDestacado,
+    color: COLORES.textoSobreOscuro,
+  },
+  filaResumenEtiquetaDestacada: {
+    ...TEXTO_PROMOTOR.tituloTarjeta,
+    color: COLORES.oscuro,
+  },
   filaResumenValorDestacado: {
     fontSize: 17,
     fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
@@ -308,7 +311,7 @@ const styles = StyleSheet.create({
   inputEfectivo: {
     borderWidth: 1.5,
     borderColor: COLORES.primario,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 18,
@@ -316,24 +319,31 @@ const styles = StyleSheet.create({
     color: COLORES.textoSobreOscuro,
   },
   diferenciaTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.medio },
-  diferenciaOk: { color: '#2E7D32' },
+  diferenciaOk: { color: ESTADO_ADMIN.exito.texto },
   diferenciaError: { color: COLORES.error },
   avisoConteo: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#FFF3D6',
-    borderRadius: 10,
+    backgroundColor: ESTADO_ADMIN.alerta.fondo,
+    borderRadius: RADII_ADMIN.sm,
     padding: 12,
   },
-  avisoConteoTexto: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.medio, color: '#976200', flex: 1 },
+  avisoConteoTexto: {
+    ...TEXTO_PROMOTOR.nota,
+    color: ESTADO_ADMIN.alerta.texto,
+    flex: 1,
+  },
   botonCerrar: {
     backgroundColor: COLORES.oscuro,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 4,
   },
   botonDeshabilitado: { opacity: 0.5 },
-  botonCerrarTexto: { color: '#FFFFFF', fontSize: 15, fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita },
+  botonCerrarTexto: {
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
+  },
 });

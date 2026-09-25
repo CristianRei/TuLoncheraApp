@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -9,7 +9,9 @@ import type { Evento } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarEventosPromotor } from '@/db/eventos';
 import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from '@/ui/calendarioGrilla';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from '@/ui/tema';
+import { EncabezadoPromotor } from '@/ui/EncabezadoPromotor';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -118,12 +120,7 @@ export default function CalendarioPromotor() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Volver">
-          <Text style={styles.volver}>‹ Volver</Text>
-        </Pressable>
-        <Text style={styles.titulo}>Mi calendario</Text>
-      </View>
+      <EncabezadoPromotor titulo="Mi calendario" />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <ContenedorAncho anchoMaximo={1100}>
@@ -331,20 +328,6 @@ export default function CalendarioPromotor() {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: COLORES.fondo },
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 64,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 4,
-  },
-  volver: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
-    color: COLORES.textoSobreOscuro,
-    textDecorationLine: 'underline',
-  },
-  titulo: { fontSize: 18, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
   scroll: { padding: 16, gap: 14 },
   layoutAngosto: { gap: 14 },
   layoutAncho: { flexDirection: 'row', alignItems: 'flex-start', gap: 18 },
@@ -354,7 +337,7 @@ const styles = StyleSheet.create({
   columnaDetalleAncha: { flex: 5 },
   calendario: {
     backgroundColor: COLORES.superficie,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     borderWidth: 1,
     borderColor: COLORES.borde,
     padding: 14,
@@ -375,23 +358,29 @@ const styles = StyleSheet.create({
   navBoton: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     backgroundColor: COLORES.fondo,
     borderWidth: 1,
     borderColor: COLORES.borde,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mesTexto: { fontSize: 16, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.oscuro },
+  mesTexto: {
+    ...TEXTO_PROMOTOR.tituloTarjeta,
+    color: COLORES.oscuro,
+  },
   botonHoy: {
     backgroundColor: COLORES.fondo,
     borderWidth: 1,
     borderColor: COLORES.primario,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
-  botonHoyTexto: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita, color: COLORES.oscuro },
+  botonHoyTexto: {
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.oscuro,
+  },
   filaDias: { flexDirection: 'row' },
   diaEtiqueta: {
     flex: 1,
@@ -407,7 +396,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     margin: 2,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     borderWidth: 1,
     borderColor: COLORES.borde,
     padding: 6,
@@ -416,7 +405,7 @@ const styles = StyleSheet.create({
   celdaSeleccionada: { backgroundColor: COLORES.oscuro, borderColor: COLORES.oscuro },
   celdaHoy: { borderWidth: 1.5, borderColor: COLORES.primario, backgroundColor: COLORES.fondo },
   diaNumero: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.medio, color: COLORES.textoSobreOscuro },
-  diaNumeroSeleccionado: { color: '#FFFFFF', fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
+  diaNumeroSeleccionado: { color: COLORES.textoInverso, fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
   diaNumeroHoy: { color: COLORES.oscuro, fontFamily: TIPOGRAFIA_PROMOTOR.negrita },
   puntosFila: { flexDirection: 'row', gap: 3 },
   punto: { width: 6, height: 6, borderRadius: 3 },
@@ -425,17 +414,17 @@ const styles = StyleSheet.create({
   leyendaItems: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   leyendaPunto: { width: 8, height: 8, borderRadius: 4 },
-  leyendaTexto: { fontSize: 11, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
+  leyendaTexto: {
+    ...TEXTO_PROMOTOR.nota,
+  },
   vacio: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textAlign: 'center',
   },
   vacioContenedor: { alignItems: 'center', gap: 8, paddingVertical: 24 },
   detalleDia: {
     backgroundColor: COLORES.superficie,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     borderWidth: 1,
     borderColor: COLORES.borde,
     padding: 16,
@@ -444,7 +433,7 @@ const styles = StyleSheet.create({
   badgeDiaSeleccionado: {
     fontSize: 10,
     fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
-    color: '#FFFFFF',
+    color: COLORES.textoInverso,
     backgroundColor: COLORES.oscuro,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -454,7 +443,10 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     overflow: 'hidden',
   },
-  detalleDiaTitulo: { fontSize: 18, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.oscuro },
+  detalleDiaTitulo: {
+    ...TEXTO_PROMOTOR.tituloSeccion,
+    color: COLORES.oscuro,
+  },
   detalleDiaSubtitulo: {
     fontSize: 12,
     fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
@@ -464,7 +456,7 @@ const styles = StyleSheet.create({
   },
   tarjetaEvento: {
     backgroundColor: COLORES.fondo,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     borderLeftWidth: 3,
     padding: 12,
     gap: 4,
@@ -475,17 +467,29 @@ const styles = StyleSheet.create({
   badgeEstadoPillTexto: {
     fontSize: 10,
     fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
-    color: '#FFFFFF',
+    color: COLORES.textoInverso,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
-  filaEventoEmpresa: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
-  filaEventoPunto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
-  filaEventoMotivo: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.error, marginTop: 2 },
+  filaEventoEmpresa: {
+    ...TEXTO_PROMOTOR.tituloTarjeta,
+    color: COLORES.textoSobreOscuro,
+  },
+  filaEventoPunto: {
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
+  },
+  filaEventoMotivo: {
+    ...TEXTO_PROMOTOR.nota,
+    color: COLORES.error,
+    marginTop: 2,
+  },
   datosEvento: { gap: 4, marginTop: 6 },
   datoEvento: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  datoEventoTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.medio, color: COLORES.textoSobreOscuro, flexShrink: 1 },
+  datoEventoTexto: {
+    ...TEXTO_PROMOTOR.cuerpo,
+    color: COLORES.textoSobreOscuro,
+    flexShrink: 1,
+  },
   datoEventoCifra: { fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita, color: COLORES.oscuro },
   textoTachado: { textDecorationLine: 'line-through' },
-  badgeEstado: { fontSize: 11, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, textTransform: 'uppercase' },
 });

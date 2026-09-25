@@ -4,7 +4,8 @@ import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, View } fr
 
 import { formatearPesos } from '@/core/dinero';
 import type { MetodoPago } from '@/core/tipos';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from './tema';
 
 interface Props {
   visible: boolean;
@@ -130,15 +131,13 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     backgroundColor: COLORES.superficie,
-    borderRadius: 18,
+    borderRadius: RADII_ADMIN.lg,
     padding: 24,
     alignItems: 'center',
     gap: 8,
   },
   etiquetaTotal: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
   },
   total: {
     fontSize: 30,
@@ -152,14 +151,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cliente: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.nota,
     marginBottom: 4,
   },
   pregunta: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
+    ...TEXTO_PROMOTOR.cuerpo,
     color: COLORES.textoSobreOscuro,
     marginBottom: 8,
   },
@@ -169,7 +165,7 @@ const styles = StyleSheet.create({
   },
   opcion: {
     borderWidth: 1.5,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -181,10 +177,8 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   cancelar: {
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     marginTop: 14,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
     textDecorationLine: 'underline',
   },
 });

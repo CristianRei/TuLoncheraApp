@@ -11,7 +11,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { formatearPesos } from '@/core/dinero';
@@ -26,9 +25,11 @@ import { buscarProductoPorCodigoBarras } from '@/db/productos';
 import { obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
 import { registrarVenta, SinTurnoAbiertoError } from '@/db/ventas';
 import { CobrarModal } from '@/ui/CobrarModal';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from '@/ui/tema';
 import { EscanerCodigoBarras } from '@/ui/EscanerCodigoBarras';
 import { PantallaIniciarTurno } from '@/ui/PantallaIniciarTurno';
+import { SearchBar } from '@/ui/SearchBar';
 import { useSesion } from '@/ui/SesionContext';
 import { TarjetaProductoInventario } from '@/ui/TarjetaProductoInventario';
 import { TicketModal } from '@/ui/TicketModal';
@@ -423,13 +424,9 @@ export default function HomePromotor() {
       </Modal>
 
       <View style={styles.barraAcciones}>
-        <TextInput
-          style={styles.busqueda}
-          placeholder="Buscar producto..."
-          placeholderTextColor={COLORES.textoSecundario}
-          value={busqueda}
-          onChangeText={setBusqueda}
-        />
+        <View style={styles.busqueda}>
+          <SearchBar variante="promotor" valor={busqueda} onCambiar={setBusqueda} placeholder="Buscar producto..." />
+        </View>
         <Pressable
           style={styles.botonEscanear}
           onPress={() => setEscanerVisible(true)}
@@ -615,8 +612,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   saludo: {
-    fontSize: 18,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.tituloSeccion,
     color: COLORES.textoSobreOscuro,
   },
   chipEvento: {
@@ -625,7 +621,7 @@ const styles = StyleSheet.create({
     gap: 4,
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.35)',
-    borderRadius: 999,
+    borderRadius: RADII_ADMIN.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
     maxWidth: '100%',
@@ -641,7 +637,7 @@ const styles = StyleSheet.create({
     gap: 5,
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: 999,
+    borderRadius: RADII_ADMIN.pill,
     paddingHorizontal: 10,
     paddingVertical: 4,
     marginTop: 4,
@@ -656,7 +652,7 @@ const styles = StyleSheet.create({
   botonMenu: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: RADII_ADMIN.lg,
     backgroundColor: 'rgba(255,255,255,0.35)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -671,7 +667,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
     minWidth: 220,
     backgroundColor: COLORES.superficie,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 8,
     shadowColor: '#000',
     shadowOpacity: 0.15,
@@ -687,8 +683,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
   },
   opcionMenuTexto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.boton,
     color: COLORES.textoSobreOscuro,
   },
   opcionMenuTextoSalir: {
@@ -708,19 +703,11 @@ const styles = StyleSheet.create({
   },
   busqueda: {
     flex: 1,
-    backgroundColor: COLORES.superficie,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    borderWidth: 1,
-    borderColor: COLORES.borde,
   },
   botonEscanear: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: RADII_ADMIN.lg,
     backgroundColor: COLORES.superficie,
     borderWidth: 1,
     borderColor: COLORES.borde,
@@ -732,18 +719,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: COLORES.oscuro,
-    borderRadius: 20,
+    borderRadius: RADII_ADMIN.lg,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
   botonTicketTexto: {
-    color: '#FFF',
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
   },
   botonTicketBadge: {
-    backgroundColor: '#FFF',
-    borderRadius: 9,
+    backgroundColor: COLORES.superficie,
+    borderRadius: RADII_ADMIN.sm,
     minWidth: 18,
     height: 18,
     alignItems: 'center',
@@ -760,18 +746,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 21,
+    borderRadius: RADII_ADMIN.lg,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
   botonTicketEscanerTexto: {
-    color: '#FFF',
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
   },
   barraCobrarEscaner: {
     backgroundColor: COLORES.oscuro,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     paddingVertical: 16,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -785,9 +770,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   vacio: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textAlign: 'center',
   },
   grilla: {
@@ -804,7 +787,7 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 20,
     backgroundColor: COLORES.oscuro,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -817,12 +800,11 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   barraCobrarTexto: {
-    color: '#FFF',
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
   },
   barraCobrarTotal: {
-    color: '#FFF',
+    color: COLORES.textoInverso,
     fontSize: 18,
     fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
   },

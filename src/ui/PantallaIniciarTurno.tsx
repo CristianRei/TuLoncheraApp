@@ -10,7 +10,8 @@ import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { guardarFotoSelfie } from '@/db/fotos';
 import { iniciarTurno } from '@/db/turnos';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { COLORES, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from './tema';
 
 interface Props {
   promotorId: string;
@@ -130,7 +131,7 @@ export function PantallaIniciarTurno({ promotorId, onIniciado, onCerrarSesion }:
             accessibilityRole="button"
             accessibilityLabel="Tomar selfie e iniciar turno"
           >
-            <Ionicons name="camera" size={20} color="#FFFFFF" />
+            <Ionicons name="camera" size={20} color={COLORES.textoInverso} />
             <Text style={styles.botonTexto}>Tomar selfie e iniciar turno</Text>
           </Pressable>
         )}
@@ -155,14 +156,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   enlace: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.boton,
     color: COLORES.oscuro,
     textDecorationLine: 'underline',
   },
   tarjeta: {
     backgroundColor: COLORES.superficie,
-    borderRadius: 20,
+    borderRadius: RADII_ADMIN.lg,
     padding: 28,
     alignItems: 'center',
     gap: 12,
@@ -173,20 +173,17 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#FFF1D8',
+    backgroundColor: COLORES.superficieBaja,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   titulo: {
-    fontSize: 18,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.tituloSeccion,
     color: COLORES.textoSobreOscuro,
   },
   texto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textAlign: 'center',
     lineHeight: 19,
   },
@@ -198,14 +195,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: COLORES.oscuro,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 14,
     paddingHorizontal: 24,
     marginTop: 8,
   },
   botonTexto: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
   },
 });

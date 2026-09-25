@@ -2,7 +2,8 @@ import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { DescuentoVigente } from '@/core/descuentos';
 import { formatearPesos } from '@/core/dinero';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from './tema';
 
 import { etiquetaDescuento } from './etiquetaDescuento';
 
@@ -69,20 +70,17 @@ const styles = StyleSheet.create({
   tarjeta: {
     flex: 1,
     backgroundColor: COLORES.superficie,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     padding: 8,
     gap: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
   },
   fotoContenedor: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 10,
-    backgroundColor: '#F0F0F0',
+    borderRadius: RADII_ADMIN.sm,
+    backgroundColor: COLORES.superficieBaja,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -100,20 +98,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 6,
     right: 6,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   saldoTexto: {
     fontSize: 10,
     fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: '#FFF',
+    color: COLORES.textoInverso,
   },
   descuentoBadge: {
     position: 'absolute',
     bottom: 6,
     left: 6,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
     backgroundColor: COLORES.positivo,
@@ -121,7 +119,7 @@ const styles = StyleSheet.create({
   descuentoTexto: {
     fontSize: 10,
     fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: '#FFF',
+    color: COLORES.textoInverso,
   },
   nombre: {
     fontSize: 12,
@@ -130,9 +128,7 @@ const styles = StyleSheet.create({
     minHeight: 32,
   },
   precioLista: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.datoSecundario,
     textDecorationLine: 'line-through',
   },
   precio: {

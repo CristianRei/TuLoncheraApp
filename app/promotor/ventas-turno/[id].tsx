@@ -7,7 +7,9 @@ import { formatearPesos } from '@/core/dinero';
 import type { MetodoPago, Venta, VentaItem } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { obtenerVenta } from '@/db/ventas';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { EncabezadoPromotor } from '@/ui/EncabezadoPromotor';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETA_METODO: Record<MetodoPago, string> = {
@@ -51,18 +53,7 @@ export default function DetalleVentaTurno() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.botonIcono}
-          accessibilityRole="button"
-          accessibilityLabel="Volver"
-        >
-          <Ionicons name="chevron-back" size={22} color={COLORES.textoSobreOscuro} />
-        </Pressable>
-        <Text style={styles.titulo}>Detalle de venta</Text>
-        <View style={styles.botonIcono} />
-      </View>
+      <EncabezadoPromotor titulo="Detalle de venta" />
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -166,27 +157,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORES.fondo,
   },
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 64,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  botonIcono: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titulo: {
-    fontSize: 17,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: COLORES.textoSobreOscuro,
-  },
   centrado: {
     flex: 1,
     alignItems: 'center',
@@ -194,9 +164,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   vacio: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textAlign: 'center',
   },
   scroll: {
@@ -206,14 +174,11 @@ const styles = StyleSheet.create({
   },
   tarjeta: {
     backgroundColor: COLORES.superficie,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     padding: 16,
     gap: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
   },
   filaEntreTitulo: {
     flexDirection: 'row',
@@ -221,21 +186,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   numeroRecibo: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    ...TEXTO_PROMOTOR.datoDestacado,
     color: COLORES.textoSobreOscuro,
   },
   fecha: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
   },
   chipAnulada: {
     fontSize: 11,
     fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
     color: COLORES.error,
     backgroundColor: 'rgba(220,53,69,0.1)',
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
@@ -250,35 +212,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   etiquetaDato: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
   },
   valorDato: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   comprobante: {
     width: '100%',
     height: 220,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     backgroundColor: COLORES.fondo,
   },
   tituloSeccion: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   enlace: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.boton,
     color: COLORES.primario,
   },
   vacioTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
   },
   filaCliente: {
     flexDirection: 'row',
@@ -288,7 +243,7 @@ const styles = StyleSheet.create({
   avatarCliente: {
     width: 30,
     height: 30,
-    borderRadius: 15,
+    borderRadius: RADII_ADMIN.md,
     backgroundColor: 'rgba(243,167,18,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -305,23 +260,18 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   productoNombre: {
-    fontSize: 13.5,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   productoDetalle: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.datoSecundario,
   },
   productoSubtotal: {
-    fontSize: 13.5,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    ...TEXTO_PROMOTOR.datoDestacado,
     color: COLORES.textoSobreOscuro,
   },
   totalEtiqueta: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   totalValor: {

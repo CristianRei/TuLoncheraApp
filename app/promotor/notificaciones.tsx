@@ -1,12 +1,14 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { MensajeRecibido } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { descargarMensajesNuevos, listarMensajesRecibidos, marcarMensajeLeido } from '@/db/mensajes';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { EncabezadoPromotor } from '@/ui/EncabezadoPromotor';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFechaHora(iso: string): string {
@@ -52,13 +54,7 @@ export default function NotificacionesPromotor() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()} style={styles.botonIcono} accessibilityLabel="Volver">
-          <Ionicons name="chevron-back" size={22} color={COLORES.textoSobreOscuro} />
-        </Pressable>
-        <Text style={styles.titulo}>Notificaciones</Text>
-        <View style={styles.botonIcono} />
-      </View>
+      <EncabezadoPromotor titulo="Notificaciones" />
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -92,36 +88,30 @@ export default function NotificacionesPromotor() {
 
 const styles = StyleSheet.create({
   contenedor: { flex: 1, backgroundColor: COLORES.fondo },
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 64,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  botonIcono: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
-  titulo: { fontSize: 17, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
   centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 10 },
-  vacio: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario, textAlign: 'center' },
+  vacio: {
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
+    textAlign: 'center',
+  },
   lista: { padding: 16, gap: 10 },
   tarjeta: {
     flexDirection: 'row',
     backgroundColor: COLORES.superficie,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     padding: 14,
     gap: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
   },
-  tarjetaNoLeida: { backgroundColor: '#FFF7E8' },
+  tarjetaNoLeida: { backgroundColor: COLORES.superficieBaja },
   punto: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORES.primario, marginTop: 6 },
   tarjetaTexto: { flex: 1, gap: 3 },
   tarjetaRemitente: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita, color: COLORES.oscuro },
-  tarjetaCuerpo: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSobreOscuro },
-  tarjetaFecha: { fontSize: 11, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
+  tarjetaCuerpo: {
+    ...TEXTO_PROMOTOR.cuerpo,
+    color: COLORES.textoSobreOscuro,
+  },
+  tarjetaFecha: {
+    ...TEXTO_PROMOTOR.nota,
+  },
 });

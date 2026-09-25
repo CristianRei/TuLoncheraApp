@@ -5,7 +5,8 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { formatearPesos } from '@/core/dinero';
 import type { ProgresoMetaDiaria } from '@/db/metasDiarias';
 
-import { COLORES, TIPOGRAFIA_PROMOTOR } from './colores';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from './colores';
+import { RADII_ADMIN } from './tema';
 
 type Rgb = [number, number, number];
 
@@ -120,7 +121,7 @@ export function BarraMetaDiaria({ meta }: { meta: ProgresoMetaDiaria | null }) {
 const styles = StyleSheet.create({
   tarjeta: {
     borderWidth: 2,
-    borderRadius: 18,
+    borderRadius: RADII_ADMIN.lg,
     paddingVertical: 14,
     paddingHorizontal: 16,
     gap: 10,
@@ -137,8 +138,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   titulo: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   porcentaje: {
@@ -147,13 +147,13 @@ const styles = StyleSheet.create({
   },
   pista: {
     height: 24,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     backgroundColor: 'rgba(58, 36, 0, 0.1)',
     overflow: 'hidden',
   },
   relleno: {
     height: '100%',
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     overflow: 'hidden',
   },
   brillo: {
@@ -165,8 +165,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.28)',
   },
   detalle: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    ...TEXTO_PROMOTOR.datoDestacado,
     color: COLORES.textoSobreOscuro,
   },
   estado: {
@@ -176,9 +175,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   punto: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.nota,
   },
   sinMeta: {
     flexDirection: 'row',
@@ -188,8 +185,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   sinMetaTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
   },
 });

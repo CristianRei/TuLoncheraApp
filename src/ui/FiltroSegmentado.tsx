@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { COLORES, TEXTO_PROMOTOR } from './colores';
 import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from './tema';
 
 interface Opcion<T extends string> {
@@ -14,6 +15,8 @@ interface Props<T extends string> {
   opciones: Opcion<T>[];
   valorActivo: T;
   onCambiar: (valor: T) => void;
+  /** 'promotor': dorado de marca, letra y área táctil más grandes. */
+  variante?: 'admin' | 'promotor';
 }
 
 /**
@@ -30,25 +33,46 @@ interface Props<T extends string> {
  * unido sobre un fondo común — se usa para escalas (períodos) más que para
  * categorías.
  */
-export function FiltroSegmentado<T extends string>({ opciones, valorActivo, onCambiar }: Props<T>) {
+export function FiltroSegmentado<T extends string>({
+  opciones,
+  valorActivo,
+  onCambiar,
+  variante = 'admin',
+}: Props<T>) {
+  const promotor = variante === 'promotor';
+  const colorActivo = promotor ? COLORES.textoSobreOscuro : COLORES_ADMIN.textoInverso;
   return (
-    <View style={styles.grupo}>
+    <View style={[styles.grupo, promotor && estilosPromotor.grupo]}>
       {opciones.map((opcion) => {
         const activo = opcion.valor === valorActivo;
         return (
           <Pressable
             key={opcion.valor}
-            style={[styles.boton, activo && styles.botonActivo]}
+            style={[
+              styles.boton,
+              promotor && estilosPromotor.boton,
+              activo && (promotor ? estilosPromotor.botonActivo : styles.botonActivo),
+            ]}
             onPress={() => onCambiar(opcion.valor)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: activo }}
           >
             {opcion.icono && (
               <Ionicons
                 name={opcion.icono}
                 size={13}
-                color={activo ? COLORES_ADMIN.textoInverso : COLORES_ADMIN.texto}
+                color={activo ? colorActivo : COLORES_ADMIN.texto}
               />
             )}
-            <Text style={[styles.texto, activo && styles.textoActivo]}>{opcion.etiqueta}</Text>
+            <Text
+              style={[
+                styles.texto,
+                promotor && estilosPromotor.texto,
+                activo && { color: colorActivo },
+              ]}
+            >
+              {opcion.etiqueta}
+            </Text>
           </Pressable>
         );
       })}
@@ -82,5 +106,23 @@ const styles = StyleSheet.create({
   },
   textoActivo: {
     color: COLORES_ADMIN.textoInverso,
+  },
+});
+
+const estilosPromotor = StyleSheet.create({
+  grupo: {
+    backgroundColor: COLORES.superficieBaja,
+    alignSelf: 'stretch',
+  },
+  boton: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: ESPACIADO_ADMIN.sm + 2,
+  },
+  botonActivo: {
+    backgroundColor: COLORES.primario,
+  },
+  texto: {
+    ...TEXTO_PROMOTOR.boton,
   },
 });

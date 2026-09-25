@@ -1,4 +1,3 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -6,7 +5,9 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { getDb } from '@/db/client';
 import { crearCliente } from '@/db/clientes';
 import { getDispositivoId } from '@/db/dispositivo';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { EncabezadoPromotor } from '@/ui/EncabezadoPromotor';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 interface CampoProps {
@@ -83,19 +84,7 @@ export default function NuevoClientePromotor() {
       style={styles.contenedor}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.encabezado}>
-        <Pressable
-          onPress={() => router.back()}
-          style={styles.botonIcono}
-          accessibilityRole="button"
-          accessibilityLabel="Cancelar"
-          disabled={guardando}
-        >
-          <Ionicons name="close" size={24} color={COLORES.textoSobreOscuro} />
-        </Pressable>
-        <Text style={styles.titulo}>Nuevo cliente</Text>
-        <View style={styles.botonIcono} />
-      </View>
+      <EncabezadoPromotor titulo="Nuevo cliente" iconoVolver="close" volverDeshabilitado={guardando} />
 
       <ScrollView contentContainerStyle={styles.formulario} keyboardShouldPersistTaps="handled">
         <Campo
@@ -142,7 +131,7 @@ export default function NuevoClientePromotor() {
           onPress={guardar}
           disabled={!nombreValido || guardando}
         >
-          {guardando ? <ActivityIndicator color="#FFF" /> : <Text style={styles.botonGuardarTexto}>Guardar cliente</Text>}
+          {guardando ? <ActivityIndicator color={COLORES.textoInverso} /> : <Text style={styles.botonGuardarTexto}>Guardar cliente</Text>}
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -153,27 +142,6 @@ const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
     backgroundColor: COLORES.fondo,
-  },
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 64,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  botonIcono: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  titulo: {
-    fontSize: 17,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: COLORES.textoSobreOscuro,
   },
   formulario: {
     padding: 20,
@@ -190,7 +158,7 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: COLORES.superficie,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
@@ -205,7 +173,7 @@ const styles = StyleSheet.create({
   },
   botonGuardar: {
     backgroundColor: COLORES.oscuro,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 15,
     alignItems: 'center',
     marginTop: 6,
@@ -214,8 +182,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonGuardarTexto: {
-    color: '#FFF',
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
   },
 });

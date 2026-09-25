@@ -14,7 +14,9 @@ import {
 import { obtenerTeoricoParaConteo, registrarConteo } from '@/db/conteos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
+import { EncabezadoPromotor } from '@/ui/EncabezadoPromotor';
+import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
+import { RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 interface LineaEnEdicion {
@@ -102,15 +104,10 @@ export default function ConteoCierre() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={styles.encabezado}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Volver">
-          <Text style={styles.volver}>‹ Volver</Text>
-        </Pressable>
-        <Text style={styles.titulo}>Conteo de cierre</Text>
-        <Text style={styles.subtitulo}>
-          Cuenta físicamente lo que te queda de cada producto.
-        </Text>
-      </View>
+      <EncabezadoPromotor
+        titulo="Conteo de cierre"
+        subtitulo="Cuenta físicamente lo que te queda de cada producto."
+      />
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -178,7 +175,7 @@ export default function ConteoCierre() {
             accessibilityLabel="Confirmar cierre"
           >
             {guardando ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={COLORES.textoInverso} />
             ) : (
               <Text style={styles.botonConfirmarTexto}>Confirmar cierre</Text>
             )}
@@ -194,29 +191,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORES.fondo,
   },
-  encabezado: {
-    backgroundColor: COLORES.primario,
-    paddingTop: 64,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    gap: 4,
-  },
-  volver: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: COLORES.textoSobreOscuro,
-    marginBottom: 6,
-  },
-  titulo: {
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
-    color: COLORES.textoSobreOscuro,
-  },
-  subtitulo: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSobreOscuro,
-  },
   centrado: {
     flex: 1,
     alignItems: 'center',
@@ -224,9 +198,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   vacio: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.regular,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.cuerpoSecundario,
     textAlign: 'center',
   },
   lista: {
@@ -238,7 +210,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORES.superficie,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     padding: 14,
     gap: 12,
   },
@@ -247,14 +219,11 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   filaNombre: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    ...TEXTO_PROMOTOR.tituloTarjeta,
     color: COLORES.textoSobreOscuro,
   },
   filaTeorico: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
-    color: COLORES.textoSecundario,
+    ...TEXTO_PROMOTOR.datoSecundario,
   },
   filaDiferencia: {
     fontSize: 12,
@@ -270,7 +239,7 @@ const styles = StyleSheet.create({
     width: 64,
     borderWidth: 1,
     borderColor: COLORES.borde,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingVertical: 10,
     fontSize: 18,
     fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
@@ -289,7 +258,7 @@ const styles = StyleSheet.create({
   },
   botonConfirmar: {
     backgroundColor: COLORES.oscuro,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -297,8 +266,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonConfirmarTexto: {
-    color: '#FFF',
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
+    ...TEXTO_PROMOTOR.boton,
+    color: COLORES.textoInverso,
   },
 });
