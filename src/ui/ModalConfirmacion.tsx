@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   tarjetaModal: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: 16,
     padding: 20,
     gap: 10,
@@ -100,6 +100,6 @@ const styles = StyleSheet.create({
   botonConfirmarDestructivo: {
     backgroundColor: COLORES_ADMIN.error,
   },
-  botonConfirmarTexto: { color: '#FFFFFF', fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita },
+  botonConfirmarTexto: { color: COLORES_ADMIN.textoInverso, fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita },
   botonDeshabilitado: { opacity: 0.5 },
 });

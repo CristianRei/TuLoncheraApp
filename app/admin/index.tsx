@@ -13,7 +13,7 @@ import { contarPromotoresConPuntoVigente } from '@/db/eventos';
 import { contarNotificacionesNoLeidas, generarNotificaciones } from '@/db/notificaciones';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { MODULOS_ADMIN } from '@/ui/modulosAdmin';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { TarjetaModulo } from '@/ui/TarjetaModulo';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useSesion } from '@/ui/SesionContext';
@@ -199,8 +199,8 @@ const styles = StyleSheet.create({
   logo: {
     width: 40,
     height: 40,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    borderRadius: RADII_ADMIN.sm,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 4,
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
   nombreApp: {
     fontSize: 16,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   encabezadoAcciones: {
     flexDirection: 'row',
@@ -237,21 +237,21 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
-    borderRadius: 999,
+    borderRadius: RADII_ADMIN.pill,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   cerrarSesion: {
     fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   scroll: {
     paddingBottom: 40,
   },
   banner: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     margin: 20,
@@ -299,13 +299,13 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 160,
     backgroundColor: COLORES_ADMIN.superficieBaja,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 14,
     paddingVertical: 10,
     gap: 2,
   },
   indicadorAlerta: {
-    backgroundColor: '#FDECEC',
+    backgroundColor: ESTADO_ADMIN.error.fondo,
   },
   indicadorEtiqueta: {
     fontSize: 11,

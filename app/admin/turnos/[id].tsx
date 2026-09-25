@@ -12,7 +12,7 @@ import { obtenerEventoDeHoyPromotor, obtenerTurno } from '@/db/turnos';
 import { listarTurnosRemotos } from '@/db/turnosRemotos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
-import { ANCHO_ADMIN, COLORES_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   contenido: {
     padding: 20,
@@ -189,23 +189,23 @@ const styles = StyleSheet.create({
   selfie: {
     width: '100%',
     height: 320,
-    borderRadius: 16,
-    backgroundColor: '#F0F0F0',
+    borderRadius: RADII_ADMIN.lg,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   resumen: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
     padding: 16,
     gap: 4,
   },
   resumenPromotor: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   resumenDetalle: {
     fontSize: 13,
-    color: '#777',
+    color: COLORES_ADMIN.textoSecundario,
   },
   resumenUbicacionLink: {
     fontSize: 13,
@@ -221,34 +221,34 @@ const styles = StyleSheet.create({
   filaArqueoValor: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   filaArqueoEtiquetaDestacada: {
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   filaArqueoValorDestacado: {
     fontSize: 14,
     fontWeight: '700',
   },
   filaArqueoValorDescuadre: {
-    color: '#B00020',
+    color: ESTADO_ADMIN.error.texto,
   },
   chipEvento: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
     padding: 16,
     gap: 2,
   },
   chipEventoTitulo: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
     textTransform: 'uppercase',
   },
   chipEventoTexto: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
 });

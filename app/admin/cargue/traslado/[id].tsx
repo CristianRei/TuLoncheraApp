@@ -228,12 +228,12 @@ const styles = StyleSheet.create({
   tarjetaModal: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.lg,
     padding: ESPACIADO_ADMIN.xl,
     gap: ESPACIADO_ADMIN.md,
   },
-  modalTitulo: { fontSize: 17, fontFamily: TIPOGRAFIA_ADMIN.negrita, color: COLORES_ADMIN.texto },
+  modalTitulo: { fontSize: 16, fontFamily: TIPOGRAFIA_ADMIN.negrita, color: COLORES_ADMIN.texto },
   modalTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
   modalInput: {
     borderWidth: 1,
@@ -261,6 +261,6 @@ const styles = StyleSheet.create({
     minWidth: 100,
     alignItems: 'center',
   },
-  modalConfirmarTexto: { color: '#FFF', fontSize: 14, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita },
+  modalConfirmarTexto: { color: COLORES_ADMIN.textoInverso, fontSize: 14, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita },
   botonDeshabilitado: { opacity: 0.5 },
 });

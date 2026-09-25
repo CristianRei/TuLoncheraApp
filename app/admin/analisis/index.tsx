@@ -41,7 +41,7 @@ import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontal
 import { GraficoDispersion } from '@/ui/graficas/GraficoDispersion';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
 import { MapaCalor } from '@/ui/graficas/MapaCalor';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -714,19 +714,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
   volverTexto: {
     fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: '#FFE9E2',
+    color: COLORES_ADMIN.superficie,
   },
   titulo: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
     fontSize: 20,
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
     gap: 4,
     backgroundColor: COLORES_ADMIN.superficieBaja,
     padding: 4,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     margin: 20,
     marginBottom: 8,
     alignSelf: 'flex-start',
@@ -763,18 +763,18 @@ const styles = StyleSheet.create({
   tab: {
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
   },
   tabActivo: {
     backgroundColor: COLORES_ADMIN.vino,
   },
   tabTexto: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.textoSecundario,
   },
   tabTextoActivo: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   tabsVista: {
@@ -786,7 +786,7 @@ const styles = StyleSheet.create({
   tabVista: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 999,
+    borderRadius: RADII_ADMIN.pill,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   tabVistaTextoActivo: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   cuerpo: {
@@ -810,7 +810,7 @@ const styles = StyleSheet.create({
   },
   tarjetaRecomendacion: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 16,
@@ -824,19 +824,19 @@ const styles = StyleSheet.create({
   recomendacionIcono: {
     width: 34,
     height: 34,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   recomendacionTitulo: {
-    fontSize: 14.5,
+    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.texto,
   },
   recomendacionDetalle: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
     marginTop: 3,
@@ -875,14 +875,14 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   seccionSubtitulo: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
     marginBottom: 4,
   },
   tarjeta: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 16,
@@ -906,7 +906,7 @@ const styles = StyleSheet.create({
   },
   badgeInsuficiente: {
     backgroundColor: COLORES_ADMIN.superficieAlta,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
@@ -916,7 +916,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   textoAviso: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
   },
@@ -940,7 +940,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   verMasTexto: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.vino,
   },
@@ -949,7 +949,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 10,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 14,
@@ -965,7 +965,7 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   leyendaGrafico: {
-    fontSize: 11.5,
+    fontSize: 12,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.textoSecundario,
     marginBottom: 6,
@@ -991,7 +991,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.dorado,
   },
   diaEtiqueta: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.textoSecundario,
   },
@@ -999,7 +999,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   filaMetodoPagoNombre: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.texto,
   },

@@ -27,7 +27,7 @@ import {
 } from '@/db/notificaciones';
 import { listarPersonalCompleto } from '@/db/personal';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -479,19 +479,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
   volverTexto: {
     fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: '#FFE9E2',
+    color: COLORES_ADMIN.superficie,
   },
   titulo: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
     fontSize: 20,
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
   pestana: {
     flex: 1,
     paddingVertical: 10,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   pestanaTextoActiva: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   tabsFiltro: {
     flexDirection: 'row',
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
   tabFiltro: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: RADII_ADMIN.lg,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   tabFiltroTextoActivo: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   centrado: {
@@ -573,7 +573,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 12,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 14,
@@ -584,14 +584,14 @@ const styles = StyleSheet.create({
   icono: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     backgroundColor: COLORES_ADMIN.superficie,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   iconoCritico: {
-    backgroundColor: '#FDECEC',
+    backgroundColor: ESTADO_ADMIN.error.fondo,
   },
   iconoAlerta: {
     backgroundColor: COLORES_ADMIN.superficieMasAlta,
@@ -606,7 +606,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filaTipo: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.textoSecundario,
     textTransform: 'uppercase',
@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.texto,
   },
   filaDetalle: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
     lineHeight: 17,
@@ -632,7 +632,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -646,27 +646,27 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   aviso: {
-    backgroundColor: '#EAF5EA',
+    backgroundColor: ESTADO_ADMIN.exito.fondo,
     borderWidth: 1,
-    borderColor: '#C3E3C3',
-    borderRadius: 10,
+    borderColor: ESTADO_ADMIN.exito.borde,
+    borderRadius: RADII_ADMIN.sm,
     padding: 12,
   },
   avisoError: {
-    backgroundColor: '#FBEAEA',
-    borderColor: '#E3B3B3',
+    backgroundColor: ESTADO_ADMIN.error.fondo,
+    borderColor: ESTADO_ADMIN.error.borde,
   },
   avisoTexto: {
     fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#2E6B2E',
+    color: ESTADO_ADMIN.exito.texto,
   },
   avisoTextoError: {
     color: COLORES_ADMIN.error,
   },
   tarjeta: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 16,
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
   chipRol: {
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderRadius: 18,
+    borderRadius: RADII_ADMIN.lg,
     backgroundColor: COLORES_ADMIN.superficieBaja,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
@@ -721,7 +721,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   chipRolTextoActivo: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   filaSeleccionTodos: {
@@ -762,7 +762,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   checkboxMarca: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 12,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
   textoMensaje: {
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     padding: 12,
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
@@ -785,7 +785,7 @@ const styles = StyleSheet.create({
   },
   boton: {
     backgroundColor: COLORES_ADMIN.vino,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 4,
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonTexto: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },

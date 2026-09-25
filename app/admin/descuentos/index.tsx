@@ -11,7 +11,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'VIGENTES' | 'VENCIDOS';
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 14,
@@ -222,14 +222,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filaValor: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
   badgeVigente: {
-    backgroundColor: '#EAF5EA',
+    backgroundColor: ESTADO_ADMIN.exito.fondo,
     borderWidth: 1,
-    borderColor: '#C3E3C3',
+    borderColor: ESTADO_ADMIN.exito.borde,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -241,9 +241,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   badgeProgramado: {
-    backgroundColor: '#FFF4DB',
+    backgroundColor: ESTADO_ADMIN.alerta.fondo,
     borderWidth: 1,
-    borderColor: '#F5D48A',
+    borderColor: ESTADO_ADMIN.alerta.borde,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   badgeProgramadoTexto: {
     fontSize: 10,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#8A5A00',
+    color: ESTADO_ADMIN.alerta.texto,
     textTransform: 'uppercase',
   },
   badgeInactivo: {
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   botonDesactivar: {
     borderWidth: 1,
     borderColor: COLORES_ADMIN.error,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },

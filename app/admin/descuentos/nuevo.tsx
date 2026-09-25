@@ -27,7 +27,7 @@ import { listarPromotores } from '@/db/usuarios';
 import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type PasoSelector = 'PRODUCTO' | 'PUNTO' | 'PROMOTOR' | null;
@@ -464,7 +464,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   volver: {
-    color: '#FFE9E2',
+    color: COLORES_ADMIN.superficie,
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
@@ -481,8 +481,8 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   titulo: {
-    color: '#FFFFFF',
-    fontSize: 17,
+    color: COLORES_ADMIN.textoInverso,
+    fontSize: 16,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   centrado: {
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
   },
   buscador: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 14,
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   },
   filaSelector: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 14,
@@ -542,7 +542,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   botonHoy: {
     borderWidth: 1,
     borderColor: COLORES_ADMIN.vino,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 14,
     justifyContent: 'center',
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1.5,
     borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingVertical: 10,
     alignItems: 'center',
   },
@@ -628,13 +628,13 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   tipoBotonTextoActivo: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   input: {
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
@@ -644,7 +644,7 @@ const styles = StyleSheet.create({
   },
   botonGuardar: {
     backgroundColor: COLORES_ADMIN.vino,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 8,
@@ -653,7 +653,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonGuardarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 15,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
   },
   tarjetaModalCalendario: {
     backgroundColor: COLORES_ADMIN.background,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     padding: 20,
     gap: 12,
   },
@@ -677,14 +677,14 @@ const styles = StyleSheet.create({
   },
   modalCalendarioConfirmar: {
     backgroundColor: COLORES_ADMIN.vino,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingVertical: 12,
     alignItems: 'center',
   },
   modalCalendarioConfirmarTexto: {
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   modalCerrar: {
     alignItems: 'center',

@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     maxHeight: '80%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.lg,
     padding: ESPACIADO_ADMIN.xl,
     gap: ESPACIADO_ADMIN.md,
@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonAplicarTexto: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },

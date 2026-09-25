@@ -15,7 +15,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FormularioProducto, type ValoresProducto } from '@/ui/FormularioProducto';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function EditarProducto() {
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   },
   botonEstado: {
     marginTop: 4,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1.5,

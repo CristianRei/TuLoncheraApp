@@ -11,6 +11,8 @@ export const COLORES_ADMIN = {
   superficieMasAlta: '#FEDBCE',
   texto: '#29170F',
   textoSecundario: '#554241',
+  /** Texto sobre fondo vino o dorado sólido (botones primarios, chips activos). */
+  textoInverso: '#FFFFFF',
   borde: '#877270',
   bordeSuave: '#DAC1BE',
   vino: '#541212',

@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 
 import { modoPinParaRol, pinDesdeCedula, pinManualValido } from '@/core/pin';
 import type { Rol } from '@/core/tipos';
+import { COLORES_ADMIN, ESTADO_ADMIN } from '@/ui/tema';
 
 export interface ValoresPersona {
   nombre: string;
@@ -206,36 +207,36 @@ const styles = StyleSheet.create({
   etiqueta: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#555',
+    color: COLORES_ADMIN.textoSecundario,
   },
   etiquetaError: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#B00020',
+    color: ESTADO_ADMIN.error.texto,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
   },
   inputError: {
-    borderColor: '#B00020',
+    borderColor: ESTADO_ADMIN.error.texto,
   },
   pinAviso: {
     fontSize: 12.5,
-    color: '#666',
+    color: COLORES_ADMIN.textoSecundario,
   },
   pinValor: {
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   pinAvisoTenue: {
     fontSize: 12,
-    color: '#AAA',
+    color: COLORES_ADMIN.textoSecundario,
     fontStyle: 'italic',
   },
   botonGuardar: {
@@ -248,7 +249,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonGuardarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 16,
     fontWeight: '700',
   },

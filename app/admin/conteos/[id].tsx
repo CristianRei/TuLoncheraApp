@@ -7,7 +7,7 @@ import { getDb } from '@/db/client';
 import { obtenerConteo } from '@/db/conteos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
-import { ANCHO_ADMIN, COLORES_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string): string {
@@ -106,24 +106,24 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   resumen: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     margin: 20,
     marginBottom: 0,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     padding: 16,
     gap: 4,
   },
   resumenPromotor: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   resumenDetalle: {
     fontSize: 13,
-    color: '#777',
+    color: COLORES_ADMIN.textoSecundario,
   },
   lista: {
     padding: 20,
@@ -133,8 +133,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
     padding: 12,
     gap: 12,
   },
@@ -145,20 +145,20 @@ const styles = StyleSheet.create({
   filaNombre: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   filaDetalle: {
     fontSize: 13,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   filaDiferencia: {
     fontSize: 15,
     fontWeight: '800',
   },
   diferenciaPositiva: {
-    color: '#1B7A3D',
+    color: ESTADO_ADMIN.exito.texto,
   },
   diferenciaNegativa: {
-    color: '#B00020',
+    color: ESTADO_ADMIN.error.texto,
   },
 });

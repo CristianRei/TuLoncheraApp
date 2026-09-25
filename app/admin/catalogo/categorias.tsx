@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonAgregarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },

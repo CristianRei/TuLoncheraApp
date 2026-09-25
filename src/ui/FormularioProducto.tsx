@@ -20,6 +20,7 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { listarMarcasDistintas } from '@/db/productos';
 
 import { EscanerCodigoBarras } from './EscanerCodigoBarras';
+import { COLORES_ADMIN } from '@/ui/tema';
 
 export interface ValoresProducto {
   nombre: string;
@@ -342,7 +343,7 @@ const styles = StyleSheet.create({
     aspectRatio: 1.4,
     maxHeight: 220,
     borderRadius: 16,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: COLORES_ADMIN.superficieBaja,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -352,7 +353,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   fotoPlaceholder: {
-    color: '#999',
+    color: COLORES_ADMIN.textoSecundario,
     fontSize: 14,
   },
   fotoCargando: {
@@ -386,16 +387,16 @@ const styles = StyleSheet.create({
   etiqueta: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#555',
+    color: COLORES_ADMIN.textoSecundario,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
   },
   filaCodigoBarras: {
     flexDirection: 'row',
@@ -426,7 +427,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonGuardarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -434,18 +435,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: COLORES_ADMIN.bordeSuave,
     marginRight: 8,
   },
   chipTexto: {
     fontSize: 12.5,
     fontWeight: '600',
-    color: '#666',
+    color: COLORES_ADMIN.textoSecundario,
   },
   chipTextoActivo: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   sugerenciasFila: {
     marginTop: 8,
@@ -460,7 +461,7 @@ const styles = StyleSheet.create({
   tarjetaModal: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: 18,
     padding: 22,
     gap: 14,
@@ -468,7 +469,7 @@ const styles = StyleSheet.create({
   modalTitulo: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   modalAcciones: {
     flexDirection: 'row',
@@ -478,7 +479,7 @@ const styles = StyleSheet.create({
   },
   modalCancelar: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   botonModalConfirmar: {
     borderRadius: 10,

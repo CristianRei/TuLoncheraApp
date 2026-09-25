@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   },
   enlaceEncabezado: {
     color: COLORES_ADMIN.vino,
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     textDecorationLine: 'underline',
   },
@@ -372,10 +372,10 @@ const styles = StyleSheet.create({
   chipCategoria: {
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    borderRadius: RADII_ADMIN.lg,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
-    borderColor: '#EBD3D3',
+    borderColor: COLORES_ADMIN.bordeSuave,
     marginRight: 8,
   },
   chipCategoriaActivo: {
@@ -383,12 +383,12 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.dorado,
   },
   chipCategoriaTexto: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: COLORES_ADMIN.textoSecundario,
   },
   chipCategoriaTextoActivo: {
-    color: '#3A2400',
+    color: COLORES_ADMIN.texto,
   },
   centrado: {
     flex: 1,
@@ -398,7 +398,7 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
   },
   lista: {
@@ -411,11 +411,11 @@ const styles = StyleSheet.create({
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
     padding: 10,
     gap: 12,
-    shadowColor: '#000',
+    shadowColor: COLORES_ADMIN.texto,
     shadowOpacity: 0.05,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
@@ -427,20 +427,20 @@ const styles = StyleSheet.create({
   miniatura: {
     width: 56,
     height: 56,
-    borderRadius: 10,
-    backgroundColor: '#F0F0F0',
+    borderRadius: RADII_ADMIN.sm,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   miniaturaVacia: {
     width: 56,
     height: 56,
-    borderRadius: 10,
-    backgroundColor: '#F0F0F0',
+    borderRadius: RADII_ADMIN.sm,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
     alignItems: 'center',
     justifyContent: 'center',
   },
   miniaturaVaciaTexto: {
     fontSize: 9,
-    color: '#AAA',
+    color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
   },
   filaTexto: {
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   filaNombre: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   filaPrecio: {
     fontSize: 14,
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   filaSinCategoria: {
     fontSize: 11,
     fontStyle: 'italic',
-    color: '#AAA',
+    color: COLORES_ADMIN.textoSecundario,
     marginTop: 1,
   },
   barraSeleccion: {
@@ -475,31 +475,31 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 20,
     backgroundColor: COLORES_ADMIN.vino,
-    borderRadius: 16,
+    borderRadius: RADII_ADMIN.lg,
     paddingVertical: 12,
     paddingHorizontal: 18,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: COLORES_ADMIN.texto,
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
   barraSeleccionTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontWeight: '600',
   },
   barraSeleccionBoton: {
     backgroundColor: COLORES_ADMIN.dorado,
-    borderRadius: 10,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   barraSeleccionBotonTexto: {
-    color: '#3A2400',
+    color: COLORES_ADMIN.texto,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -514,19 +514,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 360,
     maxHeight: '70%',
-    backgroundColor: '#FFF',
-    borderRadius: 18,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.lg,
     padding: 22,
     gap: 10,
   },
   modalTitulo: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   modalSubtitulo: {
     fontSize: 13,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
     marginBottom: 4,
   },
   modalListaCategorias: {
@@ -535,16 +535,16 @@ const styles = StyleSheet.create({
   modalCategoriaFila: {
     paddingVertical: 13,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: COLORES_ADMIN.bordeSuave,
   },
   modalCategoriaTexto: {
     fontSize: 15,
-    color: '#333',
+    color: COLORES_ADMIN.texto,
     fontWeight: '600',
   },
   modalCancelar: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
     marginTop: 10,
   },

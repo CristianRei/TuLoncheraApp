@@ -21,7 +21,7 @@ import { anularVenta, obtenerVenta, VentaYaAnuladaError } from '@/db/ventas';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { ANCHO_ADMIN, COLORES_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string): string {
@@ -255,66 +255,66 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   resumen: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     margin: 20,
     marginBottom: 0,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     padding: 16,
     gap: 4,
   },
   resumenPromotor: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   resumenDetalle: {
     fontSize: 13,
-    color: '#777',
+    color: COLORES_ADMIN.textoSecundario,
   },
   bloqueComprobante: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     marginHorizontal: 20,
     marginTop: 12,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     padding: 16,
     gap: 8,
   },
   comprobanteTitulo: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#555',
+    color: COLORES_ADMIN.textoSecundario,
   },
   comprobanteImagen: {
     width: '100%',
     height: 220,
-    borderRadius: 10,
-    backgroundColor: '#F0F0F0',
+    borderRadius: RADII_ADMIN.sm,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   comprobanteFaltante: {
     fontSize: 13,
-    color: '#B00020',
+    color: ESTADO_ADMIN.error.texto,
   },
   avisoAnulada: {
-    backgroundColor: '#FBE4E4',
+    backgroundColor: ESTADO_ADMIN.error.fondo,
     borderWidth: 1,
-    borderColor: '#B00020',
+    borderColor: ESTADO_ADMIN.error.texto,
     marginHorizontal: 20,
     marginTop: 12,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     padding: 14,
     gap: 4,
   },
   avisoAnuladaTitulo: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#B00020',
+    color: ESTADO_ADMIN.error.texto,
   },
   avisoAnuladaMotivo: {
     fontSize: 13,
-    color: '#7A1420',
+    color: ESTADO_ADMIN.error.texto,
   },
   lista: {
     padding: 20,
@@ -323,8 +323,8 @@ const styles = StyleSheet.create({
   fila: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.md,
     padding: 12,
   },
   filaTexto: {
@@ -334,11 +334,11 @@ const styles = StyleSheet.create({
   filaNombre: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   filaDetalle: {
     fontSize: 13,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   filaSubtotal: {
     fontSize: 14,
@@ -346,11 +346,11 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.vino,
   },
   pie: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     marginHorizontal: 20,
     marginBottom: 20,
     padding: 16,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     gap: 12,
   },
   totalFila: {
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
   totalEtiqueta: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#555',
+    color: COLORES_ADMIN.textoSecundario,
   },
   totalValor: {
     fontSize: 20,
@@ -370,13 +370,13 @@ const styles = StyleSheet.create({
   },
   botonAnular: {
     borderWidth: 1.5,
-    borderColor: '#B00020',
-    borderRadius: 12,
+    borderColor: ESTADO_ADMIN.error.texto,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 12,
     alignItems: 'center',
   },
   botonAnularTexto: {
-    color: '#B00020',
+    color: ESTADO_ADMIN.error.texto,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -390,24 +390,24 @@ const styles = StyleSheet.create({
   tarjetaModal: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#FFF',
-    borderRadius: 18,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.lg,
     padding: 22,
     gap: 12,
   },
   modalTitulo: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   modalTexto: {
     fontSize: 13,
-    color: '#777',
+    color: COLORES_ADMIN.textoSecundario,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
@@ -422,18 +422,18 @@ const styles = StyleSheet.create({
   },
   modalCancelar: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   modalConfirmar: {
-    backgroundColor: '#B00020',
-    borderRadius: 10,
+    backgroundColor: ESTADO_ADMIN.error.texto,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 20,
     paddingVertical: 10,
     minWidth: 100,
     alignItems: 'center',
   },
   modalConfirmarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontWeight: '700',
   },

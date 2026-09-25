@@ -135,7 +135,7 @@ export default function Ventas() {
               <Ionicons
                 name="calendar-outline"
                 size={13}
-                color={filtroFecha === 'ESPECIFICA' ? '#FFFFFF' : COLORES_ADMIN.textoSecundario}
+                color={filtroFecha === 'ESPECIFICA' ? COLORES_ADMIN.textoInverso : COLORES_ADMIN.textoSecundario}
               />
               <Text style={[styles.tabFechaTexto, filtroFecha === 'ESPECIFICA' && styles.tabFechaTextoActivo]}>
                 {filtroFecha === 'ESPECIFICA' && fechaEspecifica
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   tabFechaTextoActivo: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   exportandoAviso: {
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     padding: ESPACIADO_ADMIN.xl,
   },
   tarjetaCalendario: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.lg,
     padding: ESPACIADO_ADMIN.xl,
     gap: ESPACIADO_ADMIN.lg,

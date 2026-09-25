@@ -16,7 +16,7 @@ import {
 } from '@/db/inventario';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -97,7 +97,7 @@ export default function DetalleBodega() {
               <Ionicons
                 name="chevron-back"
                 size={16}
-                color={anchaPantalla ? COLORES_ADMIN.vino : '#FFE9E2'}
+                color={anchaPantalla ? COLORES_ADMIN.vino : COLORES_ADMIN.superficie}
               />
               <Text style={anchaPantalla ? styles.volverTextoAncho : styles.volverTexto}>Dashboard</Text>
             </Pressable>
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
@@ -218,14 +218,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
     backgroundColor: COLORES_ADMIN.superficieBaja,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 8,
     paddingVertical: 5,
   },
   volverTexto: {
     fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: '#FFE9E2',
+    color: COLORES_ADMIN.superficie,
   },
   volverTextoAncho: {
     fontSize: 13,
@@ -233,9 +233,9 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.vino,
   },
   titulo: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
     fontSize: 20,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   tarjeta: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
-    borderRadius: 14,
+    borderRadius: RADII_ADMIN.md,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     padding: 16,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.texto,
   },
   filaMovimientoProducto: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
     marginTop: 2,

@@ -20,6 +20,7 @@ import { buscarProductoPorCodigoBarras } from '@/db/productos';
 import { COLORES } from './colores';
 import { EscanerCodigoBarras } from './EscanerCodigoBarras';
 import { SelectorFechaUnica } from './SelectorFechaUnica';
+import { COLORES_ADMIN } from '@/ui/tema';
 
 interface Props {
   usuarioId: string;
@@ -262,7 +263,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   botonEscanearTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 16,
     fontWeight: '700',
   },
@@ -274,7 +275,7 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
   },
   lista: {
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: 14,
     padding: 14,
     gap: 12,
@@ -298,7 +299,7 @@ const styles = StyleSheet.create({
   filaNombre: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   filaCantidad: {
     fontSize: 13,
@@ -307,20 +308,20 @@ const styles = StyleSheet.create({
   },
   filaVencimiento: {
     fontSize: 12,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   botonQuitar: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: COLORES_ADMIN.superficieBaja,
     alignItems: 'center',
     justifyContent: 'center',
   },
   botonQuitarTexto: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
     lineHeight: 18,
   },
   pie: {
@@ -336,7 +337,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonConfirmarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
   tarjetaModal: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: 18,
     padding: 22,
     gap: 10,
@@ -358,15 +359,15 @@ const styles = StyleSheet.create({
   modalTitulo: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   modalTexto: {
     fontSize: 13,
-    color: '#777',
+    color: COLORES_ADMIN.textoSecundario,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -380,7 +381,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
   modalInputFechaTexto: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   fondoModalCalendario: {
     flex: 1,
@@ -397,7 +398,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tarjetaModalCalendario: {
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: 18,
     padding: 20,
     gap: 12,
@@ -409,7 +410,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCerrarCalendarioTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -422,7 +423,7 @@ const styles = StyleSheet.create({
   },
   modalCancelar: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   modalConfirmar: {
     backgroundColor: COLORES.oscuro,
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   modalConfirmarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontWeight: '700',
   },

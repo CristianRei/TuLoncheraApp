@@ -178,13 +178,13 @@ const styles = StyleSheet.create({
   tarjetaModal: {
     width: '100%',
     maxWidth: 360,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.lg,
     padding: 22,
     gap: 12,
   },
   modalTitulo: {
-    fontSize: 17,
+    fontSize: 16,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
     color: COLORES_ADMIN.texto,
   },
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalConfirmarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },

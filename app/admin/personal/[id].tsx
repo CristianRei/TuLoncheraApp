@@ -29,7 +29,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { FormularioPersona, type ValoresPersona } from '@/ui/FormularioPersona';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETA_ROL: Record<Rol, string> = {
@@ -369,20 +369,20 @@ const styles = StyleSheet.create({
   },
   vacio: {
     fontSize: 14,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   botonEliminar: {
     marginTop: 4,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 12,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#B00020',
+    borderColor: ESTADO_ADMIN.error.texto,
   },
   botonEliminarTexto: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#B00020',
+    color: ESTADO_ADMIN.error.texto,
   },
   botonDeshabilitado: {
     opacity: 0.5,
@@ -390,21 +390,21 @@ const styles = StyleSheet.create({
   avisoInactivo: {
     marginTop: 4,
     fontSize: 13,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
     fontStyle: 'italic',
     textAlign: 'center',
   },
   botonEliminarPermanente: {
     marginTop: 10,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 12,
     alignItems: 'center',
-    backgroundColor: '#B00020',
+    backgroundColor: ESTADO_ADMIN.error.texto,
   },
   botonEliminarPermanenteTexto: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   selectorRol: {
     paddingHorizontal: ESPACIADO_ADMIN.xl,
@@ -426,19 +426,19 @@ const styles = StyleSheet.create({
   tarjetaModal: {
     width: '100%',
     maxWidth: 420,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: RADII_ADMIN.lg,
     padding: 20,
     gap: 10,
   },
   modalTitulo: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   modalTexto: {
     fontSize: 13,
-    color: '#666',
+    color: COLORES_ADMIN.textoSecundario,
   },
   modalCampo: {
     gap: 6,
@@ -446,21 +446,21 @@ const styles = StyleSheet.create({
   modalEtiqueta: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#555',
+    color: COLORES_ADMIN.textoSecundario,
   },
   modalInput: {
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
   },
   modalError: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#B00020',
+    color: ESTADO_ADMIN.error.texto,
   },
   modalAcciones: {
     flexDirection: 'row',
@@ -472,18 +472,18 @@ const styles = StyleSheet.create({
   modalCancelar: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#777',
+    color: COLORES_ADMIN.textoSecundario,
   },
   botonConfirmarRol: {
     backgroundColor: COLORES_ADMIN.vino,
-    borderRadius: 8,
+    borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 16,
     paddingVertical: 10,
     minWidth: 100,
     alignItems: 'center',
   },
   botonConfirmarRolTexto: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 13,
     fontWeight: '700',
   },

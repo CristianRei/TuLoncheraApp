@@ -2,6 +2,7 @@ import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-na
 
 import { formatearPesos } from '@/core/dinero';
 import type { Producto } from '@/core/tipos';
+import { COLORES_ADMIN } from '@/ui/tema';
 
 interface Props {
   productos: Producto[];
@@ -100,13 +101,13 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   busqueda: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: 24,
     paddingHorizontal: 18,
     paddingVertical: 10,
     fontSize: 15,
     borderWidth: 1,
-    borderColor: '#EBD3D3',
+    borderColor: COLORES_ADMIN.bordeSuave,
   },
   lista: {
     padding: 20,
@@ -116,7 +117,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: 14,
     padding: 12,
     gap: 12,
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
   filaNombre: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: COLORES_ADMIN.texto,
   },
   filaPrecio: {
     fontSize: 13,
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
   },
   filaDisponible: {
     fontSize: 12,
-    color: '#888',
+    color: COLORES_ADMIN.textoSecundario,
   },
   contador: {
     flexDirection: 'row',
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: COLORES_ADMIN.superficieBaja,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -157,10 +158,10 @@ const styles = StyleSheet.create({
   contadorBotonTexto: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#555',
+    color: COLORES_ADMIN.textoSecundario,
   },
   contadorBotonTextoDeshabilitado: {
-    color: '#999',
+    color: COLORES_ADMIN.textoSecundario,
   },
   contadorValor: {
     fontSize: 15,

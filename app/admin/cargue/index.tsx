@@ -21,7 +21,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { ListRow } from '@/ui/ListRow';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -310,7 +310,7 @@ export default function PantallaCargue() {
               <Ionicons
                 name={todoMarcado ? 'close-circle-outline' : 'checkmark-done-outline'}
                 size={18}
-                color={todoMarcado ? COLORES_ADMIN.vino : '#FFF'}
+                color={todoMarcado ? COLORES_ADMIN.vino : COLORES_ADMIN.textoInverso}
               />
               <Text style={[styles.botonTodoTexto, todoMarcado && styles.botonTodoTextoActivo]}>
                 {todoMarcado ? 'Quitar todo' : 'Trasladar todo'}
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
     marginHorizontal: ESPACIADO_ADMIN.xl,
     marginTop: ESPACIADO_ADMIN.lg,
     padding: ESPACIADO_ADMIN.md,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     backgroundColor: COLORES_ADMIN.superficieBaja,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     backgroundColor: COLORES_ADMIN.vino,
-    borderRadius: 20,
+    borderRadius: RADII_ADMIN.lg,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
@@ -512,7 +512,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   botonTodoTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
@@ -521,7 +521,7 @@ const styles = StyleSheet.create({
   },
   botonConfirmar: {
     backgroundColor: COLORES_ADMIN.vino,
-    borderRadius: 12,
+    borderRadius: RADII_ADMIN.md,
     paddingVertical: 14,
     alignItems: 'center',
   },
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonConfirmarTexto: {
-    color: '#FFF',
+    color: COLORES_ADMIN.textoInverso,
     fontSize: 15,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },

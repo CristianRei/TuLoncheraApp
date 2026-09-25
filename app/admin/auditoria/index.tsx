@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
     ...TEXTO_ADMIN.cuerpoSecundario,
   },
   pillTextoActivo: {
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   restablecer: {
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
   },
   tarjetaEventoAlerta: {
     borderLeftWidth: 4,
-    borderLeftColor: '#F3A712',
+    borderLeftColor: COLORES_ADMIN.dorado,
   },
   iconoCaja: {
     width: 36,
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
   },
   botonDesbloquearTexto: {
     ...TEXTO_ADMIN.boton,
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   fondoModal: {
     flex: 1,
@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     maxHeight: '80%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.lg,
     padding: ESPACIADO_ADMIN.xl,
     gap: ESPACIADO_ADMIN.md,
@@ -832,7 +832,7 @@ const styles = StyleSheet.create({
   },
   botonAplicarTexto: {
     ...TEXTO_ADMIN.boton,
-    color: '#FFFFFF',
+    color: COLORES_ADMIN.textoInverso,
   },
   botonDeshabilitado: {
     opacity: 0.5,
