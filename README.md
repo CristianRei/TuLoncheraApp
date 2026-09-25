@@ -101,6 +101,7 @@ Supabase las migraciones pendientes (ver [`supabase/README.md`](supabase/README.
 - [x] Metas de venta mensuales por promotor/punto, con proyección de cierre de mes
 - [x] Meta de venta diaria por evento (compartida por el equipo), con progreso en tiempo real y las ventas de los compañeros visibles para cada promotor
 - [x] Eventos con horario, y formulario del calendario con menús desplegables
+- [x] Un promotor en un evento a la vez; "Promotores del día" para moverlo, asignarlo o retirarlo — sin evento hoy no vende
 - [x] Filtro por día específico en el listado de Ventas del admin (además de hoy/rango)
 - [x] Sección Análisis: repetibilidad por punto, rendimiento por promotor, correlaciones y cruces
 - [ ] Reportes administrativos adicionales

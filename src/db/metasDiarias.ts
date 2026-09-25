@@ -3,7 +3,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { calcularRangoDiaBogota, fechaHoyBogota } from '@/core/analitica';
 import type { Evento, Pesos } from '@/core/tipos';
 
-import { obtenerVentasPorPromotor } from './analitica';
+import { obtenerVentasPorPunto } from './analitica';
 import { listarEventosPorRango, obtenerPuntoVigentePromotor } from './eventos';
 
 /**
@@ -19,7 +19,12 @@ export interface ProgresoMetaDiaria {
   promotorIds: string[];
   promotorNombres: string[];
   metaDiaria: Pesos;
-  /** Lo que vendieron ENTRE TODOS los promotores del evento ese día (sin anuladas). */
+  /**
+   * Lo que se vendió ese día en el PUNTO del evento, entre todo el equipo
+   * (sin anuladas). Por punto y no por persona: si a un promotor lo mueven de
+   * evento a mediodía, lo que vendió en la mañana en el otro punto no se suma
+   * aquí, y lo que vendió aquí antes de irse sigue contando.
+   */
   totalVendidoHoy: Pesos;
   progresoPct: number;
 }
@@ -32,12 +37,12 @@ async function calcularProgreso(
   const conMeta = eventos.filter((e) => e.estado !== 'CANCELADO' && e.metaDiaria !== null);
   if (conMeta.length === 0) return [];
 
-  const ventasPorPromotor = await obtenerVentasPorPromotor(db, calcularRangoDiaBogota(fecha));
-  const totalPorPromotor = new Map(ventasPorPromotor.map((v) => [v.promotorId, v.totalVendido]));
+  const ventasPorPunto = await obtenerVentasPorPunto(db, calcularRangoDiaBogota(fecha));
+  const totalPorPunto = new Map(ventasPorPunto.map((v) => [v.puntoId, v.totalVendido]));
 
   return conMeta.map((evento) => {
     const metaDiaria = evento.metaDiaria ?? 0;
-    const totalVendidoHoy = evento.promotorIds.reduce((suma, id) => suma + (totalPorPromotor.get(id) ?? 0), 0);
+    const totalVendidoHoy = totalPorPunto.get(evento.puntoId) ?? 0;
     return {
       eventoId: evento.id,
       puntoNombre: `${evento.empresaNombre} · ${evento.puntoNombre}`,

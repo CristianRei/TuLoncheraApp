@@ -15,7 +15,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { formatearPesos } from '@/core/dinero';
-import { DemasiadasOcurrenciasError } from '@/core/eventos';
 import { formatearRangoHoras, parsearHora } from '@/core/horas';
 import type { Empresa, Evento, EstadoEvento, Frecuencia, Punto, UsuarioSesion } from '@/core/tipos';
 import { getDb } from '@/db/client';
@@ -28,7 +27,6 @@ import {
   crearEvento,
   crearSerieRecurrente,
   establecerMetaDiaria,
-  EventoEnFechaPasadaError,
   listarEventosPorRango,
   obtenerEvento,
   reasignarEvento,
@@ -37,6 +35,7 @@ import { listarPuntos } from '@/db/puntos';
 import { listarPromotores } from '@/db/usuarios';
 import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from '@/ui/calendarioGrilla';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { PromotoresDelDia } from '@/ui/PromotoresDelDia';
 import { SelectorDesplegable } from '@/ui/SelectorDesplegable';
 import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
@@ -137,6 +136,7 @@ export default function CalendarioAdmin() {
   const [horaFinTexto, setHoraFinTexto] = useState('');
   const [guardandoHorario, setGuardandoHorario] = useState(false);
   const [errorHorarioDetalle, setErrorHorarioDetalle] = useState<string | null>(null);
+  const [errorPromotoresDetalle, setErrorPromotoresDetalle] = useState<string | null>(null);
 
   const hoyClave = aClaveFecha(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
 
@@ -177,6 +177,7 @@ export default function CalendarioAdmin() {
     setHoraInicioTexto(evento.horaInicio ?? '');
     setHoraFinTexto(evento.horaFin ?? '');
     setErrorHorarioDetalle(null);
+    setErrorPromotoresDetalle(null);
     setDetalleEvento(evento);
   }
 
@@ -489,6 +490,16 @@ export default function CalendarioAdmin() {
               )}
             </View>
           </View>
+
+          <View style={styles.seccionPromotores}>
+            <PromotoresDelDia
+              fecha={diaSeleccionado ?? hoyClave}
+              editable={!esFechaPasada(diaSeleccionado ?? hoyClave, hoyClave)}
+              adminId={usuarioActual.id}
+              recargarCon={eventos}
+              onCambio={recargar}
+            />
+          </View>
         </ContenedorAncho>
       </ScrollView>
 
@@ -542,6 +553,7 @@ export default function CalendarioAdmin() {
                         const nuevos = asignado
                           ? detalleEvento.promotorIds.filter((id) => id !== p.id)
                           : [...detalleEvento.promotorIds, p.id];
+                        setErrorPromotoresDetalle(null);
                         setGuardando(true);
                         try {
                           const db = await getDb();
@@ -552,11 +564,7 @@ export default function CalendarioAdmin() {
                           setDetalleEvento(actualizado);
                           await recargar();
                         } catch (error) {
-                          if (error instanceof EventoEnFechaPasadaError) {
-                            Alert.alert('Evento pasado', error.message);
-                          } else {
-                            Alert.alert('No se pudo actualizar', error instanceof Error ? error.message : 'Error inesperado.');
-                          }
+                          setErrorPromotoresDetalle(error instanceof Error ? error.message : 'No se pudo actualizar.');
                         } finally {
                           setGuardando(false);
                         }
@@ -570,6 +578,7 @@ export default function CalendarioAdmin() {
                   </View>
                 );
               })}
+              {errorPromotoresDetalle && <Text style={styles.errorTexto}>{errorPromotoresDetalle}</Text>}
 
               <Text style={styles.modalSubtitulo}>Horario</Text>
               {detalleEvento.estado !== 'CANCELADO' && !esFechaPasada(detalleEvento.fecha, hoyClave) ? (
@@ -794,6 +803,9 @@ function FormularioEvento({
   const [intervalo, setIntervalo] = useState('15');
   const [fechaHasta, setFechaHasta] = useState('');
   const [guardando, setGuardando] = useState(false);
+  // En línea y no con Alert: Alert.alert no se ve en el navegador, donde el
+  // admin suele planear (ej. "Laura ya está en Falabella a esa hora").
+  const [errorGuardar, setErrorGuardar] = useState<string | null>(null);
 
   useEffect(() => {
     if (!empresaId) return;
@@ -819,6 +831,7 @@ function FormularioEvento({
   async function guardar() {
     if (!puedeCrear || !empresaId || !puntoId || !horaInicio || !horaFin) return;
     const detalles = { horaInicio, horaFin, metaDiaria: metaTexto ? Number(metaTexto) : null };
+    setErrorGuardar(null);
     setGuardando(true);
     try {
       const db = await getDb();
@@ -826,7 +839,7 @@ function FormularioEvento({
       if (repetir) {
         const intervaloNumero = Number(intervalo);
         if (!fechaHasta) {
-          Alert.alert('Falta la fecha límite', 'Elige hasta cuándo se repite el evento.');
+          setErrorGuardar('Elige hasta cuándo se repite el evento.');
           return;
         }
         await crearSerieRecurrente(
@@ -849,11 +862,7 @@ function FormularioEvento({
       }
       onCreado();
     } catch (error) {
-      if (error instanceof DemasiadasOcurrenciasError) {
-        Alert.alert('Demasiadas ocurrencias', error.message);
-      } else {
-        Alert.alert('No se pudo crear el evento', error instanceof Error ? error.message : 'Error inesperado.');
-      }
+      setErrorGuardar(error instanceof Error ? error.message : 'No se pudo crear el evento.');
     } finally {
       setGuardando(false);
     }
@@ -986,6 +995,7 @@ function FormularioEvento({
             {faltantes.length > 0 && (
               <Text style={styles.ayudaTexto}>Falta: {faltantes.join(', ')}.</Text>
             )}
+            {errorGuardar && <Text style={styles.errorTexto}>{errorGuardar}</Text>}
             <View style={styles.modalAcciones}>
               <Pressable onPress={onCerrar} disabled={guardando}>
                 <Text style={styles.modalCancelar}>Cancelar</Text>
@@ -1032,6 +1042,7 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 16 },
   layoutAngosto: { gap: 16 },
   layoutAncho: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
+  seccionPromotores: { marginTop: 16 },
   columnaCalendario: { width: '100%' },
   columnaCalendarioAncha: { flex: 7 },
   columnaDetalle: { width: '100%' },

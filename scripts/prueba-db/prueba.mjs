@@ -268,6 +268,22 @@ await paso('admin planea cargue y bodega lo entrega (RECARGA)', async () => {
   await confirmarLineaCargue(dbA, { lineaId: linea.id, cantidadEntregada: 10, ejecutorId: bodega.id }, dispA);
 });
 
+const { crearEmpresa: crearEmpresaB } = await imp('db/empresas.ts');
+const { crearPunto: crearPuntoB } = await imp('db/puntos.ts');
+const { crearEvento: crearEventoB } = await imp('db/eventos.ts');
+const { fechaHoyBogota: fechaHoyB } = await imp('core/analitica/index.ts');
+let eventoB;
+await paso('sin evento hoy, el promotor NO puede vender (SinEventoHoyError)', async () => {
+  await assert.rejects(
+    registrarVenta(dbA, { promotorId: promotor.id, promotorNombre: promotor.nombre, items: [{ productoId: tl001.id, productoNombre: tl001.nombre, cantidad: 1, precioUnitario: 3000 }], metodoPago: 'EFECTIVO' }, dispA),
+    { name: 'SinEventoHoyError' }
+  );
+});
+await paso('admin le planea el evento de hoy', async () => {
+  const empresa = await crearEmpresaB(dbA, { nombre: 'Empresa Prueba' }, dispA, { sincronizar: false });
+  const punto = await crearPuntoB(dbA, { empresaId: empresa.id, nombre: 'Norte' }, dispA, { sincronizar: false });
+  eventoB = await crearEventoB(dbA, { empresaId: empresa.id, puntoId: punto.id, fecha: fechaHoyB(), promotorIds: [promotor.id], creadoPor: admin.id }, dispA, { sincronizar: false });
+});
 await paso('PROMOTOR: registrar venta en efectivo (el flujo que fallaba en el celular)', async () => {
   venta = await registrarVenta(dbA, { promotorId: promotor.id, promotorNombre: promotor.nombre, items: [{ productoId: tl001.id, productoNombre: tl001.nombre, cantidad: 2, precioUnitario: 3000 }], metodoPago: 'EFECTIVO' }, dispA);
 });
@@ -534,9 +550,7 @@ await paso('se encola una sola vez a los no-admin sin tarea, nunca a los admin',
 
 console.log('\n== G. Consultas de pantallas (cierre de jornada, meta diaria, mensajes) ==');
 {
-  const { crearEmpresa } = await imp('db/empresas.ts');
-  const { crearPunto } = await imp('db/puntos.ts');
-  const { crearEvento, establecerMetaDiaria } = await imp('db/eventos.ts');
+  const { establecerMetaDiaria } = await imp('db/eventos.ts');
   const { obtenerProgresoMetasDiarias } = await imp('db/metasDiarias.ts');
   const { obtenerResumenVentas } = await imp('db/analitica.ts');
   const { existeConteoHoy } = await imp('db/conteos.ts');
@@ -544,13 +558,9 @@ console.log('\n== G. Consultas de pantallas (cierre de jornada, meta diaria, men
   const { obtenerEventoDeHoyPromotor } = await imp('db/turnos.ts');
   const { listarInventarioPromotor } = await imp('db/inventario.ts');
   const { listarMensajesRecibidos, contarMensajesNoLeidos } = await imp('db/mensajes.ts');
-  const { fechaHoyBogota } = await imp('core/analitica/index.ts');
 
-  let evento;
-  await paso('planear un evento de hoy con meta diaria', async () => {
-    const empresa = await crearEmpresa(dbA, { nombre: 'Empresa Prueba' }, dispA);
-    const punto = await crearPunto(dbA, { empresaId: empresa.id, nombre: 'Norte' }, dispA);
-    evento = await crearEvento(dbA, { empresaId: empresa.id, puntoId: punto.id, fecha: fechaHoyBogota(), promotorIds: [promotor.id], creadoPor: admin.id }, dispA);
+  const evento = eventoB; // el evento de hoy que se planeó en B (sin evento no se vende)
+  await paso('fijar la meta diaria del evento de hoy', async () => {
     await establecerMetaDiaria(dbA, { eventoId: evento.id, montoObjetivo: 1800000 });
   });
   await paso('progreso de la meta diaria del promotor', async () => {
@@ -641,6 +651,16 @@ console.log('\n== H. Tres dispositivos: admin (computador), bodega y promotor (c
     assert.equal(det.lineas.length, 1);
     assert.equal(det.lineas[0].cantidadPlaneada, 10);
     assert.equal(det.lineas[0].productoNombre, (await skuUno(dbBodega)).nombre);
+  });
+  await paso('admin planea el evento de hoy de Pedro (sin evento no vende) y lo sube', async () => {
+    const { crearEmpresa } = await imp('db/empresas.ts');
+    const { crearPunto } = await imp('db/puntos.ts');
+    const { crearEvento } = await imp('db/eventos.ts');
+    const { fechaHoyBogota } = await imp('core/analitica/index.ts');
+    const emp = await crearEmpresa(dbAdmin, { nombre: 'Falabella' }, dAdm);
+    const pto = await crearPunto(dbAdmin, { empresaId: emp.id, nombre: 'Norte' }, dAdm);
+    await crearEvento(dbAdmin, { empresaId: emp.id, puntoId: pto.id, fecha: fechaHoyBogota(), promotorIds: [pedro.id], creadoPor: adminId, horaInicio: '06:00', horaFin: '20:00' }, dAdm);
+    await subir(dbAdmin);
   });
   await paso('Pedro descarga el personal e inicia turno en su celular', async () => {
     await conNube(dbProm, () => sincronizarDatosRemotos(dbProm, sesion(pedro)));
@@ -983,7 +1003,7 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
   await paso('el seed de demo (sincronizar: false) NO encola, pero el respaldo lo encola una sola vez', async () => {
     const demo = await crearEmpresa(dbAdm, { nombre: 'Demo SA' }, dAdm, { sincronizar: false });
     const puntoDemo = await crearPunto(dbAdm, { empresaId: demo.id, nombre: 'Demo' }, dAdm, { sincronizar: false });
-    eventoDemo = await crearEvento(dbAdm, { empresaId: demo.id, puntoId: puntoDemo.id, fecha: hoy, promotorIds: [laura.id], creadoPor: adminK.id }, dAdm, { sincronizar: false });
+    eventoDemo = await crearEvento(dbAdm, { empresaId: demo.id, puntoId: puntoDemo.id, fecha: hoy, promotorIds: [laura.id], creadoPor: adminK.id, horaInicio: '17:00', horaFin: '19:00' }, dAdm, { sincronizar: false });
     assert.equal(await tareas('eventos'), 3);
     await encolarEventosSinSubir(dbAdm);
     await encolarEventosSinSubir(dbAdm);
@@ -1538,7 +1558,7 @@ console.log('\n== N. Meta del día del EQUIPO y ventas de los compañeros de eve
     }
   });
   await paso('Ana ve las ventas de todo el equipo, pero no las de Carla (otro punto)', async () => {
-    const equipo = await listarVentasEquipoHoy(dbAna, [ana.id, beto.id], calcularRangoDiaBogota(hoy));
+    const equipo = await listarVentasEquipoHoy(dbAna, evento.puntoId, calcularRangoDiaBogota(hoy));
     assert.deepEqual(equipo.map((v) => v.total).sort((a, b) => a - b), [200000, 300000]);
     assert.equal((await dbAna.getFirstAsync('SELECT count(*) n FROM ventas WHERE total = 999000')).n, 0);
   });
@@ -1562,6 +1582,142 @@ console.log('\n== N. Meta del día del EQUIPO y ventas de los compañeros de eve
     assert.deepEqual(deEquipo.promotorIds.slice().sort(), [ana.id, beto.id].sort());
     assert.deepEqual([deEquipo.totalVendidoHoy, deEquipo.progresoPct], [500000, 50]);
     assert.equal(filas.find((f) => f.promotorIds.includes(carla.id)).progresoPct, Math.round((999000 / 400000) * 100));
+  });
+}
+
+console.log('\n== O. Un evento a la vez: cruces de horario, mover, retirar (y sin evento no se vende) ==');
+{
+  const { crearEmpresa } = await imp('db/empresas.ts');
+  const { crearPunto } = await imp('db/puntos.ts');
+  const ev = await imp('db/eventos.ts');
+  const { crearPersona } = await imp('db/personal.ts');
+  const { iniciarTurno } = await imp('db/turnos.ts');
+  const { registrarVenta } = await imp('db/ventas.ts');
+  const { obtenerProgresoMetasDiarias } = await imp('db/metasDiarias.ts');
+  const { sincronizarDatosRemotos } = await imp('sync/bajada.ts');
+  const { fechaHoyBogota } = await imp('core/analitica/index.ts');
+  const { getDispositivoId: idDeEsteDispositivo } = await import(pathToFileURL(`${RAIZ}/scripts/prueba-db/stubs/dispositivo.mjs`).href);
+
+  const nube = crearFake();
+  const dbAdm = crearDb(), dbCarla = crearDb();
+  for (const d of [dbAdm, dbCarla]) await aplicar(d, migs);
+  const dAdm = await getDispositivoId(dbAdm);
+  await sembrarUsuariosDePrueba(dbAdm, dAdm);
+  const adminO = await dbAdm.getFirstAsync(`SELECT id FROM usuarios WHERE pin='000000'`);
+  nube.registrarAdmin(adminO.id, 'Admin (SQL Editor)', '000000');
+  establecerAdminDeSesion(adminO.id);
+  globalThis.__supabase = nube;
+  const conNube = (db, fn) => { globalThis.__db = db; globalThis.__supabase = nube; return fn(); };
+  const sesion = (p) => ({ id: p.id, nombre: p.nombre, rol: 'PROMOTOR' });
+  const hoy = fechaHoyBogota();
+  const aLas = (hhmm) => new Date(`${hoy}T${hhmm}:00-05:00`);
+  const cuantosEventos = async () => (await dbAdm.getFirstAsync('SELECT count(*) n FROM eventos')).n;
+  const vender = async (db, persona, monto) => {
+    const disp = await idDeEsteDispositivo(db);
+    if (!(await db.getFirstAsync('SELECT id FROM turnos WHERE promotor_id = ? AND hora_fin IS NULL', [persona.id]))) {
+      await iniciarTurno(db, { promotorId: persona.id, selfieUri: 'file:///s.jpg', latitud: 1, longitud: 1 }, disp);
+    }
+    const tl001 = await db.getFirstAsync(`SELECT id FROM productos WHERE sku = 'TL001'`);
+    return registrarVenta(db, { promotorId: persona.id, promotorNombre: persona.nombre, items: [{ productoId: tl001.id, productoNombre: 'TL001', cantidad: 1, precioUnitario: monto }], metodoPago: 'EFECTIVO' }, disp);
+  };
+
+  let ana, beto, carla, norte, centro, evF, evE, evC;
+  await paso('admin planea: Ana en Falabella de 8 a 12, Beto en Éxito de 14 a 18, Carla en Falabella Sur de 8 a 18', async () => {
+    ana = await crearPersona(dbAdm, { nombre: 'Ana Mora', rol: 'PROMOTOR', cedula: '2020202011' }, dAdm, adminO.id);
+    beto = await crearPersona(dbAdm, { nombre: 'Beto Lara', rol: 'PROMOTOR', cedula: '2020202022' }, dAdm, adminO.id);
+    carla = await crearPersona(dbAdm, { nombre: 'Carla Vélez', rol: 'PROMOTOR', cedula: '2020202033' }, dAdm, adminO.id);
+    const falabella = await crearEmpresa(dbAdm, { nombre: 'Falabella' }, dAdm);
+    const exito = await crearEmpresa(dbAdm, { nombre: 'Éxito' }, dAdm);
+    norte = await crearPunto(dbAdm, { empresaId: falabella.id, nombre: 'Norte' }, dAdm);
+    const sur = await crearPunto(dbAdm, { empresaId: falabella.id, nombre: 'Sur' }, dAdm);
+    centro = await crearPunto(dbAdm, { empresaId: exito.id, nombre: 'Centro' }, dAdm);
+    evF = await ev.crearEvento(dbAdm, { empresaId: falabella.id, puntoId: norte.id, fecha: hoy, promotorIds: [ana.id], creadoPor: adminO.id, horaInicio: '08:00', horaFin: '12:00' }, dAdm);
+    evE = await ev.crearEvento(dbAdm, { empresaId: exito.id, puntoId: centro.id, fecha: hoy, promotorIds: [beto.id], creadoPor: adminO.id, horaInicio: '14:00', horaFin: '18:00', metaDiaria: 1000000 }, dAdm);
+    evC = await ev.crearEvento(dbAdm, { empresaId: falabella.id, puntoId: sur.id, fecha: hoy, promotorIds: [carla.id], creadoPor: adminO.id, horaInicio: '08:00', horaFin: '18:00' }, dAdm);
+  });
+  await paso('Ana no puede quedar en otro evento que se cruce con su horario (crear, reasignar, asignar)', async () => {
+    const antes = await cuantosEventos();
+    await assert.rejects(
+      ev.crearEvento(dbAdm, { empresaId: evF.empresaId, puntoId: norte.id, fecha: hoy, promotorIds: [ana.id], creadoPor: adminO.id, horaInicio: '11:00', horaFin: '13:00' }, dAdm),
+      { name: 'PromotorOcupadoError' }
+    );
+    await assert.rejects(ev.reasignarEvento(dbAdm, { eventoId: evC.id, promotorIds: [carla.id, ana.id] }), { name: 'PromotorOcupadoError' });
+    await assert.rejects(ev.asignarPromotorAEvento(dbAdm, { eventoId: evC.id, promotorId: ana.id }, dAdm, adminO.id), { name: 'PromotorOcupadoError' });
+    assert.equal(await cuantosEventos(), antes);
+    assert.deepEqual((await ev.obtenerEvento(dbAdm, evC.id)).promotorIds, [carla.id]);
+  });
+  await paso('una serie que se cruza en alguna de sus fechas no crea ninguna', async () => {
+    const antes = await cuantosEventos();
+    const hasta = fechaHoyBogota(new Date(Date.now() + 2 * 24 * 3600 * 1000));
+    await assert.rejects(
+      ev.crearSerieRecurrente(dbAdm, { empresaId: evF.empresaId, puntoId: norte.id, promotorIds: [ana.id], frecuencia: 'DIAS', intervalo: 1, fechaDesde: hoy, fechaHasta: hasta, creadoPor: adminO.id, horaInicio: '09:00', horaFin: '10:00' }, dAdm),
+      { name: 'PromotorOcupadoError' }
+    );
+    assert.equal(await cuantosEventos(), antes);
+  });
+  await paso('sí puede estar en dos eventos el mismo día si no se cruzan: Ana también en Éxito de 14 a 18', async () => {
+    await ev.asignarPromotorAEvento(dbAdm, { eventoId: evE.id, promotorId: ana.id }, dAdm, adminO.id);
+    assert.deepEqual((await ev.obtenerEvento(dbAdm, evE.id)).promotorIds.slice().sort(), [ana.id, beto.id].sort());
+    // Correr Éxito a las 11 cruzaría el Falabella de Ana; a las 12 no (termina a las 12, empieza a las 12).
+    await assert.rejects(ev.actualizarHorarioEvento(dbAdm, { eventoId: evE.id, horaInicio: '11:00', horaFin: '18:00' }), { name: 'PromotorOcupadoError' });
+    await ev.actualizarHorarioEvento(dbAdm, { eventoId: evE.id, horaInicio: '12:00', horaFin: '18:00' });
+    await ev.actualizarHorarioEvento(dbAdm, { eventoId: evE.id, horaInicio: '14:00', horaFin: '18:00' });
+  });
+  await paso('lo que Ana venda queda en el evento de esa hora: Falabella en la mañana (y recogiendo a las 12:30), Éxito en la tarde', async () => {
+    const puntoA = async (hhmm) => (await ev.obtenerPuntoVigentePromotor(dbAdm, ana.id, aLas(hhmm)))?.puntoNombre;
+    assert.equal(await puntoA('07:30'), 'Norte');
+    assert.equal(await puntoA('10:00'), 'Norte');
+    assert.equal(await puntoA('12:30'), 'Norte');
+    assert.equal(await puntoA('14:00'), 'Centro');
+    assert.equal(await puntoA('19:00'), 'Centro');
+  });
+  await paso('el evento de Carla se cancela a última hora: sin evento no puede vender', async () => {
+    await ev.cancelarEvento(dbAdm, { eventoId: evC.id, motivo: 'La empresa canceló' }, dAdm, adminO.id);
+    await assert.rejects(vender(dbAdm, carla, 50000), { name: 'SinEventoHoyError' });
+    assert.equal((await dbAdm.getFirstAsync('SELECT count(*) n FROM ventas')).n, 0);
+  });
+  await paso('el admin la mueve al evento de Éxito (ya con Beto y Ana): vuelve a vender, y lo vendido queda en Éxito', async () => {
+    await ev.moverPromotorDeEvento(dbAdm, { promotorId: carla.id, desdeEventoId: evC.id, haciaEventoId: evE.id }, dAdm, adminO.id);
+    assert.ok((await ev.obtenerEvento(dbAdm, evE.id)).promotorIds.includes(carla.id));
+    assert.deepEqual((await ev.obtenerEvento(dbAdm, evC.id)).promotorIds, [carla.id], 'el evento cancelado conserva a quién tenía');
+    await vender(dbAdm, carla, 100000);
+    await vender(dbAdm, beto, 200000);
+    const puntos = await dbAdm.getAllAsync('SELECT DISTINCT punto_id FROM ventas');
+    assert.deepEqual(puntos.map((p) => p.punto_id), [centro.id]);
+  });
+  await paso('"Promotores del día": en qué evento está cada uno, y los horarios cruzados que vengan de antes se marcan', async () => {
+    const de = async (p) => (await ev.listarPromotoresDelDia(dbAdm, hoy)).find((f) => f.promotorId === p.id);
+    assert.deepEqual((await de(ana)).eventos.map((e) => e.puntoNombre), ['Norte', 'Centro']);
+    assert.equal((await de(ana)).horariosCruzados, false);
+    assert.deepEqual((await de(carla)).eventos.map((e) => e.id), [evE.id]);
+    // Un cruce de antes de la regla (o hecho desde dos dispositivos) no se bloquea: se marca para corregirlo.
+    const viejo = randomUUID();
+    await dbAdm.runAsync(
+      `INSERT INTO eventos (id, empresa_id, punto_id, fecha, estado, creado_por, ts_cliente, dispositivo_id, hora_inicio, hora_fin)
+       VALUES (?, ?, ?, ?, 'PLANEADO', ?, ?, ?, '13:00', '15:00')`,
+      [viejo, evF.empresaId, norte.id, hoy, adminO.id, new Date().toISOString(), dAdm]
+    );
+    await dbAdm.runAsync('INSERT INTO evento_promotores (evento_id, promotor_id) VALUES (?, ?)', [viejo, beto.id]);
+    assert.equal((await de(beto)).horariosCruzados, true);
+    await ev.retirarPromotorDeEvento(dbAdm, { eventoId: viejo, promotorId: beto.id, motivo: 'Cruce de horario' }, dAdm, adminO.id);
+    assert.equal((await de(beto)).horariosCruzados, false);
+  });
+  await paso('el celular de Carla recibe el cambio y vende; el admin la retira (con motivo) y deja de poder vender', async () => {
+    await conNube(dbAdm, () => drenarColaSync());
+    await conNube(dbCarla, () => sincronizarDatosRemotos(dbCarla, sesion(carla)));
+    await vender(dbCarla, carla, 30000);
+    await assert.rejects(ev.retirarPromotorDeEvento(dbAdm, { eventoId: evE.id, promotorId: carla.id, motivo: '  ' }, dAdm, adminO.id), /motivo/);
+    await ev.retirarPromotorDeEvento(dbAdm, { eventoId: evE.id, promotorId: carla.id, motivo: 'Se fue temprano' }, dAdm, adminO.id);
+    const bitacora = await dbAdm.getFirstAsync(`SELECT detalles FROM bitacora_auditoria WHERE entidad = 'EVENTO' AND detalles LIKE '%Se fue temprano%'`);
+    assert.match(bitacora?.detalles ?? '', /RETIRAR_PROMOTOR/);
+    await conNube(dbAdm, () => drenarColaSync());
+    await conNube(dbCarla, () => sincronizarDatosRemotos(dbCarla, sesion(carla)));
+    await assert.rejects(vender(dbCarla, carla, 30000), { name: 'SinEventoHoyError' });
+  });
+  await paso('la meta del equipo cuenta lo vendido EN EL PUNTO: lo de Carla sigue contando aunque ya no esté', async () => {
+    const p = (await obtenerProgresoMetasDiarias(dbAdm)).find((f) => f.eventoId === evE.id);
+    assert.ok(!p.promotorIds.includes(carla.id));
+    assert.deepEqual([p.totalVendidoHoy, p.progresoPct], [300000, 30]);
   });
 }
 

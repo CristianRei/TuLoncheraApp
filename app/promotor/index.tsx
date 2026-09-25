@@ -24,7 +24,7 @@ import { guardarFotoComprobante } from '@/db/fotos';
 import { obtenerSaldoProducto, listarInventarioPromotor, type ItemInventario } from '@/db/inventario';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
 import { obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
-import { registrarVenta, SinTurnoAbiertoError } from '@/db/ventas';
+import { registrarVenta, SinEventoHoyError, SinTurnoAbiertoError } from '@/db/ventas';
 import { CobrarModal } from '@/ui/CobrarModal';
 import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
 import { RADII_ADMIN } from '@/ui/tema';
@@ -89,10 +89,17 @@ export default function HomePromotor() {
     [recalcularPrecios]
   );
 
+  // Turno y evento juntos: sin evento de hoy no se vende (el admin lo retiró,
+  // canceló su evento o no le ha asignado uno), y no debe verse la grilla ni
+  // un instante antes de saberlo.
   const cargarTurno = useCallback(async (promotorId: string) => {
     const db = await getDb();
-    setTurno(await obtenerTurnoAbiertoHoy(db, promotorId));
-    setEventoHoy(await obtenerEventoDeHoyPromotor(db, promotorId));
+    const [turnoHoy, evento] = await Promise.all([
+      obtenerTurnoAbiertoHoy(db, promotorId),
+      obtenerEventoDeHoyPromotor(db, promotorId),
+    ]);
+    setEventoHoy(evento);
+    setTurno(turnoHoy);
   }, []);
 
   useFocusEffect(
@@ -125,6 +132,17 @@ export default function HomePromotor() {
     }, 60 * 1000);
     return () => clearInterval(intervalo);
   }, [usuario, inventario, recalcularPrecios, actualizarPreciosCarrito]);
+
+  // Con dos eventos el mismo día (Falabella de 8 a 12, Éxito de 14 a 18) el
+  // recuadro de arriba pasa solo al siguiente cuando empieza.
+  useEffect(() => {
+    if (!usuario) return;
+    const promotorId = usuario.id;
+    const intervalo = setInterval(async () => {
+      setEventoHoy(await obtenerEventoDeHoyPromotor(await getDb(), promotorId));
+    }, 60 * 1000);
+    return () => clearInterval(intervalo);
+  }, [usuario]);
 
   if (!usuario) return null;
   const usuarioActual = usuario;
@@ -278,12 +296,12 @@ export default function HomePromotor() {
           dispositivoId
         );
       } catch (error) {
-        if (error instanceof SinTurnoAbiertoError) {
+        if (error instanceof SinTurnoAbiertoError || error instanceof SinEventoHoyError) {
           setCobrarVisible(false);
           setTicketVisible(false);
           setEscanerVisible(false);
           await cargarTurno(usuarioActual.id);
-          Alert.alert('Turno finalizado', error.message);
+          Alert.alert(error instanceof SinEventoHoyError ? 'Sin evento hoy' : 'Turno finalizado', error.message);
           return;
         }
         throw error;
@@ -426,6 +444,29 @@ export default function HomePromotor() {
         </Pressable>
       </Modal>
 
+      {eventoHoy === null ? (
+        <View style={styles.centrado}>
+          <View style={styles.sinEvento}>
+            <View style={styles.sinEventoIcono}>
+              <Ionicons name="calendar-clear-outline" size={32} color={COLORES.oscuro} />
+            </View>
+            <Text style={styles.sinEventoTitulo}>No tienes un evento asignado hoy</Text>
+            <Text style={styles.vacio}>
+              Para vender necesitas estar en un evento. Pídele al administrador que te asigne uno: apenas lo haga,
+              esta pantalla se actualiza sola.
+            </Text>
+            <Pressable
+              style={styles.sinEventoBoton}
+              onPress={() => router.push('/promotor/calendario')}
+              accessibilityRole="button"
+            >
+              <Ionicons name="calendar-outline" size={18} color={COLORES.oscuro} />
+              <Text style={styles.sinEventoBotonTexto}>Ver mi calendario</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+      <>
       <View style={styles.barraAcciones}>
         <View style={styles.busqueda}>
           <SearchBar variante="promotor" valor={busqueda} onCambiar={setBusqueda} placeholder="Buscar producto..." />
@@ -500,6 +541,8 @@ export default function HomePromotor() {
           <Text style={styles.barraCobrarTexto}>Cobrar</Text>
           <Text style={styles.barraCobrarTotal}>{formatearPesos(carrito.total)}</Text>
         </Pressable>
+      )}
+      </>
       )}
 
       <TicketModal
@@ -774,6 +817,38 @@ const styles = StyleSheet.create({
   vacio: {
     ...TEXTO_PROMOTOR.cuerpoSecundario,
     textAlign: 'center',
+  },
+  sinEvento: {
+    alignItems: 'center',
+    gap: 12,
+    maxWidth: 340,
+  },
+  sinEventoIcono: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORES.primario,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sinEventoTitulo: {
+    ...TEXTO_PROMOTOR.tituloSeccion,
+    textAlign: 'center',
+  },
+  sinEventoBoton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: RADII_ADMIN.lg,
+    backgroundColor: COLORES.superficie,
+    borderWidth: 1,
+    borderColor: COLORES.borde,
+  },
+  sinEventoBotonTexto: {
+    ...TEXTO_PROMOTOR.boton,
   },
   grilla: {
     padding: 16,
