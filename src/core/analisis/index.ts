@@ -619,3 +619,185 @@ export function calcularMetodoPagoPorPromotor(lineas: LineaVentaConContexto[]): 
     }))
     .sort((a, b) => b.totalVentas - a.totalVentas);
 }
+
+/**
+ * Recomendaciones — la capa final de Análisis: las gráficas y tablas de
+ * arriba EXISTEN para justificar estas frases, nunca al revés. Cada
+ * recomendación nace de una señal que las funciones de este archivo ya
+ * calcularon (nunca un número nuevo inventado aquí) y apunta, vía
+ * `seccion`, a la parte de la pantalla que la respalda — para que la UI
+ * pueda saltar directo a la gráfica correspondiente.
+ */
+export type PrioridadRecomendacion = 'ALTA' | 'MEDIA' | 'BAJA';
+
+export type SeccionAnalisis =
+  | 'REPETIBILIDAD'
+  | 'RENDIMIENTO'
+  | 'DISPERSION'
+  | 'METODO_PAGO'
+  | 'HALLAZGOS';
+
+export interface Recomendacion {
+  id: string;
+  prioridad: PrioridadRecomendacion;
+  seccion: SeccionAnalisis;
+  titulo: string;
+  detalle: string;
+}
+
+/** A partir de qué |desviación %| una recomendación de mix de promotor se considera prioridad ALTA en vez de MEDIA. */
+const UMBRAL_DESVIACION_ALTA_PCT = 50;
+/** A partir de qué |desviación %| un hallazgo cruzado se considera prioridad ALTA. */
+const UMBRAL_HALLAZGO_ALTA_PCT = 60;
+/** Máximo de recomendaciones por categoría, para no saturar la pantalla con la cola larga de señales débiles. */
+const TOPE_POR_CATEGORIA = 5;
+/** Un método de pago por encima de este % en un punto se considera "dominante" y amerita una nota operativa. */
+const UMBRAL_METODO_DOMINANTE_PCT = 80;
+/** Mínimo de ventas para que valga la pena reportar el método de pago dominante de un punto (evita ruido con 1-2 ventas). */
+const MINIMO_VENTAS_METODO_DOMINANTE = 5;
+
+/**
+ * Producto con tendencia de repetición SUBIENDO en un punto → sugiere llevar
+ * más. BAJANDO mientras sigue en el top → sugiere reconsiderar cuánto llevar
+ * (nunca "dejar de llevar": con datos insuficientes para eso, ver
+ * `datosInsuficientes` de `RepetibilidadPunto`).
+ */
+function recomendacionesRepetibilidad(porPunto: RepetibilidadPunto[]): Recomendacion[] {
+  const candidatas: Recomendacion[] = [];
+
+  for (const punto of porPunto) {
+    if (punto.datosInsuficientes) continue;
+
+    for (const producto of punto.productos) {
+      if (producto.tendencia === 'SUBIENDO' && producto.tasaRepeticion >= 0.5) {
+        candidatas.push({
+          id: `repetibilidad-sube-${punto.puntoId}-${producto.productoId}`,
+          prioridad: producto.tasaRepeticion === 1 ? 'ALTA' : 'MEDIA',
+          seccion: 'REPETIBILIDAD',
+          titulo: `Llevar más ${producto.productoNombre} a ${punto.puntoNombre}`,
+          detalle: `Viene en el top de ventas ${producto.vecesEnTopN} de ${producto.apariciones} eventos, con tendencia al alza.`,
+        });
+      } else if (producto.tendencia === 'BAJANDO' && producto.tasaRepeticion >= 0.5) {
+        candidatas.push({
+          id: `repetibilidad-baja-${punto.puntoId}-${producto.productoId}`,
+          prioridad: 'BAJA',
+          seccion: 'REPETIBILIDAD',
+          titulo: `Reconsiderar cuánto ${producto.productoNombre} llevar a ${punto.puntoNombre}`,
+          detalle: `Sigue en el top de ventas (${producto.vecesEnTopN} de ${producto.apariciones} eventos), pero la tendencia va a la baja.`,
+        });
+      }
+    }
+  }
+
+  return candidatas;
+}
+
+/**
+ * Promotor que vende un producto muy por encima del resto → aprovechar ese
+ * mix en vez de tratarlo igual que a los demás (ej. priorizarlo en la
+ * recarga de ese producto, o replicar su enfoque con otros promotores).
+ */
+function recomendacionesRendimiento(porPromotor: RendimientoPromotor[]): Recomendacion[] {
+  const candidatas: Recomendacion[] = [];
+
+  for (const promotor of porPromotor) {
+    for (const desviacion of promotor.mixDestacado) {
+      if (desviacion.desviacionPct <= 0) continue; // solo "vende más" es accionable como recomendación positiva
+      candidatas.push({
+        id: `rendimiento-${promotor.promotorId}-${desviacion.productoId}`,
+        prioridad: desviacion.desviacionPct >= UMBRAL_DESVIACION_ALTA_PCT ? 'ALTA' : 'MEDIA',
+        seccion: 'RENDIMIENTO',
+        titulo: `Aprovechar que ${promotor.promotorNombre} vende bien ${desviacion.productoNombre}`,
+        detalle: `Vende ${desviacion.desviacionPct}% más que el resto de promotores en este producto — priorizarlo en su próxima recarga.`,
+      });
+    }
+  }
+
+  return candidatas;
+}
+
+/** Combinación punto+promotor+producto con desviación fuerte → señal muy específica de dónde reforzar el cargue. */
+function recomendacionesHallazgos(hallazgos: HallazgoCruzado[]): Recomendacion[] {
+  return hallazgos
+    .filter((h) => h.desviacionPct > 0)
+    .map((h) => ({
+      id: `hallazgo-${h.puntoId}-${h.promotorId}-${h.productoId}`,
+      prioridad: (h.desviacionPct >= UMBRAL_HALLAZGO_ALTA_PCT ? 'ALTA' : 'MEDIA') as PrioridadRecomendacion,
+      seccion: 'HALLAZGOS' as const,
+      titulo: `Reforzar ${h.productoNombre} para ${h.promotorNombre} en ${h.puntoNombre}`,
+      detalle: `${h.desviacionPct}% más que el resto de promotores en ese mismo punto (${h.aparicionesEnPunto} eventos).`,
+    }));
+}
+
+/** Correlación fuerte entre eventos trabajados y ticket promedio → sugiere dónde enfocar la programación de turnos. */
+function recomendacionesDispersion(dispersion: DispersionPromotores): Recomendacion[] {
+  if (dispersion.correlacion === null) return [];
+  if (interpretarFuerzaPearson(dispersion.correlacion) !== 'fuerte') return [];
+
+  const positiva = dispersion.correlacion > 0;
+  return [
+    {
+      id: 'dispersion-correlacion',
+      prioridad: 'MEDIA',
+      seccion: 'DISPERSION',
+      titulo: positiva
+        ? 'Priorizar más eventos para los promotores de mejor ticket'
+        : 'Revisar la carga de eventos de los promotores con mejor ticket',
+      detalle: `Correlación ${positiva ? 'positiva' : 'negativa'} fuerte (r = ${dispersion.correlacion.toFixed(2)}) entre eventos trabajados y ticket promedio.`,
+    },
+  ];
+}
+
+/** Punto con un método de pago muy dominante → nota operativa (ej. asegurar cambio en efectivo, o promover otro medio). */
+function recomendacionesMetodoPago(metodoPorPunto: EntidadMetodoPago[]): Recomendacion[] {
+  const candidatas: Recomendacion[] = [];
+
+  for (const punto of metodoPorPunto) {
+    if (punto.totalVentas < MINIMO_VENTAS_METODO_DOMINANTE) continue;
+    const dominante = punto.porMetodo.find((m) => m.pct >= UMBRAL_METODO_DOMINANTE_PCT);
+    if (!dominante || dominante.metodoPago !== 'EFECTIVO') continue;
+
+    candidatas.push({
+      id: `metodo-pago-${punto.id}`,
+      prioridad: 'BAJA',
+      seccion: 'METODO_PAGO',
+      titulo: `Reforzar el manejo de efectivo en ${punto.nombre}`,
+      detalle: `${dominante.pct}% de las ventas de este punto son en efectivo — asegurar cambio suficiente y el arqueo de caja al cierre.`,
+    });
+  }
+
+  return candidatas;
+}
+
+/**
+ * Junta y prioriza todas las recomendaciones — ALTA primero, y hasta
+ * `TOPE_POR_CATEGORIA` por sección para que la lista no se llene de la cola
+ * larga de señales débiles y quede ilegible. Nunca oculta en silencio: si
+ * hay más candidatas que el tope, el llamador puede usar `total` (antes de
+ * cortar) para avisarlo.
+ */
+export function generarRecomendaciones(datos: {
+  porPunto: RepetibilidadPunto[];
+  porPromotor: RendimientoPromotor[];
+  hallazgos: HallazgoCruzado[];
+  dispersion: DispersionPromotores;
+  metodoPorPunto: EntidadMetodoPago[];
+}): Recomendacion[] {
+  const ORDEN_PRIORIDAD: Record<PrioridadRecomendacion, number> = { ALTA: 0, MEDIA: 1, BAJA: 2 };
+
+  const porCategoria: Recomendacion[][] = [
+    recomendacionesRepetibilidad(datos.porPunto),
+    recomendacionesRendimiento(datos.porPromotor),
+    recomendacionesHallazgos(datos.hallazgos),
+    recomendacionesDispersion(datos.dispersion),
+    recomendacionesMetodoPago(datos.metodoPorPunto),
+  ];
+
+  const recortadas = porCategoria.flatMap((categoria) =>
+    [...categoria]
+      .sort((a, b) => ORDEN_PRIORIDAD[a.prioridad] - ORDEN_PRIORIDAD[b.prioridad])
+      .slice(0, TOPE_POR_CATEGORIA)
+  );
+
+  return recortadas.sort((a, b) => ORDEN_PRIORIDAD[a.prioridad] - ORDEN_PRIORIDAD[b.prioridad]);
+}

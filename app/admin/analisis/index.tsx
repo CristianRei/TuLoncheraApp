@@ -5,14 +5,18 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  generarRecomendaciones,
   interpretarFuerzaPearson,
   NOMBRES_DIA_ISO,
   type DispersionPromotores,
   type EntidadMetodoPago,
   type HallazgoCruzado,
   type MapaCalorPuntoProducto,
+  type PrioridadRecomendacion,
+  type Recomendacion,
   type RendimientoPromotor,
   type RepetibilidadPunto,
+  type SeccionAnalisis,
   type Tendencia,
   type VentaPorDiaSemana,
   type VentaPorTemporada,
@@ -319,6 +323,72 @@ function BloqueTemporadas({ temporadas }: { temporadas: VentaPorTemporada[] }) {
   );
 }
 
+const ETIQUETA_PRIORIDAD: Record<PrioridadRecomendacion, string> = {
+  ALTA: 'Prioridad alta',
+  MEDIA: 'Prioridad media',
+  BAJA: 'Nota operativa',
+};
+
+const COLOR_PRIORIDAD: Record<PrioridadRecomendacion, string> = {
+  ALTA: COLORES_ADMIN.vino,
+  MEDIA: COLORES_ADMIN.dorado,
+  BAJA: COLORES_ADMIN.textoSecundario,
+};
+
+const ICONO_SECCION: Record<SeccionAnalisis, keyof typeof Ionicons.glyphMap> = {
+  REPETIBILIDAD: 'repeat-outline',
+  RENDIMIENTO: 'person-outline',
+  DISPERSION: 'analytics-outline',
+  METODO_PAGO: 'cash-outline',
+  HALLAZGOS: 'git-network-outline',
+};
+
+/** Nombre visible de la sección de gráficas que respalda cada recomendación. */
+const NOMBRE_SECCION: Record<SeccionAnalisis, string> = {
+  REPETIBILIDAD: 'Qué se repite por punto',
+  RENDIMIENTO: 'Rendimiento por promotor',
+  DISPERSION: 'Relación entre variables',
+  METODO_PAGO: 'Método de pago',
+  HALLAZGOS: 'Hallazgos cruzados',
+};
+
+function TarjetaRecomendacion({
+  recomendacion,
+  onVerGrafica,
+}: {
+  recomendacion: Recomendacion;
+  onVerGrafica: () => void;
+}) {
+  return (
+    <View style={styles.tarjetaRecomendacion}>
+      <View style={styles.recomendacionEncabezado}>
+        <View style={[styles.recomendacionIcono, { borderColor: COLOR_PRIORIDAD[recomendacion.prioridad] }]}>
+          <Ionicons
+            name={ICONO_SECCION[recomendacion.seccion]}
+            size={17}
+            color={COLOR_PRIORIDAD[recomendacion.prioridad]}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.recomendacionTitulo}>{recomendacion.titulo}</Text>
+          <Text style={styles.recomendacionDetalle}>{recomendacion.detalle}</Text>
+        </View>
+        <View style={[styles.badgePrioridad, { borderColor: COLOR_PRIORIDAD[recomendacion.prioridad] }]}>
+          <Text style={[styles.badgePrioridadTexto, { color: COLOR_PRIORIDAD[recomendacion.prioridad] }]}>
+            {ETIQUETA_PRIORIDAD[recomendacion.prioridad]}
+          </Text>
+        </View>
+      </View>
+      <Pressable style={styles.verGraficaBoton} onPress={onVerGrafica}>
+        <Ionicons name="bar-chart-outline" size={14} color={COLORES_ADMIN.vino} />
+        <Text style={styles.verGraficaTexto}>
+          Sale de &ldquo;{NOMBRE_SECCION[recomendacion.seccion]}&rdquo; · Ver gráficas
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function TarjetaHallazgo({ hallazgo }: { hallazgo: HallazgoCruzado }) {
   const positivo = hallazgo.desviacionPct > 0;
   return (
@@ -363,8 +433,15 @@ export default function Analisis() {
   const [porTemporada, setPorTemporada] = useState<VentaPorTemporada[]>([]);
   const [metodoPorPunto, setMetodoPorPunto] = useState<EntidadMetodoPago[]>([]);
   const [metodoPorPromotor, setMetodoPorPromotor] = useState<EntidadMetodoPago[]>([]);
+  const [vista, setVista] = useState<'RECOMENDACIONES' | 'GRAFICAS'>('RECOMENDACIONES');
 
   const rango = useMemo(() => calcularRango(periodo), [periodo]);
+
+  const recomendaciones = useMemo(
+    () => generarRecomendaciones({ porPunto, porPromotor, hallazgos, dispersion, metodoPorPunto }),
+    [porPunto, porPromotor, hallazgos, dispersion, metodoPorPunto]
+  );
+
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -448,9 +525,54 @@ export default function Analisis() {
               ))}
             </View>
 
+            <View style={styles.tabsVista}>
+              {(
+                [
+                  ['RECOMENDACIONES', 'Recomendaciones'],
+                  ['GRAFICAS', 'Gráficas'],
+                ] as const
+              ).map(([valor, etiqueta]) => (
+                <Pressable
+                  key={valor}
+                  style={[styles.tabVista, vista === valor && styles.tabVistaActivo]}
+                  onPress={() => setVista(valor)}
+                >
+                  <Text style={[styles.tabVistaTexto, vista === valor && styles.tabVistaTextoActivo]}>
+                    {etiqueta}
+                    {valor === 'RECOMENDACIONES' && recomendaciones.length > 0 ? ` (${recomendaciones.length})` : ''}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
             {cargando ? (
               <View style={styles.centrado}>
                 <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
+              </View>
+            ) : vista === 'RECOMENDACIONES' ? (
+              <View style={styles.cuerpo}>
+                <Text style={styles.seccionTitulo}>Qué hacer con estos datos</Text>
+                <Text style={styles.seccionSubtitulo}>
+                  Patrones detectados en el período seleccionado, traducidos a acciones concretas. Cada una sale
+                  de una señal medida: debajo de cada recomendación está la sección de Gráficas que la respalda.
+                </Text>
+                {recomendaciones.length === 0 ? (
+                  <View style={styles.tarjeta}>
+                    <Text style={styles.textoAviso}>
+                      Todavía no hay señales lo bastante claras para recomendar algo en este período. Hacen falta
+                      al menos 3 eventos por punto para detectar qué se repite — prueba con &ldquo;Todo el
+                      historial&rdquo;, o revisa las gráficas para ver el detalle crudo.
+                    </Text>
+                  </View>
+                ) : (
+                  recomendaciones.map((recomendacion) => (
+                    <TarjetaRecomendacion
+                      key={recomendacion.id}
+                      recomendacion={recomendacion}
+                      onVerGrafica={() => setVista('GRAFICAS')}
+                    />
+                  ))
+                )}
               </View>
             ) : (
               <View style={styles.cuerpo}>
@@ -511,9 +633,7 @@ export default function Analisis() {
                   </View>
                 )}
 
-                <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>
-                  Método de pago por lugar y por promotor
-                </Text>
+                <Text style={[styles.seccionTitulo, styles.seccionEspaciada]}>Método de pago por lugar y por promotor</Text>
                 <Text style={styles.seccionSubtitulo}>
                   Qué % de las ventas de cada punto o promotor usa efectivo, transferencia o libranza.
                 </Text>
@@ -657,9 +777,94 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
+  tabsVista: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  tabVista: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+  },
+  tabVistaActivo: {
+    backgroundColor: COLORES_ADMIN.vino,
+    borderColor: COLORES_ADMIN.vino,
+  },
+  tabVistaTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  tabVistaTextoActivo: {
+    color: '#FFFFFF',
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
   cuerpo: {
     paddingHorizontal: 20,
     gap: 10,
+  },
+  tarjetaRecomendacion: {
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    padding: 16,
+    gap: 12,
+  },
+  recomendacionEncabezado: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  recomendacionIcono: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+  },
+  recomendacionTitulo: {
+    fontSize: 14.5,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.texto,
+  },
+  recomendacionDetalle: {
+    fontSize: 12.5,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+    marginTop: 3,
+    lineHeight: 18,
+  },
+  badgePrioridad: {
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  badgePrioridadTexto: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  verGraficaBoton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+  },
+  verGraficaTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.vino,
+    textDecorationLine: 'underline',
   },
   seccionTitulo: {
     fontSize: 15,

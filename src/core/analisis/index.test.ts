@@ -12,8 +12,14 @@ import {
   calcularRepetibilidadPorPunto,
   calcularVentasPorDiaSemana,
   calcularVentasPorTemporada,
+  generarRecomendaciones,
   interpretarFuerzaPearson,
+  type DispersionPromotores,
+  type EntidadMetodoPago,
+  type HallazgoCruzado,
   type LineaVentaConContexto,
+  type RendimientoPromotor,
+  type RepetibilidadPunto,
 } from './index.ts';
 
 const PUNTO_NORTE = 'punto-norte';
@@ -393,4 +399,167 @@ test('propiedad: calcularMetodoPagoPorPunto no depende del orden de las líneas 
       [...original].sort((a, b) => a.id.localeCompare(b.id))
     );
   }
+});
+
+const SIN_DATOS: Parameters<typeof generarRecomendaciones>[0] = {
+  porPunto: [],
+  porPromotor: [],
+  hallazgos: [],
+  dispersion: { puntos: [], correlacion: null },
+  metodoPorPunto: [],
+};
+
+function punto(parcial: Partial<RepetibilidadPunto>): RepetibilidadPunto {
+  return {
+    puntoId: PUNTO_NORTE,
+    puntoNombre: 'Norte',
+    totalApariciones: 5,
+    datosInsuficientes: false,
+    productos: [],
+    ...parcial,
+  };
+}
+
+test('generarRecomendaciones: sin datos no inventa ninguna recomendación', () => {
+  assert.deepEqual(generarRecomendaciones(SIN_DATOS), []);
+});
+
+test('generarRecomendaciones: un producto con tendencia al alza sugiere llevar más a ese punto', () => {
+  const recomendaciones = generarRecomendaciones({
+    ...SIN_DATOS,
+    porPunto: [
+      punto({
+        productos: [
+          {
+            productoId: PRODUCTO_X,
+            productoNombre: 'Bombombun',
+            apariciones: 4,
+            vecesEnTopN: 4,
+            tasaRepeticion: 1,
+            tendencia: 'SUBIENDO',
+            tasaAcumuladaPorAparicion: [1, 1, 1, 1],
+          },
+        ],
+      }),
+    ],
+  });
+
+  assert.equal(recomendaciones.length, 1);
+  assert.equal(recomendaciones[0].seccion, 'REPETIBILIDAD');
+  assert.equal(recomendaciones[0].prioridad, 'ALTA');
+  assert.match(recomendaciones[0].titulo, /Llevar más Bombombun a Norte/);
+});
+
+test('generarRecomendaciones: un punto con historial corto nunca genera recomendaciones', () => {
+  const recomendaciones = generarRecomendaciones({
+    ...SIN_DATOS,
+    porPunto: [
+      punto({
+        datosInsuficientes: true,
+        totalApariciones: 2,
+        productos: [
+          {
+            productoId: PRODUCTO_X,
+            productoNombre: 'Bombombun',
+            apariciones: 2,
+            vecesEnTopN: 2,
+            tasaRepeticion: 1,
+            tendencia: 'SUBIENDO',
+            tasaAcumuladaPorAparicion: [1, 1],
+          },
+        ],
+      }),
+    ],
+  });
+
+  assert.deepEqual(recomendaciones, []);
+});
+
+test('generarRecomendaciones: solo la desviación POSITIVA de un promotor es accionable', () => {
+  const promotores: RendimientoPromotor[] = [
+    {
+      promotorId: PROMOTOR_A,
+      promotorNombre: 'Ana',
+      eventosTrabajados: 5,
+      totalVendido: 100000,
+      ticketPromedioPorEvento: 20000,
+      mixDestacado: [
+        {
+          productoId: PRODUCTO_X,
+          productoNombre: 'Bombombun',
+          unidadesPromotorPorEvento: 30,
+          unidadesPromedioGeneralPorEvento: 10,
+          desviacionPct: 200,
+        },
+        {
+          productoId: PRODUCTO_Y,
+          productoNombre: 'Galleta',
+          unidadesPromotorPorEvento: 2,
+          unidadesPromedioGeneralPorEvento: 10,
+          desviacionPct: -80,
+        },
+      ],
+    },
+  ];
+
+  const recomendaciones = generarRecomendaciones({ ...SIN_DATOS, porPromotor: promotores });
+
+  assert.equal(recomendaciones.length, 1);
+  assert.equal(recomendaciones[0].prioridad, 'ALTA');
+  assert.match(recomendaciones[0].titulo, /Ana vende bien Bombombun/);
+});
+
+test('generarRecomendaciones: una correlación débil no genera recomendación de dispersión', () => {
+  const debil: DispersionPromotores = {
+    puntos: [],
+    correlacion: 0.1,
+  };
+  assert.deepEqual(generarRecomendaciones({ ...SIN_DATOS, dispersion: debil }), []);
+});
+
+test('generarRecomendaciones: una correlación fuerte sí genera recomendación de dispersión', () => {
+  const fuerte: DispersionPromotores = { puntos: [], correlacion: 0.8 };
+  const recomendaciones = generarRecomendaciones({ ...SIN_DATOS, dispersion: fuerte });
+
+  assert.equal(recomendaciones.length, 1);
+  assert.equal(recomendaciones[0].seccion, 'DISPERSION');
+  assert.match(recomendaciones[0].detalle, /r = 0\.80/);
+});
+
+test('generarRecomendaciones: método de pago dominante en efectivo genera nota operativa, con muestra suficiente', () => {
+  const conPocasVentas: EntidadMetodoPago[] = [
+    { id: PUNTO_NORTE, nombre: 'Norte', totalVentas: 2, porMetodo: [{ metodoPago: 'EFECTIVO', cantidad: 2, pct: 100 }] },
+  ];
+  assert.deepEqual(generarRecomendaciones({ ...SIN_DATOS, metodoPorPunto: conPocasVentas }), []);
+
+  const conMuestra: EntidadMetodoPago[] = [
+    { id: PUNTO_NORTE, nombre: 'Norte', totalVentas: 20, porMetodo: [{ metodoPago: 'EFECTIVO', cantidad: 18, pct: 90 }] },
+  ];
+  const recomendaciones = generarRecomendaciones({ ...SIN_DATOS, metodoPorPunto: conMuestra });
+  assert.equal(recomendaciones.length, 1);
+  assert.equal(recomendaciones[0].seccion, 'METODO_PAGO');
+});
+
+test('generarRecomendaciones: las de prioridad ALTA van primero', () => {
+  const hallazgos: HallazgoCruzado[] = [
+    {
+      puntoId: PUNTO_NORTE,
+      puntoNombre: 'Norte',
+      promotorId: PROMOTOR_A,
+      promotorNombre: 'Ana',
+      productoId: PRODUCTO_X,
+      productoNombre: 'Bombombun',
+      aparicionesEnPunto: 4,
+      desviacionPct: 120,
+    },
+  ];
+  const metodoPorPunto: EntidadMetodoPago[] = [
+    { id: PUNTO_SUR, nombre: 'Sur', totalVentas: 20, porMetodo: [{ metodoPago: 'EFECTIVO', cantidad: 18, pct: 90 }] },
+  ];
+
+  const recomendaciones = generarRecomendaciones({ ...SIN_DATOS, hallazgos, metodoPorPunto });
+
+  assert.equal(recomendaciones.length, 2);
+  assert.equal(recomendaciones[0].prioridad, 'ALTA');
+  assert.equal(recomendaciones[1].prioridad, 'BAJA');
 });
