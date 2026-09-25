@@ -14,8 +14,10 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
 import { ListRow } from '@/ui/ListRow';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { SelectorModal } from '@/ui/SelectorModal';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -40,47 +42,6 @@ function fusionarTurnos(locales: Turno[], remotos: Turno[]): Turno[] {
   const porId = new Map(remotos.map((t) => [t.id, t]));
   for (const local of locales) porId.set(local.id, local);
   return [...porId.values()].sort((a, b) => b.horaInicio.localeCompare(a.horaInicio));
-}
-
-/** Modal de selección simple (lista de opciones + "Quitar filtro") — mismo patrón que app/admin/auditoria/index.tsx. */
-function SelectorModal({
-  visible,
-  titulo,
-  opciones,
-  onElegir,
-  onCerrar,
-}: {
-  visible: boolean;
-  titulo: string;
-  opciones: { id: string; etiqueta: string }[];
-  onElegir: (id: string | null) => void;
-  onCerrar: () => void;
-}) {
-  return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onCerrar}>
-      <View style={styles.fondoModal}>
-        <View style={styles.tarjetaModal}>
-          <Text style={styles.modalTitulo}>{titulo}</Text>
-          <Pressable style={styles.opcionQuitar} onPress={() => onElegir(null)}>
-            <Text style={styles.opcionQuitarTexto}>Quitar filtro</Text>
-          </Pressable>
-          <FlatList
-            data={opciones}
-            keyExtractor={(o) => o.id}
-            style={styles.modalLista}
-            renderItem={({ item }) => (
-              <Pressable style={styles.opcion} onPress={() => onElegir(item.id)}>
-                <Text style={styles.opcionTexto}>{item.etiqueta}</Text>
-              </Pressable>
-            )}
-          />
-          <Pressable onPress={onCerrar}>
-            <Text style={styles.modalCancelar}>Cerrar</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
 }
 
 export default function Turnos() {
@@ -195,45 +156,23 @@ export default function Turnos() {
         </View>
       )}
 
-      <ContenedorAncho anchoMaximo={720} llenarAlto>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
         <View style={styles.panelFiltros}>
-          <View style={styles.periodoSegmentado}>
-            {OPCIONES_PERIODO.map((op) => {
-              const activo = periodo === op.valor;
-              return (
-                <Pressable
-                  key={op.valor}
-                  style={[styles.periodoBoton, activo && styles.periodoBotonActivo]}
-                  onPress={() => setPeriodo(op.valor)}
-                >
-                  <Text style={[styles.periodoBotonTexto, activo && styles.periodoBotonTextoActivo]}>
-                    {op.etiqueta}
-                  </Text>
-                </Pressable>
-              );
-            })}
-            <Pressable
-              style={[styles.periodoBoton, periodo === 'PERSONALIZADO' && styles.periodoBotonActivo]}
-              onPress={() => {
-                setPeriodo('PERSONALIZADO');
-                setCalendarioVisible(true);
-              }}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={13}
-                color={periodo === 'PERSONALIZADO' ? '#FFFFFF' : COLORES_ADMIN.textoSecundario}
-              />
-              <Text
-                style={[
-                  styles.periodoBotonTexto,
-                  periodo === 'PERSONALIZADO' && styles.periodoBotonTextoActivo,
-                ]}
-              >
-                {periodo === 'PERSONALIZADO' ? etiquetaPeriodo : 'Personalizado'}
-              </Text>
-            </Pressable>
-          </View>
+          <FiltroSegmentado
+            opciones={[
+              ...OPCIONES_PERIODO,
+              {
+                valor: 'PERSONALIZADO' as const,
+                etiqueta: periodo === 'PERSONALIZADO' ? etiquetaPeriodo : 'Personalizado',
+                icono: 'calendar-outline' as const,
+              },
+            ]}
+            valorActivo={periodo}
+            onCambiar={(valor) => {
+              setPeriodo(valor);
+              if (valor === 'PERSONALIZADO') setCalendarioVisible(true);
+            }}
+          />
 
           <FilterTabs opciones={OPCIONES_ESTADO} valorActivo={filtroEstado} onCambiar={setFiltroEstado} />
 
@@ -251,7 +190,7 @@ export default function Turnos() {
 
         {promotoresConVariosEnCurso > 0 && (
           <View style={styles.avisoDuplicado}>
-            <Ionicons name="warning-outline" size={16} color="#976200" />
+            <Ionicons name="warning-outline" size={16} color={ESTADO_ADMIN.alerta.texto} />
             <Text style={styles.avisoDuplicadoTexto}>
               {promotoresConVariosEnCurso === 1
                 ? '1 promotor tiene más de un turno en curso a la vez.'
@@ -337,47 +276,10 @@ const styles = StyleSheet.create({
     paddingTop: ESPACIADO_ADMIN.md,
     paddingBottom: ESPACIADO_ADMIN.sm,
   },
-  periodoSegmentado: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    padding: 3,
-    borderRadius: RADII_ADMIN.sm,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    alignSelf: 'flex-start',
-  },
-  periodoBoton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: ESPACIADO_ADMIN.md,
-    paddingVertical: ESPACIADO_ADMIN.xs + 2,
-    borderRadius: RADII_ADMIN.sm - 2,
-  },
-  periodoBotonActivo: {
-    backgroundColor: COLORES_ADMIN.vino,
-  },
-  periodoBotonTexto: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
-  },
-  periodoBotonTextoActivo: {
-    color: '#FFFFFF',
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-  },
   dropdown: {
     gap: 2,
   },
-  dropdownEtiqueta: {
-    fontSize: 10,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
+  dropdownEtiqueta: TEXTO_ADMIN.etiqueta,
   dropdownValor: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -392,18 +294,17 @@ const styles = StyleSheet.create({
     minWidth: 180,
   },
   dropdownValorTexto: {
+    ...TEXTO_ADMIN.cuerpoSecundario,
     flex: 1,
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.texto,
   },
   avisoDuplicado: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO_ADMIN.sm,
-    backgroundColor: '#FEF6E7',
+    backgroundColor: ESTADO_ADMIN.alerta.fondo,
     borderWidth: 1,
-    borderColor: '#FBDCA3',
+    borderColor: ESTADO_ADMIN.alerta.borde,
     borderRadius: RADII_ADMIN.sm,
     marginHorizontal: ESPACIADO_ADMIN.xl,
     marginBottom: ESPACIADO_ADMIN.sm,
@@ -411,10 +312,9 @@ const styles = StyleSheet.create({
     paddingVertical: ESPACIADO_ADMIN.sm,
   },
   avisoDuplicadoTexto: {
+    ...TEXTO_ADMIN.cuerpoSecundario,
     flex: 1,
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: '#976200',
+    color: ESTADO_ADMIN.alerta.texto,
   },
   centrado: {
     flex: 1,
@@ -447,34 +347,10 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
     color: COLORES_ADMIN.texto,
   },
-  modalLista: {
-    flexGrow: 0,
-  },
-  modalCancelar: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
-    textAlign: 'center',
-  },
-  opcion: {
-    paddingVertical: ESPACIADO_ADMIN.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES_ADMIN.bordeSuave,
-  },
-  opcionTexto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
-  },
   opcionQuitar: {
     paddingVertical: ESPACIADO_ADMIN.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORES_ADMIN.bordeSuave,
-  },
-  opcionQuitarTexto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.error,
   },
   botonAplicar: {
     backgroundColor: COLORES_ADMIN.vino,

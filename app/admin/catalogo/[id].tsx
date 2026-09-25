@@ -15,7 +15,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FormularioProducto, type ValoresProducto } from '@/ui/FormularioProducto';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function EditarProducto() {
@@ -64,7 +64,7 @@ export default function EditarProducto() {
 
   return (
     <View style={styles.contenedor}>
-      <Encabezado titulo="Editar producto" rutaVolverTexto="Catálogo" anchoMaximo={640} />
+      <Encabezado titulo="Editar producto" rutaVolverTexto="Catálogo" anchoMaximo={ANCHO_ADMIN.formulario} />
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -73,7 +73,7 @@ export default function EditarProducto() {
       ) : !producto ? (
         <EmptyState mensaje="Este producto ya no existe." />
       ) : (
-        <ContenedorAncho anchoMaximo={640} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario} llenarAlto>
           <FormularioProducto
             valorInicial={{
               nombre: producto.nombre,

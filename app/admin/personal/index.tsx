@@ -11,7 +11,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { ListRow } from '@/ui/ListRow';
 import { SearchBar } from '@/ui/SearchBar';
-import { COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'ACTIVOS' | 'INACTIVOS';
@@ -82,7 +82,7 @@ export default function Personal() {
         accion={{ icono: 'add', onPress: () => router.push('/admin/personal/nuevo') }}
       />
 
-      <ContenedorAncho anchoMaximo={720}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
           <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Buscar por nombre o cédula..." />
           <FilterTabs opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
@@ -106,7 +106,7 @@ export default function Personal() {
           }
         />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             data={filtrados}
             keyExtractor={(p) => p.id}

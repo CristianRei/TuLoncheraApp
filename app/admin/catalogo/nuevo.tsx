@@ -10,7 +10,7 @@ import { crearProducto } from '@/db/productos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { FormularioProducto, type ValoresProducto } from '@/ui/FormularioProducto';
-import { COLORES_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function NuevoProducto() {
@@ -38,8 +38,8 @@ export default function NuevoProducto() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORES_ADMIN.background }}>
-      <Encabezado titulo="Nuevo producto" rutaVolverTexto="Catálogo" anchoMaximo={640} />
-      <ContenedorAncho anchoMaximo={640} llenarAlto>
+      <Encabezado titulo="Nuevo producto" rutaVolverTexto="Catálogo" anchoMaximo={ANCHO_ADMIN.formulario} />
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario} llenarAlto>
         <FormularioProducto
           valorInicial={{ nombre: '', precio: 0, fotoUri: null, codigoBarras: null, marca: null, categoriaId: null }}
           colorAcento={COLORES_ADMIN.vino}

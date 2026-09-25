@@ -27,7 +27,7 @@ import { listarPromotores } from '@/db/usuarios';
 import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type PasoSelector = 'PRODUCTO' | 'PUNTO' | 'PROMOTOR' | null;
@@ -142,9 +142,9 @@ export default function NuevoDescuento() {
     <View style={styles.contenedor}>
       <Encabezado
         titulo="Nuevo descuento"
+        anchoMaximo={ANCHO_ADMIN.formulario}
         rutaVolverTexto={selector ? 'Cancelar' : 'Descuentos'}
         onVolver={selector ? () => setSelector(null) : undefined}
-        anchoMaximo={600}
       />
 
       {cargando ? (
@@ -152,7 +152,7 @@ export default function NuevoDescuento() {
           <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : selector === 'PRODUCTO' ? (
-        <ContenedorAncho anchoMaximo={600} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario} llenarAlto>
           <View style={styles.buscadorContenedor}>
             <TextInput
               style={styles.buscador}
@@ -181,7 +181,7 @@ export default function NuevoDescuento() {
           />
         </ContenedorAncho>
       ) : selector === 'PROMOTOR' ? (
-        <ContenedorAncho anchoMaximo={600} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario} llenarAlto>
           <FlatList
             data={promotores}
             keyExtractor={(p) => p.id}
@@ -200,7 +200,7 @@ export default function NuevoDescuento() {
           />
         </ContenedorAncho>
       ) : selector === 'PUNTO' ? (
-        <ContenedorAncho anchoMaximo={600} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario} llenarAlto>
           <FlatList
             data={puntos}
             keyExtractor={(p) => p.id}
@@ -222,7 +222,7 @@ export default function NuevoDescuento() {
         </ContenedorAncho>
       ) : (
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-          <ContenedorAncho anchoMaximo={600}>
+          <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario}>
             <View style={styles.form}>
               <View style={styles.campo}>
                 <Text style={styles.etiqueta}>Promotor (vacío = todos)</Text>

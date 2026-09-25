@@ -29,7 +29,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { FormularioPersona, type ValoresPersona } from '@/ui/FormularioPersona';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETA_ROL: Record<Rol, string> = {
@@ -177,7 +177,7 @@ export default function EditarPersona() {
 
   return (
     <View style={styles.contenedor}>
-      <Encabezado titulo="Editar persona" rutaVolverTexto="Personal" anchoMaximo={640} />
+      <Encabezado titulo="Editar persona" rutaVolverTexto="Personal" anchoMaximo={ANCHO_ADMIN.formulario} />
 
       {cargando ? (
         <View style={styles.centrado}>
@@ -188,7 +188,7 @@ export default function EditarPersona() {
           <Text style={styles.vacio}>Esta persona ya no existe.</Text>
         </View>
       ) : (
-        <ContenedorAncho anchoMaximo={640} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario} llenarAlto>
           <View style={styles.selectorRol}>
             <Text style={styles.selectorRolEtiqueta}>Rol</Text>
             <FilterTabs

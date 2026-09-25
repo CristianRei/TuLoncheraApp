@@ -10,7 +10,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { FormularioPersona, type ValoresPersona } from '@/ui/FormularioPersona';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const OPCIONES_ROL: { valor: Rol; etiqueta: string }[] = [
@@ -69,9 +69,9 @@ export default function NuevoPersonal() {
 
   return (
     <View style={styles.contenedor}>
-      <Encabezado titulo="Nueva persona" rutaVolverTexto="Personal" anchoMaximo={640} />
+      <Encabezado titulo="Nueva persona" rutaVolverTexto="Personal" anchoMaximo={ANCHO_ADMIN.formulario} />
 
-      <ContenedorAncho anchoMaximo={640} llenarAlto>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario} llenarAlto>
         <View style={styles.selectorRol}>
           <Text style={styles.selectorRolEtiqueta}>¿Qué rol va a tener?</Text>
           <FilterTabs opciones={OPCIONES_ROL} valorActivo={rol} onCambiar={setRol} />

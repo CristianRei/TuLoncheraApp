@@ -24,7 +24,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { SearchBar } from '@/ui/SearchBar';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -135,10 +135,10 @@ export default function CatalogoProductos() {
       <Encabezado
         titulo="Catálogo de productos"
         rutaVolverTexto="Admin"
-        anchoMaximo={960}
+        anchoMaximo={ANCHO_ADMIN.lista}
         accion={{ icono: 'add', onPress: () => router.push('/admin/catalogo/nuevo') }}
       />
-      <ContenedorAncho anchoMaximo={960}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.encabezadoAcciones}>
           <Pressable onPress={() => router.push('/admin/catalogo/categorias')}>
             <Text style={styles.enlaceEncabezado}>Gestionar categorías</Text>
@@ -151,7 +151,7 @@ export default function CatalogoProductos() {
         </View>
       </ContenedorAncho>
 
-      <ContenedorAncho anchoMaximo={960}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
           <SearchBar valor={busqueda} onCambiar={setBusqueda} placeholder="Buscar producto..." />
           <View style={styles.filaFiltroExportar}>
@@ -235,7 +235,7 @@ export default function CatalogoProductos() {
           }
         />
       ) : (
-        <ContenedorAncho anchoMaximo={960} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             key={columnas}
             data={filtrados}

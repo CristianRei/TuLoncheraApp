@@ -21,7 +21,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { ListRow } from '@/ui/ListRow';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -250,7 +250,7 @@ export default function PantallaCargue() {
       <Encabezado titulo={titulo} rutaVolverTexto={textoVolver} onVolver={volver} />
 
       {!promotor && !promotorOrigen && (
-        <ContenedorAncho anchoMaximo={720}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
           <View style={styles.pestanas}>
             <FilterTabs opciones={OPCIONES_PESTANA} valorActivo={pestana} onCambiar={setPestana} />
           </View>
@@ -262,7 +262,7 @@ export default function PantallaCargue() {
           <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : promotor ? (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <SelectorProductosConCantidad
             productos={productos}
             cantidades={cantidades}
@@ -293,7 +293,7 @@ export default function PantallaCargue() {
           </View>
         </ContenedorAncho>
       ) : promotorOrigen && promotorDestino ? (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <View style={styles.resumenOrigen}>
             <Text style={styles.resumenOrigenTexto}>
               Inventario de {promotorOrigen.nombre}:{' '}
@@ -353,7 +353,7 @@ export default function PantallaCargue() {
           mensaje={`${promotorOrigen.nombre} no tiene productos en su inventario para trasladar.`}
         />
       ) : promotorOrigen ? (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             data={promotores.filter((p) => p.id !== promotorOrigen.id)}
             keyExtractor={(p) => p.id}
@@ -367,7 +367,7 @@ export default function PantallaCargue() {
         promotores.length === 0 ? (
           <EmptyState icono="person-outline" mensaje="No hay promotores activos." />
         ) : (
-          <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
             <FlatList
               data={promotores}
               keyExtractor={(p) => p.id}
@@ -383,7 +383,7 @@ export default function PantallaCargue() {
             mensaje="Hace falta al menos dos promotores activos para trasladar entre ellos."
           />
         ) : (
-          <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
             <FlatList
               data={promotores}
               keyExtractor={(p) => p.id}
@@ -397,7 +397,7 @@ export default function PantallaCargue() {
       ) : cargues.length === 0 && traslados.length === 0 ? (
         <EmptyState icono="cube-outline" mensaje="Todavía no se ha planeado ningún cargue ni traslado." />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             data={[
               ...(cargues.length > 0 ? [{ tipo: 'ENCABEZADO_CARGUES' as const }] : []),

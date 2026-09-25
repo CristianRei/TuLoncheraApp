@@ -11,7 +11,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'VIGENTES' | 'VENCIDOS';
@@ -109,7 +109,7 @@ export default function Descuentos() {
         accion={{ icono: 'add', texto: 'Nuevo', onPress: () => router.push('/admin/descuentos/nuevo') }}
       />
 
-      <ContenedorAncho anchoMaximo={720}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
           <FilterTabs opciones={OPCIONES_FILTRO} valorActivo={filtro} onCambiar={setFiltro} />
         </View>
@@ -127,7 +127,7 @@ export default function Descuentos() {
           }
         />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             data={filtrados}
             keyExtractor={(d) => d.id}

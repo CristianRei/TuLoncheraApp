@@ -12,7 +12,7 @@ import { obtenerEventoDeHoyPromotor, obtenerTurno } from '@/db/turnos';
 import { listarTurnosRemotos } from '@/db/turnosRemotos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
-import { COLORES_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -101,7 +101,7 @@ export default function DetalleTurno() {
           <Text style={styles.vacio}>Este turno ya no existe.</Text>
         </View>
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <View style={styles.contenido}>
             <Image source={{ uri: turno.selfieUri }} style={styles.selfie} />
 

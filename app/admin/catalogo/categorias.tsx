@@ -15,7 +15,7 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function CategoriasCatalogo() {
@@ -74,14 +74,14 @@ export default function CategoriasCatalogo() {
   return (
     <View style={styles.contenedor}>
       <Encabezado titulo="Categorías" rutaVolverTexto="Catálogo" />
-      <ContenedorAncho anchoMaximo={720}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <Text style={styles.subtitulo}>
           Solo se puede elegir entre estas — para evitar categorías repetidas por mayúsculas o
           espacios, agrégalas aquí.
         </Text>
       </ContenedorAncho>
 
-      <ContenedorAncho anchoMaximo={720}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.formulario}>
           <TextInput
             style={styles.input}
@@ -109,7 +109,7 @@ export default function CategoriasCatalogo() {
       ) : categorias.length === 0 ? (
         <EmptyState icono="pricetag-outline" mensaje="Todavía no hay categorías." />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             data={categorias}
             keyExtractor={(c) => c.id}

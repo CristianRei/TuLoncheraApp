@@ -9,7 +9,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { ListRow } from '@/ui/ListRow';
-import { COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string): string {
@@ -51,7 +51,7 @@ export default function Conteos() {
       ) : conteos.length === 0 ? (
         <EmptyState icono="clipboard-outline" mensaje="Todavía no se ha registrado ningún conteo de cierre." />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             data={conteos}
             keyExtractor={(c) => c.id}

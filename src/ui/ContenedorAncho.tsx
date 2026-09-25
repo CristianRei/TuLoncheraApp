@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
+import { ANCHO_ADMIN } from './tema';
+
 interface Props {
   children: ReactNode;
   /** Ancho máximo del contenido en pantallas grandes. Default: cómodo para lectura de listas/formularios. */
@@ -17,7 +19,7 @@ interface Props {
  * formularios pensados para celular se estiren de borde a borde en
  * pantallas grandes.
  */
-export function ContenedorAncho({ children, anchoMaximo = 720, style, llenarAlto }: Props) {
+export function ContenedorAncho({ children, anchoMaximo = ANCHO_ADMIN.lista, style, llenarAlto }: Props) {
   return (
     <View style={[styles.centrador, llenarAlto && styles.llenarAlto]}>
       <View

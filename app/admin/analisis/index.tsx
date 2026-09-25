@@ -41,7 +41,7 @@ import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontal
 import { GraficoDispersion } from '@/ui/graficas/GraficoDispersion';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
 import { MapaCalor } from '@/ui/graficas/MapaCalor';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -489,7 +489,7 @@ export default function Analisis() {
           { paddingTop: anchaPantalla ? 16 : insets.top + 16 },
         ]}
       >
-        <ContenedorAncho anchoMaximo={1200}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
           <View style={styles.encabezadoFila}>
             {!anchaPantalla && (
               <Pressable style={styles.volverBoton} onPress={() => router.back()}>
@@ -510,7 +510,7 @@ export default function Analisis() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ContenedorAncho anchoMaximo={1200}>
+          <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
             <View style={styles.tabs}>
               {(Object.keys(ETIQUETAS_PERIODO) as Periodo[]).map((p) => (
                 <Pressable

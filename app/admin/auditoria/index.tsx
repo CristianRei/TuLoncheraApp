@@ -27,7 +27,10 @@ import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { EmptyState } from '@/ui/EmptyState';
 import { Encabezado } from '@/ui/Encabezado';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
+import { Insignia } from '@/ui/Insignia';
+import { SelectorModal, type OpcionSelector } from '@/ui/SelectorModal';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { mensajeDeError } from '@/core/errores';
 
@@ -55,8 +58,8 @@ const ICONO_ORIGEN: Record<LogAuditoria['origen'], keyof typeof Ionicons.glyphMa
 /** Icono en caja de color según origen — mismo lenguaje del mockup (ámbar=alerta, naranja=movimiento, vino=administrativo). */
 const ESTILO_ICONO: Record<LogAuditoria['origen'], { fondo: string; borde: string; color: string }> = {
   AUDITORIA: { fondo: COLORES_ADMIN.superficieBaja, borde: COLORES_ADMIN.bordeSuave, color: COLORES_ADMIN.vino },
-  MOVIMIENTO: { fondo: '#FFF3E8', borde: '#FBDCA3', color: '#B5651D' },
-  ACCESO_FALLIDO: { fondo: '#FEF6E7', borde: '#FBDCA3', color: '#976200' },
+  MOVIMIENTO: { fondo: ESTADO_ADMIN.alerta.fondo, borde: ESTADO_ADMIN.alerta.borde, color: ESTADO_ADMIN.alerta.texto },
+  ACCESO_FALLIDO: { fondo: ESTADO_ADMIN.alerta.fondo, borde: ESTADO_ADMIN.alerta.borde, color: ESTADO_ADMIN.alerta.texto },
 };
 
 function formatearFecha(tsCliente: string): string {
@@ -70,52 +73,6 @@ function formatearFechaOpcional(tsCliente: string | null): string {
 
 function nombreDispositivo(dispositivoId: string): string {
   return `Dispositivo ${dispositivoId.slice(0, 8)}`;
-}
-
-interface OpcionSelector {
-  id: string;
-  etiqueta: string;
-}
-
-/** Modal de selección simple (lista de opciones + "Quitar filtro") — usado por los selectores de esta pantalla. */
-function SelectorModal({
-  visible,
-  titulo,
-  opciones,
-  onElegir,
-  onCerrar,
-}: {
-  visible: boolean;
-  titulo: string;
-  opciones: OpcionSelector[];
-  onElegir: (id: string | null) => void;
-  onCerrar: () => void;
-}) {
-  return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onCerrar}>
-      <View style={styles.fondoModal}>
-        <View style={styles.tarjetaModal}>
-          <Text style={styles.modalTitulo}>{titulo}</Text>
-          <Pressable style={styles.opcionQuitar} onPress={() => onElegir(null)}>
-            <Text style={styles.opcionQuitarTexto}>Quitar filtro</Text>
-          </Pressable>
-          <FlatList
-            data={opciones}
-            keyExtractor={(o) => o.id}
-            style={styles.modalLista}
-            renderItem={({ item }) => (
-              <Pressable style={styles.opcion} onPress={() => onElegir(item.id)}>
-                <Text style={styles.opcionTexto}>{item.etiqueta}</Text>
-              </Pressable>
-            )}
-          />
-          <Pressable onPress={onCerrar}>
-            <Text style={styles.modalCancelar}>Cerrar</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Modal>
-  );
 }
 
 /** Fila-selector estilo "dropdown" del mockup (icono + etiqueta + valor elegido) — abre un SelectorModal al tocarla. */
@@ -347,51 +304,25 @@ export default function Auditoria() {
 
   return (
     <View style={styles.contenedor}>
-      <Encabezado titulo="Bitácora y auditoría" rutaVolverTexto="Admin" anchoMaximo={860} />
+      <Encabezado titulo="Bitácora y auditoría" rutaVolverTexto="Admin" anchoMaximo={ANCHO_ADMIN.lista} />
 
-      <ContenedorAncho anchoMaximo={860} llenarAlto>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
         <View style={styles.scroll}>
           {/* Panel de filtros — una sola tarjeta con 3 filas divididas, igual al mockup de Stitch */}
           <View style={styles.panelFiltros}>
             {/* Fila 1: segmented de período + buscador, lado a lado */}
             <View style={[styles.filaPanel, styles.filaPeriodoBuscador]}>
-              <View style={styles.periodoSegmentado}>
-                {OPCIONES_PERIODO.map((op) => {
-                  const activo = periodo === op.valor;
-                  return (
-                    <Pressable
-                      key={op.valor}
-                      style={[styles.periodoBoton, activo && styles.periodoBotonActivo]}
-                      onPress={() => setPeriodo(op.valor)}
-                    >
-                      <Text style={[styles.periodoBotonTexto, activo && styles.periodoBotonTextoActivo]}>
-                        {op.etiqueta}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-                <Pressable
-                  style={[styles.periodoBoton, periodo === 'PERSONALIZADO' && styles.periodoBotonActivo]}
-                  onPress={() => {
-                    setPeriodo('PERSONALIZADO');
-                    setCalendarioVisible(true);
-                  }}
-                >
-                  <Ionicons
-                    name="calendar-outline"
-                    size={13}
-                    color={periodo === 'PERSONALIZADO' ? '#FFFFFF' : COLORES_ADMIN.textoSecundario}
-                  />
-                  <Text
-                    style={[
-                      styles.periodoBotonTexto,
-                      periodo === 'PERSONALIZADO' && styles.periodoBotonTextoActivo,
-                    ]}
-                  >
-                    Personalizado
-                  </Text>
-                </Pressable>
-              </View>
+              <FiltroSegmentado
+                opciones={[
+                  ...OPCIONES_PERIODO,
+                  { valor: 'PERSONALIZADO' as const, etiqueta: 'Personalizado', icono: 'calendar-outline' as const },
+                ]}
+                valorActivo={periodo}
+                onCambiar={(valor) => {
+                  setPeriodo(valor);
+                  if (valor === 'PERSONALIZADO') setCalendarioVisible(true);
+                }}
+              />
 
               <View style={styles.buscador}>
                 <Ionicons name="search-outline" size={15} color={COLORES_ADMIN.textoSecundario} />
@@ -522,11 +453,7 @@ export default function Auditoria() {
                       <View style={styles.tarjetaTexto}>
                         <View style={styles.tarjetaMetaFila}>
                           <Text style={styles.tarjetaDescripcion}>{nombreDispositivo(item.dispositivoId)}</Text>
-                          {item.bloqueado && (
-                            <View style={styles.insigniaBloqueado}>
-                              <Text style={styles.insigniaBloqueadoTexto}>Bloqueado</Text>
-                            </View>
-                          )}
+                          {item.bloqueado && <Insignia texto="Bloqueado" estado="error" />}
                         </View>
                         <Text style={styles.tarjetaMeta}>
                           Modo {item.modo} · {item.fallosConsecutivos} fallos consecutivos
@@ -709,37 +636,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  periodoSegmentado: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-    backgroundColor: COLORES_ADMIN.superficieBaja,
-    padding: 3,
-    borderRadius: RADII_ADMIN.sm,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    alignSelf: 'flex-start',
-  },
-  periodoBoton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: ESPACIADO_ADMIN.md,
-    paddingVertical: ESPACIADO_ADMIN.xs + 2,
-    borderRadius: RADII_ADMIN.sm - 2,
-  },
-  periodoBotonActivo: {
-    backgroundColor: COLORES_ADMIN.vino,
-  },
-  periodoBotonTexto: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
-  },
-  periodoBotonTextoActivo: {
-    color: '#FFFFFF',
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-  },
   buscador: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -754,10 +650,8 @@ const styles = StyleSheet.create({
     paddingVertical: ESPACIADO_ADMIN.sm,
   },
   buscadorInput: {
+    ...TEXTO_ADMIN.cuerpo,
     flex: 1,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
   },
   pillsFila: {
     flexDirection: 'row',
@@ -767,11 +661,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pillsEtiqueta: {
-    fontSize: 10,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    ...TEXTO_ADMIN.etiqueta,
     marginRight: 2,
   },
   pill: {
@@ -787,17 +677,14 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   pillTexto: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
   },
   pillTextoActivo: {
     color: '#FFFFFF',
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   restablecer: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
     textDecorationLine: 'underline',
   },
@@ -806,13 +693,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  dropdownEtiqueta: {
-    fontSize: 10,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
+  dropdownEtiqueta: TEXTO_ADMIN.etiqueta,
   dropdownValor: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -825,9 +706,8 @@ const styles = StyleSheet.create({
     paddingVertical: ESPACIADO_ADMIN.sm,
   },
   dropdownValorTexto: {
+    ...TEXTO_ADMIN.cuerpoSecundario,
     flex: 1,
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.texto,
   },
   resumenFila: {
@@ -837,11 +717,7 @@ const styles = StyleSheet.create({
     gap: ESPACIADO_ADMIN.sm,
     paddingHorizontal: 2,
   },
-  resumenEtiqueta: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
-  },
+  resumenEtiqueta: TEXTO_ADMIN.cuerpoSecundario,
   chipResumen: {
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
@@ -850,19 +726,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: ESPACIADO_ADMIN.sm,
     paddingVertical: 3,
   },
-  chipResumenTexto: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
-  },
+  chipResumenTexto: TEXTO_ADMIN.cuerpoSecundario,
   chipResumenValor: {
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
   },
   resumenContador: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     marginLeft: 'auto',
   },
   centrado: {
@@ -901,45 +771,24 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
-  tarjetaDescripcion: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
-  },
+  tarjetaDescripcion: TEXTO_ADMIN.tituloTarjeta,
   tarjetaMetaFila: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: ESPACIADO_ADMIN.xs,
     flexWrap: 'wrap',
   },
-  tarjetaMeta: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
-  },
+  tarjetaMeta: TEXTO_ADMIN.cuerpoSecundario,
   tarjetaMetaSeparador: {
     fontSize: 12,
     color: COLORES_ADMIN.bordeSuave,
   },
   tarjetaMetaMono: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.datoSecundario,
     backgroundColor: COLORES_ADMIN.superficieBaja,
     paddingHorizontal: 6,
     paddingVertical: 1,
-    borderRadius: 4,
-  },
-  insigniaBloqueado: {
-    backgroundColor: COLORES_ADMIN.error,
-    borderRadius: RADII_ADMIN.sm - 2,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  insigniaBloqueadoTexto: {
-    fontSize: 10,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: '#FFFFFF',
+    borderRadius: RADII_ADMIN.sm - 4,
   },
   botonDesbloquear: {
     backgroundColor: COLORES_ADMIN.vino,
@@ -950,8 +799,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   botonDesbloquearTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: '#FFFFFF',
   },
   fondoModal: {
@@ -970,39 +818,11 @@ const styles = StyleSheet.create({
     padding: ESPACIADO_ADMIN.xl,
     gap: ESPACIADO_ADMIN.md,
   },
-  modalTitulo: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: COLORES_ADMIN.texto,
-  },
-  modalLista: {
-    flexGrow: 0,
-  },
-  modalCancelar: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
-    textAlign: 'center',
-  },
-  opcion: {
-    paddingVertical: ESPACIADO_ADMIN.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORES_ADMIN.bordeSuave,
-  },
-  opcionTexto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
-  },
+  modalTitulo: TEXTO_ADMIN.tituloSeccion,
   opcionQuitar: {
     paddingVertical: ESPACIADO_ADMIN.sm,
     borderBottomWidth: 1,
     borderBottomColor: COLORES_ADMIN.bordeSuave,
-  },
-  opcionQuitarTexto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.error,
   },
   botonAplicar: {
     backgroundColor: COLORES_ADMIN.vino,
@@ -1011,9 +831,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   botonAplicarTexto: {
+    ...TEXTO_ADMIN.boton,
     color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   botonDeshabilitado: {
     opacity: 0.5,

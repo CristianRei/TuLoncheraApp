@@ -9,7 +9,7 @@ import { obtenerCargue, reducirLineaCargue, resolverLineaEnRevision } from '@/db
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -96,7 +96,7 @@ export default function DetalleCargue() {
       ) : !cargue ? (
         <EmptyState icono="cube-outline" mensaje="Este cargue ya no existe." />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <View style={styles.resumen}>
             <Text style={styles.resumenPromotor}>{cargue.promotorNombre}</Text>
             <Text style={styles.resumenDetalle}>{formatearFecha(cargue.tsCliente)}</Text>

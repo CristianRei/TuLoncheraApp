@@ -39,7 +39,7 @@ import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from '@/ui/cal
 import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { SelectorDesplegable } from '@/ui/SelectorDesplegable';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -278,7 +278,7 @@ export default function CalendarioAdmin() {
           { paddingTop: pantallaAncha ? 16 : insets.top + 16 },
         ]}
       >
-        <ContenedorAncho anchoMaximo={1200} style={styles.encabezadoContenido}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero} style={styles.encabezadoContenido}>
           {!pantallaAncha && (
             <Pressable onPress={() => router.back()}>
               <Text style={styles.volver}>‹ Admin</Text>
@@ -289,7 +289,7 @@ export default function CalendarioAdmin() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ContenedorAncho anchoMaximo={1200}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
           <View style={pantallaAncha ? styles.layoutAncho : styles.layoutAngosto}>
             <View style={[styles.columnaCalendario, pantallaAncha && styles.columnaCalendarioAncha]}>
               <View style={styles.calendario}>

@@ -7,7 +7,7 @@ import { getDb } from '@/db/client';
 import { obtenerConteo } from '@/db/conteos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
-import { COLORES_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(tsCliente: string): string {
@@ -49,7 +49,7 @@ export default function DetalleConteo() {
           <Text style={styles.vacio}>Este conteo ya no existe.</Text>
         </View>
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <View style={styles.resumen}>
             <Text style={styles.resumenPromotor}>{conteo.promotorNombre}</Text>
             <Text style={styles.resumenDetalle}>{formatearFecha(conteo.tsCliente)}</Text>

@@ -21,7 +21,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { ListRow } from '@/ui/ListRow';
 import { SearchBar } from '@/ui/SearchBar';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function ClientesAdmin() {
@@ -105,7 +105,7 @@ export default function ClientesAdmin() {
         accion={{ icono: 'add', texto: 'Nuevo', onPress: () => setModalVisible(true) }}
       />
 
-      <ContenedorAncho anchoMaximo={720}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.controles}>
           <SearchBar valor={busqueda} onCambiar={buscar} placeholder="Buscar por nombre, teléfono o empresa..." />
         </View>
@@ -121,7 +121,7 @@ export default function ClientesAdmin() {
           mensaje={busqueda ? 'Ningún cliente coincide con la búsqueda.' : 'Todavía no hay clientes registrados.'}
         />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             data={clientes}
             keyExtractor={(c) => c.id}

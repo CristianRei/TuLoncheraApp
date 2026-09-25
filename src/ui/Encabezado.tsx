@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ContenedorAncho } from './ContenedorAncho';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from './tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from './tema';
 import { useEsPantallaAncha } from './useEsPantallaAncha';
 
 interface Accion {
@@ -32,7 +32,7 @@ interface Props {
  * de volver (el sidebar cumple esa función) y el título en color oscuro. En
  * celular, franja vino de siempre con botón de volver.
  */
-export function Encabezado({ titulo, rutaVolverTexto, onVolver, accion, anchoMaximo = 720 }: Props) {
+export function Encabezado({ titulo, rutaVolverTexto, onVolver, accion, anchoMaximo = ANCHO_ADMIN.lista }: Props) {
   const insets = useSafeAreaInsets();
   const anchaPantalla = useEsPantallaAncha();
 

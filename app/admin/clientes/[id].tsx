@@ -10,7 +10,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(iso: string): string {
@@ -69,7 +69,7 @@ export default function DetalleCliente() {
       ) : !cliente ? (
         <EmptyState mensaje="Este cliente ya no existe." />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <ScrollView contentContainerStyle={styles.scroll}>
             <View style={styles.tarjeta}>
               <Campo etiqueta="Nombre completo" valor={cliente.nombreCompleto} />

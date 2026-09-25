@@ -13,7 +13,7 @@ import { contarPromotoresConPuntoVigente } from '@/db/eventos';
 import { contarNotificacionesNoLeidas, generarNotificaciones } from '@/db/notificaciones';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { MODULOS_ADMIN } from '@/ui/modulosAdmin';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { TarjetaModulo } from '@/ui/TarjetaModulo';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useSesion } from '@/ui/SesionContext';
@@ -76,7 +76,7 @@ export default function HomeAdmin() {
   return (
     <View style={styles.contenedor}>
       <View style={[styles.encabezado, { paddingTop: insets.top + 16 }]}>
-        <ContenedorAncho anchoMaximo={960}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
           <View style={styles.encabezadoFila}>
             <View style={styles.marca}>
               <View style={styles.logo}>
@@ -104,7 +104,7 @@ export default function HomeAdmin() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <ContenedorAncho anchoMaximo={960}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
           <View style={styles.banner}>
             <View style={styles.bannerEyebrowFila}>
               <View style={styles.bannerPunto} />

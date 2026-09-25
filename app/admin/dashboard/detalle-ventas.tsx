@@ -21,7 +21,7 @@ import { getDb } from '@/db/client';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontales';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -115,7 +115,7 @@ export default function DetalleVentas() {
           { paddingTop: anchaPantalla ? 16 : insets.top + 16 },
         ]}
       >
-        <ContenedorAncho anchoMaximo={1200}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
           <View style={styles.encabezadoFila}>
             <Pressable
               style={anchaPantalla ? styles.volverBotonAncho : styles.volverBoton}
@@ -149,7 +149,7 @@ export default function DetalleVentas() {
           data={ventas}
           keyExtractor={(v) => v.id}
           ListHeaderComponent={
-            <ContenedorAncho anchoMaximo={1200}>
+            <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
               <View style={styles.cuerpo}>
                 {metrica && porDia.length > 0 && (
                   <View style={styles.tarjeta}>
@@ -195,12 +195,12 @@ export default function DetalleVentas() {
             </ContenedorAncho>
           }
           ListEmptyComponent={
-            <ContenedorAncho anchoMaximo={1200}>
+            <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
               <Text style={styles.vacio}>Sin transacciones en este período.</Text>
             </ContenedorAncho>
           }
           renderItem={({ item }) => (
-            <ContenedorAncho anchoMaximo={1200}>
+            <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
               <Pressable style={styles.filaVenta} onPress={() => router.push(`/admin/ventas/${item.id}`)}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.filaVentaRecibo}>{item.numeroRecibo}</Text>

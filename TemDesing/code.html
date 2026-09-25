@@ -1,672 +1,760 @@
 <!DOCTYPE html>
 
-<html class="h-full bg-[#fcf8f6]" lang="es"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Tu Lonchera Market - Bitácora y Auditoría</title>
-<!-- Tailwind CSS v3 with Plugins -->
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              maroon: '#541212',
-              'maroon-hover': '#430e0e',
-              'maroon-light': '#6f1d1d',
-              gold: '#F3A712',
-              'gold-light': '#fef7e9',
-              warm: '#fff8f6',
-              surface: '#ffffff',
-              border: '#eeddd8',
-              muted: '#7a6560'
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace']
-          }
-        }
-      }
-    }
-  </script>
-<!-- Google Fonts: Inter -->
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<style data-purpose="custom-scrollbars">
-    /* Custom refined scrollbars */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #faf2ef;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #dfcbc4;
-      border-radius: 9999px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #c9b1aa;
-    }
-  </style>
-</head>
-<body class="h-full flex flex-col font-sans text-gray-800 bg-[#fcf8f6] antialiased selection:bg-amber-100 selection:text-brand-maroon">
-<!-- BEGIN: TopNavigation -->
-<header class="bg-brand-maroon text-white h-16 flex items-center justify-between px-5 sm:px-7 shrink-0 shadow-md border-b border-[#3e0b0b] z-30" data-purpose="main-header">
-<!-- Left branding & status -->
-<div class="flex items-center gap-6">
-<div class="flex items-center gap-3">
-<div class="bg-white/95 rounded-lg px-2.5 py-1 flex items-center shadow-inner">
-<img alt="Tu Lonchera Market S.A.S" class="h-7 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDm_rQw8k57AuOd2HjPajOZW8jMJjJDeuuZQRHDx87sX-RsrDqUJLjhspbnWWeEqf08rNOzMPCa61BWGiF8raX32XxtvHY7EO8rSdelzOaA3Uo-8cAuF68Y-K3o0WIT52MoLXrWEJ9Cn3ZrXo9wH4QffVv0PxXQdzT9WCgzEhHyvogIb7YmbGt-ihWFaGKn1WyNUolvXfcwc77_chEwGADUhDxlwIl17_GbxKOvGRvVl1CCLa75zcfL"/>
+<html lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,300..900;1,300..900&amp;family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "outline-variant": "#dac1be", "surface-bright": "#fff8f6", "error-container": "#ffdad6", "primary": "#370003", "on-primary-container": "#d67670", "on-tertiary-fixed": "#002204", "tertiary-fixed": "#a3f69c", "primary-fixed": "#ffdad7", "tertiary-container": "#003307", "secondary-fixed-dim": "#ffba48", "surface-container-lowest": "#ffffff", "on-tertiary-fixed-variant": "#005312", "primary-container": "#541212", "tertiary": "#001c03", "on-surface-variant": "#554241", "inverse-on-surface": "#ffede7", "on-secondary-fixed-variant": "#614000", "surface-dim": "#f5d3c5", "surface-tint": "#984541", "outline": "#877270", "on-error": "#ffffff", "surface-container-high": "#ffe2d7", "secondary-fixed": "#ffddb1", "on-secondary": "#ffffff", "on-primary-fixed-variant": "#7a2e2b", "background": "#fff8f6", "on-error-container": "#93000a", "on-tertiary-container": "#54a353", "inverse-surface": "#402c23", "surface-variant": "#fedbce", "on-secondary-container": "#6a4600", "secondary-container": "#fcaf1e", "on-surface": "#29170f", "tertiary-fixed-dim": "#88d982", "surface-container-highest": "#fedbce", "error": "#ba1a1a", "surface-container-low": "#fff1ec", "on-tertiary": "#ffffff", "on-background": "#29170f", "primary-fixed-dim": "#ffb3ae", "on-primary-fixed": "#3f0305", "inverse-primary": "#ffb3ae", "on-secondary-fixed": "#291800", "secondary": "#815600", "surface-container": "#ffe9e2", "surface": "#fff8f6", "on-primary": "#ffffff" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-lg": "1.25rem", "space-sm": "0.5rem", "margin-desktop": "2rem", "space-xl": "2rem", "space-xs": "0.25rem", "space-md": "0.75rem", "gutter-desktop": "1.5rem", "margin": "1rem", "gutter": "1rem" }, "fontFamily": { "body-sm": [ "Hanken Grotesk" ], "label-md": [ "JetBrains Mono" ], "headline-lg-mobile": [ "Hanken Grotesk" ], "body-lg": [ "Hanken Grotesk" ], "numeric-metric": [ "JetBrains Mono" ], "headline-sm": [ "Hanken Grotesk" ], "body-md": [ "Hanken Grotesk" ], "headline-md": [ "Hanken Grotesk" ], "headline-lg": [ "Hanken Grotesk" ], "label-sm": [ "JetBrains Mono" ], "numeric-data": [ "JetBrains Mono" ] }, "fontSize": { "body-sm": [ "12px", { "lineHeight": "16px", "fontWeight": "400" } ], "label-md": [ "13px", { "lineHeight": "18px", "letterSpacing": "0.02em", "fontWeight": "500" } ], "headline-lg-mobile": [ "24px", { "lineHeight": "32px", "fontWeight": "700" } ], "body-lg": [ "16px", { "lineHeight": "24px", "fontWeight": "400" } ], "numeric-metric": [ "26px", { "lineHeight": "32px", "fontWeight": "600" } ], "headline-sm": [ "18px", { "lineHeight": "24px", "fontWeight": "600" } ], "body-md": [ "14px", { "lineHeight": "20px", "fontWeight": "400" } ], "headline-md": [ "22px", { "lineHeight": "28px", "fontWeight": "600" } ], "headline-lg": [ "30px", { "lineHeight": "38px", "fontWeight": "700" } ], "label-sm": [ "11px", { "lineHeight": "14px", "letterSpacing": "0.04em", "fontWeight": "500" } ], "numeric-data": [ "13px", { "lineHeight": "18px", "fontWeight": "400" } ] } } } };</script></head><body class="bg-surface text-on-surface font-body-md text-body-md"><header class="fixed top-0 left-0 right-0 h-16 bg-primary-container text-on-primary z-50 flex items-center justify-between px-margin-desktop shadow-[0_1px_8px_rgba(0,0,0,0.08)]"><div class="flex items-center gap-space-md"><span class="font-headline-sm text-headline-sm font-bold tracking-tight text-on-primary uppercase">Tu Lonchera Market S.A.S.</span><span class="font-label-sm text-label-sm uppercase tracking-wider text-surface-variant/80 px-space-xs py-0.5 rounded-lg bg-primary/40">Administración / Tu Lonchera</span></div><div class="flex items-center gap-space-lg"><a class="flex items-center gap-space-xs font-label-md text-label-md text-on-primary bg-primary hover:bg-surface-variant hover:text-on-surface transition-colors px-space-md py-space-xs rounded-lg" data-path="login" href="#"><span class="material-symbols-outlined text-[18px]">logout</span><span>Cerrar sesión</span></a><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1V-MyuDmlEyu0ZtJTlSTJd3l-5MJyw5xTbN6YXL6pvXdKWbykzKZRlArZeIrGBy6nyo33UruJKl-dU2EZQNWyPzdl0Qlid30hXnW_I-7DZnKB3K4mMKeWqHfxJlPusqdeLNMDDUt5FVC70tmN_LbcNpr3JECYbIwC3e5KY_m2EnNMov-RxfTPHanPWMh7FETYEdfFLB6Ns9-Vp-DdgDUfHvMS68gveze1jVxLXrtZc27r1Ef6eSFuSAy3iz2k5kMqBjYogytHUkSg"/></div></header><aside class="fixed left-0 top-16 bottom-0 w-72 bg-surface-container-low overflow-y-auto flex flex-col justify-between py-space-md z-40"><div class="flex flex-col gap-space-xs px-space-sm"><div class="px-space-md py-space-xs font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Operaciones &amp; Control</div><nav class="flex flex-col gap-0.5" data-active-classes="bg-primary-container text-on-primary font-bold rounded-lg shadow-sm"><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="dashboard" href="#"><span class="material-symbols-outlined text-[20px]">space_dashboard</span><span class="font-body-md text-body-md">Dashboard</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="calendario-de-eventos" href="#"><span class="material-symbols-outlined text-[20px]">calendar_today</span><span class="font-body-md text-body-md">Calendario de eventos</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="cargue-a-promotor" href="#"><span class="material-symbols-outlined text-[20px]">assignment_turned_in</span><span class="font-body-md text-body-md">Cargue a promotor</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="turnos" href="#"><span class="material-symbols-outlined text-[20px]">schedule</span><span class="font-body-md text-body-md">Turnos</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="ventas" href="#"><span class="material-symbols-outlined text-[20px]">point_of_sale</span><span class="font-body-md text-body-md">Ventas</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="conteos-de-cierre" href="#"><span class="material-symbols-outlined text-[20px]">receipt_long</span><span class="font-body-md text-body-md">Conteos de cierre</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="inventario" href="#"><span class="material-symbols-outlined text-[20px]">inventory_2</span><span class="font-body-md text-body-md">Inventario</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="catalogo-de-productos" href="#"><span class="material-symbols-outlined text-[20px]">lunch_dining</span><span class="font-body-md text-body-md">Catálogo de productos</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="empresas-y-puntos" href="#"><span class="material-symbols-outlined text-[20px]">storefront</span><span class="font-body-md text-body-md">Empresas y puntos</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="clientes" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span class="font-body-md text-body-md">Clientes</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="descuentos" href="#"><span class="material-symbols-outlined text-[20px]">loyalty</span><span class="font-body-md text-body-md">Descuentos</span></a><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm transition-colors bg-primary-container text-on-primary font-bold rounded-lg shadow-sm" data-path="analisis" href="#"><span class="material-symbols-outlined text-[20px]">analytics</span><span class="font-body-md text-body-md">Análisis</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="notificaciones" href="#"><span class="material-symbols-outlined text-[20px]">notifications</span><span class="font-body-md text-body-md">Notificaciones</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="seguridad-de-acceso" href="#"><span class="material-symbols-outlined text-[20px]">lock_person</span><span class="font-body-md text-body-md">Seguridad de acceso</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="bitacora-y-auditoria" href="#"><span class="material-symbols-outlined text-[20px]">history_edu</span><span class="font-body-md text-body-md">Bitácora y auditoría</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="gestionar-personal" href="#"><span class="material-symbols-outlined text-[20px]">badge</span><span class="font-body-md text-body-md">Gestionar personal</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded-lg" data-path="mensajes" href="#"><span class="material-symbols-outlined text-[20px]">mail</span><span class="font-body-md text-body-md">Mensajes</span></a></nav></div><div class="px-space-md pt-space-md mt-space-md border-t border-outline-variant/30 flex items-center justify-between text-on-surface-variant"><span class="font-label-sm text-label-sm">v2.4.0 Operativa</span><span class="inline-flex items-center gap-1 font-label-sm text-label-sm text-on-tertiary-container"><span class="w-2 h-2 rounded-full bg-tertiary-fixed-dim"></span>En línea</span></div></aside><div class="pl-72"><main class="w-full min-h-screen pt-16 px-gutter-desktop py-space-lg bg-surface"><div class="flex flex-col w-full gap-space-xl">
+<!-- Encabezado de Sección y Controles Principales -->
+<div class="flex flex-col md:flex-row md:items-center md:justify-between gap-space-md">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<h1 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Análisis Operativo y Comercial</h1>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-on-tertiary-fixed-variant animate-pulse"></span>
+          Tiempo real
+        </span>
 </div>
-<div class="border-l border-white/20 pl-3 hidden md:block">
-<span class="text-[10px] tracking-widest font-semibold uppercase text-brand-gold block leading-none">Administración</span>
-<span class="text-xs font-medium text-white/90">Consola Central de Operaciones</span>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">
+        Métricas de rotación, dispersión estadística de promotores, correlaciones operativas y efectividad de cobro por punto de venta.
+      </p>
 </div>
+<!-- Exportar y Filtro de Punto -->
+<div class="flex items-center gap-space-sm flex-wrap">
+<div class="inline-flex items-center bg-surface-container-lowest rounded-xl p-1 shadow-sm">
+<label class="sr-only" for="point-select">Filtrar por punto</label>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant ml-2">storefront</span>
+<select class="bg-transparent font-label-md text-label-md text-on-surface py-1 px-2 focus:outline-none cursor-pointer" id="point-select">
+<option value="todos">Todos los Puntos</option>
+<option value="centro">Punto Centro</option>
+<option value="sur">Punto Sur</option>
+<option value="norte">Punto Norte</option>
+</select>
 </div>
-<!-- Station status badge -->
-<div class="hidden lg:flex items-center gap-2 bg-black/25 px-3 py-1 rounded-full border border-white/10 text-xs text-white/90">
-<span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-</span>
-<span class="font-medium">Terminal BOG-01</span>
-<span class="text-white/40">•</span>
-<span class="text-emerald-300 font-mono text-[11px]">En línea</span>
-</div>
-</div>
-<!-- Right user actions -->
-<div class="flex items-center gap-4">
-<div class="hidden sm:flex items-center gap-2 text-xs text-white/80">
-<div class="h-8 w-8 rounded-full bg-brand-gold text-brand-maroon font-bold flex items-center justify-center text-xs shadow">
-          AD
-        </div>
-<div class="text-left leading-tight">
-<p class="font-medium text-white">Supervisor Master</p>
-<p class="text-[10px] text-white/60">admin@tulonchera.co</p>
-</div>
-</div>
-<button class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium text-white/90 bg-white/10 hover:bg-white/15 hover:text-white border border-white/15 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-gold" type="button">
-<svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-<path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round"></path>
-</svg>
-<span>Cerrar sesión</span>
-</button>
-</div>
-</header>
-<!-- END: TopNavigation -->
-<!-- BEGIN: MainContainer -->
-<div class="flex-1 flex overflow-hidden">
-<!-- BEGIN: LeftSidebar -->
-<aside class="w-64 bg-[#fffaf8] border-r border-[#eedfd9] flex flex-col shrink-0 overflow-y-auto hidden lg:flex" data-purpose="sidebar-navigation">
-<div class="px-4 py-3.5 border-b border-[#f3e7e2]">
-<p class="text-[11px] font-bold tracking-wider text-brand-muted uppercase">Módulos del Sistema</p>
-</div>
-<nav class="flex-1 px-3 py-3 space-y-0.5 text-xs text-gray-600 font-medium">
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Calendario de eventos</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Cargue a promotor</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Turnos</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Ventas</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Conteos de cierre</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Inventario</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Catálogo de productos</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Empresas y puntos</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Clientes</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Descuentos</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Análisis</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Notificaciones</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Seguridad de acceso</span>
-</a>
-<!-- Active Menu Item -->
-<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-brand-maroon text-white font-semibold shadow-sm" href="#">
-<svg class="w-4 h-4 text-brand-gold" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<span>Bitácora y auditoría</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Gestionar personal</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-brand-warm hover:text-brand-maroon transition-colors" href="#">
-<svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path></svg>
-<span>Mensajes</span>
-</a>
-</nav>
-<!-- Sidebar footer / sync status -->
-<div class="p-3 border-t border-[#f3e7e2] bg-[#fbf5f2]">
-<div class="text-[11px] text-gray-500 leading-tight">
-<span class="font-semibold text-gray-700">Audit Engine v2.4</span>
-<p class="text-[10px] text-gray-400 mt-0.5">Sincronización en tiempo real activa</p>
-</div>
-</div>
-</aside>
-<!-- END: LeftSidebar -->
-<!-- BEGIN: MainContentArea -->
-<main class="flex-1 overflow-y-auto bg-[#faf4f1]" data-purpose="content-area">
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
-<!-- Header Section -->
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#ebdcd5] pb-4">
-<div>
-<div class="flex items-center gap-2">
-<h1 class="text-2xl font-bold tracking-tight text-brand-maroon">Bitácora y auditoría</h1>
-<span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-200">En vivo</span>
-</div>
-<p class="text-xs sm:text-sm text-gray-600 mt-0.5">
-              Historial cronológico de transacciones en caja, aperturas de turno, alertas de seguridad y movimientos en punto de venta.
-            </p>
-</div>
-<!-- Top Action Buttons -->
-<div class="flex items-center gap-2 self-start sm:self-auto">
-<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#dac8c1] bg-white text-xs font-medium text-gray-700 hover:bg-[#fcf8f6] hover:text-brand-maroon shadow-sm transition" type="button">
-<svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<span>Exportar Excel / CSV</span>
-</button>
-<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-maroon text-white text-xs font-medium hover:bg-brand-maroon-hover shadow-sm transition" type="button">
-<svg class="w-3.5 h-3.5 text-brand-gold" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<span>Actualizar</span>
+<button class="inline-flex items-center gap-space-xs bg-surface-container-lowest hover:bg-surface-container text-on-surface font-label-md text-label-md px-space-md py-2 rounded-xl transition-all shadow-sm active:scale-95">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Exportar Informe</span>
 </button>
 </div>
 </div>
-<!-- BEGIN: FilterControlHub -->
-<!-- Redesigned, highly structured and visually hierarchical filter control center -->
-<div class="bg-white rounded-xl border border-[#ecdcd4] shadow-sm divide-y divide-[#f2e7e2]" data-purpose="filter-control-panel">
-<!-- Control Row 1: Time Range Segmented Bar & Search -->
-<div class="p-3.5 sm:p-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 bg-[#fdfbf9] rounded-t-xl">
-<!-- Segmented Date Selector -->
-<div class="flex items-center gap-1 bg-[#f2e6e1] p-1 rounded-lg self-start sm:self-auto border border-[#e5d5cf]">
-<button class="px-3 py-1 text-xs font-medium rounded-md text-gray-700 hover:text-brand-maroon transition-colors" type="button">
-                Hoy
-              </button>
-<button class="px-3.5 py-1 text-xs font-semibold rounded-md bg-brand-maroon text-white shadow-sm transition" type="button">
-                Últimos 7 días
-              </button>
-<button class="px-3 py-1 text-xs font-medium rounded-md text-gray-700 hover:text-brand-maroon transition-colors" type="button">
-                Últimos 30 días
-              </button>
-<button class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-gray-700 hover:text-brand-maroon transition-colors" type="button">
-<svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<!-- Barra de Filtros Temporales -->
+<div class="flex items-center justify-between flex-wrap gap-space-md bg-surface-container-low p-2 rounded-xl shadow-sm">
+<div class="inline-flex items-center gap-1.5 bg-surface-container-lowest p-1 rounded-lg">
+<button class="px-space-md py-1.5 rounded-md font-label-md text-label-md bg-primary-container text-on-primary font-semibold shadow-sm transition-all">
+        Últimos 30 días
+      </button>
+<button class="px-space-md py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all">
+        Últimos 90 días
+      </button>
+<button class="px-space-md py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all">
+        Todo el historial
+      </button>
+<button class="px-space-md py-1.5 rounded-md font-label-md text-label-md text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">calendar_month</span>
 <span>Personalizado</span>
 </button>
 </div>
-<!-- Instant search input -->
-<div class="flex-1 lg:max-w-md w-full relative">
-<span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-<svg class="h-4 w-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</span>
-<input class="w-full pl-9 pr-24 py-1.5 text-xs bg-white rounded-lg border border-[#d9c7bf] focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon placeholder-gray-400 text-gray-800 shadow-inner" placeholder="Buscar por usuario, SKU, acción o dispositivo..." type="text"/>
-<div class="absolute inset-y-0 right-0 pr-2 flex items-center">
-<span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 font-mono">⌘K</span>
+<div class="flex items-center gap-space-md px-space-sm text-on-surface-variant font-label-sm text-label-sm">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-secondary-container"></span> 69 eventos procesados</span>
+<span class="text-outline-variant">•</span>
+<span>Corte: Hoy 08:30 AM</span>
 </div>
 </div>
+<!-- SECCIÓN 1: Qué se repite por punto -->
+<section class="flex flex-col gap-space-md">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[22px]">repeat</span>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Qué se repite por punto</h2>
 </div>
-<!-- Control Row 2: Event Type / Category Pills -->
-<div class="px-3.5 py-2.5 sm:px-4 flex items-center justify-between gap-3 overflow-x-auto">
-<div class="flex items-center gap-1.5 text-xs whitespace-nowrap">
-<span class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-1">Filtrar por:</span>
-<!-- Active 'Todos' pill -->
-<button class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-brand-maroon text-white shadow-sm" type="button">
-<span>Todos los registros</span>
-<span class="bg-white/20 text-white rounded-full px-1.5 py-0.2 text-[10px]">248</span>
-</button>
-<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-[#f8efea] hover:bg-[#eedfd7] hover:text-brand-maroon border border-[#ebdcd3] transition" type="button">
-<span>Ventas &amp; Caja</span>
-<span class="text-[10px] text-gray-500 font-mono">194</span>
-</button>
-<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-[#f8efea] hover:bg-[#eedfd7] hover:text-brand-maroon border border-[#ebdcd3] transition" type="button">
-<span>Seguridad &amp; PIN</span>
-<span class="text-[10px] text-amber-700 bg-amber-100 px-1 rounded-full font-mono font-bold">12</span>
-</button>
-<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-[#f8efea] hover:bg-[#eedfd7] hover:text-brand-maroon border border-[#ebdcd3] transition" type="button">
-<span>Bodega &amp; Cargues</span>
-<span class="text-[10px] text-gray-500 font-mono">31</span>
-</button>
-<button class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium text-gray-600 bg-[#f8efea] hover:bg-[#eedfd7] hover:text-brand-maroon border border-[#ebdcd3] transition" type="button">
-<span>Personal &amp; Turnos</span>
-<span class="text-[10px] text-gray-500 font-mono">11</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+        Productos que aparecen entre los más vendidos evento tras evento en cada punto — para decidir qué cargue armar la próxima vez.
+      </p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-lg">
+<!-- Tarjeta: Centro -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Centro</h3>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">26 eventos con venta</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">Tendencia de repetición de GOMA BOMBOMBUN</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-colors" title="Ver detalles">
+<span class="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
 </button>
 </div>
-<!-- Clear filters button -->
-<button class="text-xs text-brand-maroon hover:underline shrink-0 font-medium hidden md:inline-block" type="button">
-              Restablecer filtros
-            </button>
-</div>
-<!-- Control Row 3: Dropdown Selectors for Entity Filtering -->
-<div class="px-3.5 py-3 sm:px-4 bg-[#fdfaf8] rounded-b-xl">
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-<!-- Dropdown 1: Hecho por / Usuario -->
-<div class="relative">
-<label class="block text-[10px] font-semibold text-gray-500 uppercase mb-0.5 tracking-wider">Usuario responsable</label>
-<div class="relative">
-<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</span>
-<select class="w-full text-xs rounded-lg pl-8 pr-7 py-1.5 border border-[#dccec7] bg-white text-gray-700 hover:border-brand-maroon focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon">
-<option value="">Cualquier usuario (Todos)</option>
-<option value="cristian">Cristian (Cajero / Promotor)</option>
-<option value="andres">Andrés Pérez (Supervisor)</option>
-<option value="sistema">Sistema Automático</option>
-</select>
-</div>
-</div>
-<!-- Dropdown 2: Producto -->
-<div class="relative">
-<label class="block text-[10px] font-semibold text-gray-500 uppercase mb-0.5 tracking-wider">Producto o SKU</label>
-<div class="relative">
-<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</span>
-<select class="w-full text-xs rounded-lg pl-8 pr-7 py-1.5 border border-[#dccec7] bg-white text-gray-700 hover:border-brand-maroon focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon">
-<option value="">Cualquier producto (Todos)</option>
-<option value="gansito">GANSITO X 6 TRADICIONAL</option>
-<option value="cacero">CACERO MARMOLADO TRES LECHES</option>
-<option value="vino">VINO LA MERCED</option>
-<option value="ramito">RAMITO X 8</option>
-<option value="colageno">GOMA COLAGENO X 70 GR</option>
-<option value="monserrate">VINO MONSERRATE</option>
-<option value="bimboletes">BIMBOLETES X 10 UND</option>
-</select>
-</div>
-</div>
-<!-- Dropdown 3: Categoría o Módulo -->
-<div class="relative">
-<label class="block text-[10px] font-semibold text-gray-500 uppercase mb-0.5 tracking-wider">Módulo origen</label>
-<div class="relative">
-<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</span>
-<select class="w-full text-xs rounded-lg pl-8 pr-7 py-1.5 border border-[#dccec7] bg-white text-gray-700 hover:border-brand-maroon focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon">
-<option value="">Cualquier módulo</option>
-<option value="pos">Punto de Venta / Caja</option>
-<option value="bodega">Bodega y Despachos</option>
-<option value="seguridad">Seguridad / Autenticación</option>
-<option value="inventario">Ajustes de Inventario</option>
-</select>
-</div>
-</div>
-<!-- Dropdown 4: Severidad / Tipo -->
-<div class="relative">
-<label class="block text-[10px] font-semibold text-gray-500 uppercase mb-0.5 tracking-wider">Nivel de criticidad</label>
-<div class="relative">
-<span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-gray-400">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</span>
-<select class="w-full text-xs rounded-lg pl-8 pr-7 py-1.5 border border-[#dccec7] bg-white text-gray-700 hover:border-brand-maroon focus:border-brand-maroon focus:ring-1 focus:ring-brand-maroon">
-<option value="">Todos los niveles</option>
-<option value="advertencia">Advertencia / Alerta PIN</option>
-<option value="exito">Transacciones exitosas</option>
-<option value="info">Operaciones de sistema</option>
-</select>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- END: FilterControlHub -->
-<!-- Active Filter Status Chips -->
-<div class="flex items-center justify-between text-xs text-gray-500 px-1">
-<div class="flex items-center gap-2 flex-wrap">
-<span class="font-medium text-gray-600">Filtros aplicados:</span>
-<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white border border-[#dfcec6] text-gray-700 text-[11px]">
-              Período: <strong class="text-brand-maroon font-semibold">Últimos 7 días</strong>
-</span>
-<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white border border-[#dfcec6] text-gray-700 text-[11px]">
-              Estado: <strong class="text-gray-900 font-medium">Todos</strong>
-</span>
-<span class="text-gray-400 text-[11px] ml-1">Mostrando 8 de 248 eventos encontrados</span>
-</div>
-<span class="text-[11px] font-mono text-gray-400 hidden sm:inline">Zona horaria: America/Bogota (UTC-5)</span>
-</div>
-<!-- BEGIN: AuditLogList -->
-<div class="space-y-2.5" data-purpose="audit-events-stream">
-<!-- Card 1: Critical Security Warning (Intento fallido PIN) -->
-<div class="bg-white rounded-xl p-3.5 sm:p-4 border-l-4 border-l-amber-500 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
-<div class="flex items-start justify-between gap-3">
-<div class="flex items-start gap-3.5">
-<!-- Icon badge for Warning -->
-<div class="h-9 w-9 rounded-lg bg-amber-50 border border-amber-200 flex items-center justify-center shrink-0 text-amber-600 shadow-sm mt-0.5">
-<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+<!-- Mini Sparkline SVG -->
+<div class="w-full bg-surface-container-low/60 rounded-xl p-space-sm flex flex-col gap-1">
+<div class="w-full h-10 flex items-center">
+<svg class="w-full h-8 text-primary-container" preserveaspectratio="none" viewbox="0 0 400 32">
+<line stroke="currentColor" stroke-dasharray="2 2" stroke-opacity="0.3" stroke-width="2" x1="10" x2="390" y1="16" y2="16"></line>
+<polyline fill="none" points="10,16 50,16 90,16 130,16 170,16 210,16 250,16 290,16 330,16 370,16 390,16" stroke="currentColor" stroke-width="2.5"></polyline>
+<!-- Data dots -->
+<circle class="fill-primary-container" cx="10" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="50" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="90" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="130" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="170" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="210" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="250" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="290" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="330" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="370" cy="16" r="3.5"></circle>
+<circle class="fill-primary-container" cx="390" cy="16" r="3.5"></circle>
 </svg>
 </div>
-<!-- Event Details -->
-<div class="space-y-1">
-<div class="flex items-center gap-2 flex-wrap">
-<span class="font-bold text-gray-900 text-sm tracking-tight">Intento fallido de PIN</span>
-<span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-900 border border-amber-200">Modo BODEGA</span>
-<span class="text-xs text-rose-600 font-medium">Código no autorizado</span>
-</div>
-<!-- Metadata details -->
-<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-<span class="inline-flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<time class="font-medium text-gray-700" datetime="2026-09-23T18:39:00">23/09/26 · 6:39 p. m.</time>
-</span>
-<span class="text-gray-300">•</span>
-<span class="inline-flex items-center gap-1 font-mono text-[11px] bg-gray-100 px-2 py-0.5 rounded text-gray-600 border border-gray-200">
-                      Dispositivo: <strong class="text-gray-800">29ca44bf</strong>
-</span>
-<span class="text-gray-300">•</span>
-<span class="text-gray-500 text-[11px]">IP: 192.168.1.104</span>
+<div class="flex justify-between font-label-sm text-[10px] text-on-surface-variant/70 px-1 font-numeric-data">
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
 </div>
 </div>
+<!-- Tabla de repetición -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between py-2 px-space-sm rounded-lg bg-surface-container-low/40">
+<span class="font-body-md text-body-md font-medium text-on-surface">GOMA BOMBOMBUN</span>
+<div class="flex items-center gap-space-sm font-label-md text-label-md">
+<span class="px-2 py-0.5 rounded bg-tertiary-fixed/60 text-on-tertiary-fixed font-semibold font-numeric-data">11/11</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">veces en el top</span>
 </div>
-<!-- Action buttons on item -->
-<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div class="flex items-center justify-between py-2 px-space-sm rounded-lg hover:bg-surface-container-low/30 transition-colors">
+<span class="font-body-md text-body-md font-medium text-on-surface">CERVEZA SIXPACK X 6</span>
+<div class="flex items-center gap-space-sm font-label-md text-label-md">
+<span class="px-2 py-0.5 rounded bg-tertiary-fixed/60 text-on-tertiary-fixed font-semibold font-numeric-data">9/9</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">veces en el top</span>
+</div>
+</div>
+<div class="flex items-center justify-between py-2 px-space-sm rounded-lg hover:bg-surface-container-low/30 transition-colors">
+<span class="font-body-md text-body-md font-medium text-on-surface">PONQUE RAMO TRADICIONAL 230</span>
+<div class="flex items-center gap-space-sm font-label-md text-label-md">
+<span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-semibold font-numeric-data">7/7</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">veces en el top</span>
+</div>
+</div>
+</div>
+<div class="pt-space-xs flex justify-between items-center">
+<button class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold flex items-center gap-1 group">
+<span>Ver los 17 productos de Centro</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</button>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Top 3 con 100% de retención</span>
+</div>
+</div>
+<!-- Tarjeta: Sur -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Sur</h3>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm">23 eventos con venta</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-0.5">Tendencia de repetición de BARRITA DE CHOCORAMO X 5</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center text-on-surface transition-colors" title="Ver detalles">
+<span class="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
 </button>
 </div>
-</div>
-<!-- Card 2: Sale Event (Cristian · GANSITO) -->
-<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
-<div class="flex items-start justify-between gap-3">
-<div class="flex items-start gap-3.5">
-<!-- Icon badge for Sale / Box -->
-<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
-<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+<!-- Mini Sparkline SVG Sur -->
+<div class="w-full bg-surface-container-low/60 rounded-xl p-space-sm flex flex-col gap-1">
+<div class="w-full h-10 flex items-center">
+<svg class="w-full h-8 text-secondary" preserveaspectratio="none" viewbox="0 0 400 32">
+<line stroke="currentColor" stroke-dasharray="2 2" stroke-opacity="0.3" stroke-width="2" x1="10" x2="390" y1="16" y2="16"></line>
+<polyline fill="none" points="10,16 50,16 90,16 130,16 170,16 210,16 250,16 290,16 330,16 370,16 390,16" stroke="currentColor" stroke-width="2.5"></polyline>
+<circle class="fill-secondary" cx="10" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="50" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="90" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="130" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="170" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="210" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="250" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="290" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="330" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="370" cy="16" r="3.5"></circle>
+<circle class="fill-secondary" cx="390" cy="16" r="3.5"></circle>
 </svg>
 </div>
-<!-- Event Details -->
-<div class="space-y-1">
-<div class="flex items-center gap-2 flex-wrap text-sm">
-<span class="font-semibold text-brand-maroon">Cristian</span>
-<span class="text-gray-400">registró venta de</span>
-<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">GANSITO X 6 TRADICIONAL</span>
-<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 3</span>
-</div>
-<!-- Metadata details -->
-<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-<span class="inline-flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<time class="text-gray-600" datetime="2026-09-22T09:53:00">22/09/26 · 9:53 p. m.</time>
-</span>
-<span class="text-gray-300">•</span>
-<span class="text-[11px] text-gray-500">Módulo: Caja POS #1</span>
-<span class="text-gray-300">•</span>
-<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10934</span>
+<div class="flex justify-between font-label-sm text-[10px] text-on-surface-variant/70 px-1 font-numeric-data">
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
+<span>100%</span>
 </div>
 </div>
+<!-- Tabla Sur -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between py-2 px-space-sm rounded-lg bg-surface-container-low/40">
+<span class="font-body-md text-body-md font-medium text-on-surface">BARRITA DE CHOCORAMO X 5</span>
+<div class="flex items-center gap-space-sm font-label-md text-label-md">
+<span class="px-2 py-0.5 rounded bg-tertiary-fixed/60 text-on-tertiary-fixed font-semibold font-numeric-data">10/10</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">veces en el top</span>
 </div>
-<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<div class="flex items-center justify-between py-2 px-space-sm rounded-lg hover:bg-surface-container-low/30 transition-colors">
+<span class="font-body-md text-body-md font-medium text-on-surface">PAPA PRINGLES 37 Y 40 GR ORIG-ADOB</span>
+<div class="flex items-center gap-space-sm font-label-md text-label-md">
+<span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-semibold font-numeric-data">7/7</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">veces en el top</span>
+</div>
+</div>
+<div class="flex items-center justify-between py-2 px-space-sm rounded-lg hover:bg-surface-container-low/30 transition-colors">
+<span class="font-body-md text-body-md font-medium text-on-surface">CACERO MARMOLADO TRES LECHES</span>
+<div class="flex items-center gap-space-sm font-label-md text-label-md">
+<span class="px-2 py-0.5 rounded bg-secondary-fixed text-on-secondary-fixed font-semibold font-numeric-data">6/6</span>
+<span class="text-on-surface-variant font-label-sm text-label-sm">veces en el top</span>
+</div>
+</div>
+</div>
+<div class="pt-space-xs flex justify-between items-center">
+<button class="font-label-md text-label-md text-primary-container hover:text-primary font-semibold flex items-center gap-1 group">
+<span>Ver los 17 productos de Sur</span>
+<span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
 </button>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Rotación alta en snacks dulces</span>
 </div>
 </div>
-<!-- Card 3: Sale Event (Andrés Pérez · CACERO MARMOLADO) -->
-<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
-<div class="flex items-start justify-between gap-3">
-<div class="flex items-start gap-3.5">
-<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
-<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
+</div>
+</section>
+<!-- SECCIÓN 2: Matriz de Calor (Heatmap) -->
+<section class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[22px]">grid_on</span>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Por punto y producto</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+          Unidades vendidas por combinación de punto y producto — más oscuro es más unidades despachadas y cobradas.
+        </p>
+</div>
+<!-- Leyenda de calor -->
+<div class="flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant bg-surface-container-low px-3 py-1.5 rounded-lg self-start">
+<span>Menor (4 u.)</span>
+<div class="flex gap-1">
+<span class="w-4 h-4 rounded bg-surface-container-high"></span>
+<span class="w-4 h-4 rounded bg-[#f5b8ae]"></span>
+<span class="w-4 h-4 rounded bg-[#d67670]"></span>
+<span class="w-4 h-4 rounded bg-primary-container"></span>
+<span class="w-4 h-4 rounded bg-primary"></span>
+</div>
+<span>Mayor (29+ u.)</span>
+</div>
+</div>
+<!-- Contenedor scrollable del Heatmap -->
+<div class="overflow-x-auto w-full pb-2">
+<table class="w-full min-w-[780px] border-collapse text-center font-body-md text-body-md">
+<thead>
+<tr class="text-on-surface-variant font-label-sm text-[11px] leading-tight">
+<th class="text-left font-semibold py-2 px-3 w-28 bg-surface-container-low/60 rounded-l-lg">Punto</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Goma Bombombun">GOMA<br/>BOMBO..</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Bimboletes x 10 und">BIMBOL.<br/>10 UND</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Barrita de Chocoramo">BARRITA<br/>CHOC..</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Casero Marmolado">CACERO<br/>MARMO..</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Goma Colágeno x 70 gr">GOMA<br/>COLAGE..</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Vino La Merced">VINO LA<br/>MERCED</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Ramito x 8">RAMITO<br/>X 8</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Gansito x 6 Tradicional">GANSIT.<br/>X 6 TRAD.</th>
+<th class="py-2 px-2 max-w-[72px] truncate" title="Cerveza Sixpack x 6">CERVEZ.<br/>SIXPA..</th>
+<th class="py-2 px-2 max-w-[72px] truncate rounded-r-lg" title="Ponqué Ramo Tradicional">PONQUE<br/>TRADI..</th>
+</tr>
+</thead>
+<tbody class="divide-y-0">
+<!-- Fila Centro -->
+<tr>
+<td class="text-left font-semibold py-2.5 px-3 text-on-surface bg-surface-container-low/40 rounded-l-lg font-headline-sm text-[14px]">Centro</td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-bold bg-primary text-on-primary">26</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#a6433e] text-on-primary">18</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#c25e59] text-on-primary">15</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-bold bg-primary-container text-on-primary">23</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#c25e59] text-on-primary">15</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-bold bg-primary text-on-primary ring-2 ring-secondary-container">29</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#da7e78] text-surface-container-lowest">13</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#e69b96] text-on-surface">11</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-bold bg-primary-container text-on-primary">21</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#c25e59] text-on-primary rounded-r-lg">15</div></td>
+</tr>
+<!-- Fila Sur -->
+<tr>
+<td class="text-left font-semibold py-2.5 px-3 text-on-surface bg-surface-container-low/40 rounded-l-lg font-headline-sm text-[14px]">Sur</td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#c25e59] text-on-primary">15</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#d4726c] text-on-primary">14</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-bold bg-primary text-on-primary ring-2 ring-secondary-container">25</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#c25e59] text-on-primary">15</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#ba544f] text-on-primary">16</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-normal bg-surface-container-high text-on-surface">6</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#d4726c] text-on-primary">14</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#e69b96] text-on-surface">11</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-normal bg-surface-container-high text-on-surface">5</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#f0aba6] text-on-surface rounded-r-lg">9</div></td>
+</tr>
+<!-- Fila Norte -->
+<tr>
+<td class="text-left font-semibold py-2.5 px-3 text-on-surface bg-surface-container-low/40 rounded-l-lg font-headline-sm text-[14px]">Norte</td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#d4726c] text-on-primary">14</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-bold bg-primary-container text-on-primary">21</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-normal bg-[#f2beb9] text-on-surface">7</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-normal bg-surface-container text-on-surface">4</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#eb9e99] text-on-surface">10</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-normal bg-surface-container text-on-surface">4</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#f0aba6] text-on-surface">9</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#e18a84] text-on-surface">12</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-normal bg-[#f2beb9] text-on-surface">7</div></td>
+<td class="p-1"><div class="rounded-lg py-2.5 font-numeric-data font-medium bg-[#f0aba6] text-on-surface rounded-r-lg">9</div></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="flex items-center justify-between text-on-surface-variant font-label-sm text-label-sm pt-1">
+<span class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px] text-secondary">info</span>
+        Mostrando los 3 puntos y 10 productos más activos (7 productos fuera de la vista rápida).
+      </span>
+<button class="text-primary-container hover:underline font-semibold font-label-md text-label-md">
+        Expandir matriz completa
+      </button>
+</div>
+</section>
+<!-- SECCIÓN 3: Rendimiento por Promotor y Desviación de Productos -->
+<section class="flex flex-col gap-space-md">
+<div class="flex flex-col gap-0.5">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[22px]">badge</span>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Rendimiento por promotor</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+        Ticket promedio facturado por evento y en qué productos cada promotor se desvía drásticamente de la media general.
+      </p>
+</div>
+<!-- Comparativa Ticket Promedio General -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold">Comparativa global de ticket promedio</span>
+<div class="flex flex-col gap-3">
+<!-- Andrés -->
+<div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-space-md">
+<span class="font-body-md text-body-md font-semibold text-on-surface w-32">Andrés Pérez</span>
+<div class="flex-1 bg-surface-container-low rounded-full h-4 overflow-hidden relative">
+<div class="bg-secondary-container h-full rounded-full transition-all duration-500" style="width: 100%;"></div>
+</div>
+<span class="font-numeric-metric text-[18px] text-on-surface font-bold min-w-[110px] text-right font-numeric-data">$ 149.858</span>
+</div>
+<!-- Laura -->
+<div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-space-md">
+<span class="font-body-md text-body-md font-semibold text-on-surface w-32">Laura Gómez</span>
+<div class="flex-1 bg-surface-container-low rounded-full h-4 overflow-hidden relative">
+<div class="bg-secondary-container h-full rounded-full transition-all duration-500" style="width: 57.4%;"></div>
+</div>
+<span class="font-numeric-metric text-[18px] text-on-surface font-bold min-w-[110px] text-right font-numeric-data">$ 86.009</span>
+</div>
+<!-- Cristian -->
+<div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-space-md">
+<span class="font-body-md text-body-md font-semibold text-on-surface w-32">Cristian</span>
+<div class="flex-1 bg-surface-container-low rounded-full h-4 overflow-hidden relative">
+<div class="bg-secondary-container h-full rounded-full transition-all duration-500" style="width: 56.8%;"></div>
+</div>
+<span class="font-numeric-metric text-[18px] text-on-surface font-bold min-w-[110px] text-right font-numeric-data">$ 85.160</span>
+</div>
+</div>
+</div>
+<!-- Desglose de Desviaciones (Cards por Promotor) -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-lg">
+<!-- Promotor 1: Andrés Pérez -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex flex-col border-b border-outline-variant/30 pb-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Andrés Pérez</h3>
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm font-bold">Líder ticket</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1 font-numeric-data">26 eventos · $ 149.858 / evento</span>
+</div>
+<div class="flex flex-col gap-2 font-body-sm text-body-sm">
+<div class="flex items-center justify-between py-1 px-2 rounded bg-tertiary-fixed/30">
+<span class="font-medium text-on-surface">VINO LA MERCED</span>
+<span class="font-label-sm text-label-sm font-bold text-on-tertiary-container font-numeric-data">+103% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-tertiary-fixed/20">
+<span class="font-medium text-on-surface">CHOCO GALLETA RAMO</span>
+<span class="font-label-sm text-label-sm font-bold text-on-tertiary-container font-numeric-data">+33% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-tertiary-fixed/20">
+<span class="font-medium text-on-surface">VINO MONSERRATE</span>
+<span class="font-label-sm text-label-sm font-bold text-on-tertiary-container font-numeric-data">+26% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-tertiary-fixed/20">
+<span class="font-medium text-on-surface">CACERO MARMOLADO TRES LECHES</span>
+<span class="font-label-sm text-label-sm font-bold text-on-tertiary-container font-numeric-data">+21% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/40">
+<span class="font-medium text-on-surface">GOMA GRISLY X 80 GR UND</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-42% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/30">
+<span class="font-medium text-on-surface">BIMBOLETES X 10 UND</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-37% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/20">
+<span class="font-medium text-on-surface">PAPA PRINGLES 37 Y 40 GR</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-21% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/20">
+<span class="font-medium text-on-surface">BARRITA DE CHOCORAMO X 5</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-20% vs. resto</span>
+</div>
+</div>
+</div>
+<!-- Promotor 2: Laura Gómez -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex flex-col border-b border-outline-variant/30 pb-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Laura Gómez</h3>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-medium">Equilibrado</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1 font-numeric-data">23 eventos · $ 86.009 / evento</span>
+</div>
+<div class="flex flex-col gap-2 font-body-sm text-body-sm">
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/50">
+<span class="font-medium text-on-surface">VINO LA MERCED</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-60% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/40">
+<span class="font-medium text-on-surface">CHOCO GALLETA RAMO</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-50% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/30">
+<span class="font-medium text-on-surface">CERVEZA SIXPACK X 6</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-40% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/20">
+<span class="font-medium text-on-surface">GOMA COLAGENO X 70 GR</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-28% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/20">
+<span class="font-medium text-on-surface">PINGUINO 80 G 2 PORCIONES</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-24% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-surface-container-low">
+<span class="font-medium text-on-surface">GOMA BOMBOMBUN</span>
+<span class="font-label-sm text-label-sm font-medium text-on-surface-variant font-numeric-data">+3% en promedio</span>
+</div>
+</div>
+</div>
+<!-- Promotor 3: Cristian -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex flex-col border-b border-outline-variant/30 pb-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm font-bold text-on-surface">Cristian</h3>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-sm text-label-sm font-medium">Especializado</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant mt-1 font-numeric-data">20 eventos · $ 85.160 / evento</span>
+</div>
+<div class="flex flex-col gap-2 font-body-sm text-body-sm">
+<div class="flex items-center justify-between py-1 px-2 rounded bg-tertiary-fixed/30">
+<span class="font-medium text-on-surface">GOMA COLAGENO X 70 GR</span>
+<span class="font-label-sm text-label-sm font-bold text-on-tertiary-container font-numeric-data">+51% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/50">
+<span class="font-medium text-on-surface">PONQUÉ TRAD SELECTA 230GR</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-55% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/40">
+<span class="font-medium text-on-surface">CACERO MARMOLADO TRES LECHES</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-54% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/40">
+<span class="font-medium text-on-surface">RAMITO X 8</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-50% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/30">
+<span class="font-medium text-on-surface">VINO MONSERRATE</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-29% vs. resto</span>
+</div>
+<div class="flex items-center justify-between py-1 px-2 rounded bg-error-container/20">
+<span class="font-medium text-on-surface">VINO LA MERCED</span>
+<span class="font-label-sm text-label-sm font-bold text-error font-numeric-data">-20% vs. resto</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECCIÓN 4: Relación entre Variables (Correlación de Pearson) -->
+<section class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex flex-col">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary-container text-[22px]">ssid_chart</span>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Relación entre variables</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+        ¿Trabajar más eventos se relaciona con un ticket promedio más alto? Correlación de Pearson real, no solo lectura visual.
+      </p>
+</div>
+<!-- Scatter Plot Canvas con SVG interactivo -->
+<div class="w-full bg-surface-container-low/40 rounded-xl p-space-lg flex flex-col gap-space-sm">
+<div class="w-full h-56 relative flex items-center justify-center">
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 700 200">
+<!-- Guías y ejes -->
+<line stroke="#dac1be" stroke-width="1.5" x1="50" x2="670" y1="170" y2="170"></line>
+<line stroke="#dac1be" stroke-width="1.5" x1="50" x2="50" y1="20" y2="170"></line>
+<!-- Ticks Eje Y -->
+<text fill="#554241" font-family="JetBrains Mono" font-size="11" text-anchor="end" x="45" y="170">$ 60k</text>
+<text fill="#554241" font-family="JetBrains Mono" font-size="11" text-anchor="end" x="45" y="105">$ 100k</text>
+<text fill="#554241" font-family="JetBrains Mono" font-size="11" text-anchor="end" x="45" y="30">$ 150k</text>
+<!-- Ticks Eje X -->
+<text fill="#554241" font-family="JetBrains Mono" font-size="11" text-anchor="middle" x="120" y="188">18 ev</text>
+<text fill="#554241" font-family="JetBrains Mono" font-size="11" text-anchor="middle" x="360" y="188">23 ev</text>
+<text fill="#554241" font-family="JetBrains Mono" font-size="11" text-anchor="middle" x="600" y="188">26 ev</text>
+<!-- Línea de regresión lineal r = 0.87 (vino tinto discontinua) -->
+<line stroke="#541212" stroke-dasharray="6 4" stroke-width="2.5" x1="100" x2="620" y1="140" y2="35"></line>
+<!-- Puntos de datos: Cristian (20 ev, ~85k) -->
+<g class="cursor-pointer group">
+<circle class="fill-secondary-container stroke-primary stroke-2 transition-transform group-hover:scale-125" cx="160" cy="132" r="7"></circle>
+<text fill="#29170f" font-family="Hanken Grotesk" font-size="11" font-weight="600" text-anchor="middle" x="160" y="118">Cristian (20)</text>
+</g>
+<!-- Puntos de datos: Laura (23 ev, ~86k) -->
+<g class="cursor-pointer group">
+<circle class="fill-secondary-container stroke-primary stroke-2 transition-transform group-hover:scale-125" cx="360" cy="130" r="7"></circle>
+<text fill="#29170f" font-family="Hanken Grotesk" font-size="11" font-weight="600" text-anchor="middle" x="360" y="116">Laura Gómez (23)</text>
+</g>
+<!-- Puntos de datos: Andrés (26 ev, ~150k) -->
+<g class="cursor-pointer group">
+<circle class="fill-secondary-container stroke-primary-container stroke-2 transition-transform group-hover:scale-125" cx="600" cy="35" r="8"></circle>
+<text fill="#541212" font-family="Hanken Grotesk" font-size="12" font-weight="700" text-anchor="end" x="590" y="20">Andrés Pérez (26) ★</text>
+</g>
 </svg>
 </div>
-<div class="space-y-1">
-<div class="flex items-center gap-2 flex-wrap text-sm">
-<span class="font-semibold text-brand-maroon">Andrés Pérez</span>
-<span class="text-gray-400">registró venta de</span>
-<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">CACERO MARMOLADO TRES LECHES</span>
-<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 2</span>
-</div>
-<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-<span class="inline-flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<time class="text-gray-600" datetime="2026-09-22T20:13:00">22/09/26 · 8:13 p. m.</time>
-</span>
-<span class="text-gray-300">•</span>
-<span class="text-[11px] text-gray-500">Módulo: Caja POS #2</span>
-<span class="text-gray-300">•</span>
-<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10933</span>
+<!-- Leyenda de Ejes -->
+<div class="flex justify-between items-center px-4 font-label-sm text-label-sm text-on-surface-variant font-numeric-data">
+<span>↑ Ticket prom. facturado</span>
+<span>Eventos trabajados →</span>
 </div>
 </div>
-</div>
-<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</button>
-</div>
-</div>
-<!-- Card 4: Sale Event (Andrés Pérez · VINO LA MERCED) -->
-<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
-<div class="flex items-start justify-between gap-3">
-<div class="flex items-start gap-3.5">
-<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
-<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-</svg>
-</div>
-<div class="space-y-1">
-<div class="flex items-center gap-2 flex-wrap text-sm">
-<span class="font-semibold text-brand-maroon">Andrés Pérez</span>
-<span class="text-gray-400">registró venta de</span>
-<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">VINO LA MERCED</span>
-<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 3</span>
-</div>
-<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-<span class="inline-flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<time class="text-gray-600" datetime="2026-09-22T20:13:00">22/09/26 · 8:13 p. m.</time>
-</span>
-<span class="text-gray-300">•</span>
-<span class="text-[11px] text-gray-500">Módulo: Caja POS #2</span>
-<span class="text-gray-300">•</span>
-<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10932</span>
+<!-- Conclusión Analítica Destacada -->
+<div class="flex items-start gap-space-sm bg-surface-container p-space-md rounded-xl">
+<span class="material-symbols-outlined text-primary-container text-[20px] mt-0.5">insights</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-bold text-primary-container">r = 0.87 — Correlación directa muy fuerte</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+          Existe una fuerte relación lineal positiva entre la cantidad de eventos atendidos y el valor del ticket promedio alcanzado. Esto describe qué tan juntas se mueven las dos variables en los datos actuales, no que una cause la otra mecánicamente (posible factor de mayor seniority y asignación a puntos premium).
+        </p>
 </div>
 </div>
+</section>
+<!-- SECCIÓN 5: Día de la Semana, Temporada y Métodos de Pago -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-space-lg">
+<!-- Columna Izq: Días de la semana & Temporadas -->
+<div class="flex flex-col gap-space-lg">
+<!-- Días de la semana -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex flex-col">
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Día de la semana</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Distribución de volumen de ventas totales en cada jornada.
+          </p>
 </div>
-<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</button>
+<!-- Barras por día (Viernes como pico) -->
+<div class="flex items-end justify-between gap-2 h-44 pt-6 px-4 bg-surface-container-low/40 rounded-xl">
+<!-- Lun -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full max-w-[28px] bg-secondary-container rounded-t-md transition-all group-hover:brightness-95" style="height: 70%;"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Lun</span>
 </div>
+<!-- Mar -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full max-w-[28px] bg-secondary-container rounded-t-md transition-all group-hover:brightness-95" style="height: 38%;"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Mar</span>
 </div>
-<!-- Card 5: Sale Event (Cristian · RAMITO X 8) -->
-<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
-<div class="flex items-start justify-between gap-3">
-<div class="flex items-start gap-3.5">
-<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
-<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-</svg>
+<!-- Mié -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full max-w-[28px] bg-secondary-container rounded-t-md transition-all group-hover:brightness-95" style="height: 52%;"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Mié</span>
 </div>
-<div class="space-y-1">
-<div class="flex items-center gap-2 flex-wrap text-sm">
-<span class="font-semibold text-brand-maroon">Cristian</span>
-<span class="text-gray-400">registró venta de</span>
-<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">RAMITO X 8</span>
-<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 1</span>
+<!-- Jue -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full max-w-[28px] bg-secondary-container rounded-t-md transition-all group-hover:brightness-95" style="height: 65%;"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Jue</span>
 </div>
-<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-<span class="inline-flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<time class="text-gray-600" datetime="2026-09-22T13:04:00">22/09/26 · 1:04 p. m.</time>
-</span>
-<span class="text-gray-300">•</span>
-<span class="text-[11px] text-gray-500">Módulo: Punto de Venta Express</span>
-<span class="text-gray-300">•</span>
-<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10915</span>
+<!-- Vie (Pico destacado) -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<span class="font-label-sm text-[10px] bg-primary-container text-on-primary px-1.5 py-0.5 rounded font-bold font-numeric-data">Pico</span>
+<div class="w-full max-w-[28px] bg-primary-container rounded-t-md transition-all group-hover:brightness-110" style="height: 98%;"></div>
+<span class="font-label-sm text-label-sm text-primary font-bold">Vie</span>
+</div>
+<!-- Sáb -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full max-w-[28px] bg-secondary-container rounded-t-md transition-all group-hover:brightness-95" style="height: 30%;"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Sáb</span>
+</div>
+<!-- Dom -->
+<div class="flex flex-col items-center gap-2 flex-1 group">
+<div class="w-full max-w-[28px] bg-secondary-container rounded-t-md transition-all group-hover:brightness-95" style="height: 60%;"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Dom</span>
 </div>
 </div>
 </div>
-<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</button>
+<!-- Temporadas -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex flex-col">
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Ticket promedio por temporada</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Comparación estacional frente a festividades y eventos de calendario.
+          </p>
+</div>
+<div class="flex flex-col gap-space-md pt-2">
+<!-- Amor y Amistad -->
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between text-on-surface font-body-md text-body-md">
+<span class="font-medium">Amor y Amistad</span>
+<span class="font-numeric-metric text-[16px] font-bold text-on-surface font-numeric-data">$ 43.900</span>
+</div>
+<div class="w-full bg-surface-container-low rounded-full h-3.5 overflow-hidden">
+<div class="bg-secondary-container h-full rounded-full" style="width: 15.7%;"></div>
 </div>
 </div>
-<!-- Card 6: Sale Event (Cristian · GOMA COLAGENO) -->
-<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
-<div class="flex items-start justify-between gap-3">
-<div class="flex items-start gap-3.5">
-<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
-<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-</svg>
+<!-- Temporada normal -->
+<div class="flex flex-col gap-1.5">
+<div class="flex justify-between text-on-surface font-body-md text-body-md">
+<span class="font-medium">Temporada regular / Resto del año</span>
+<span class="font-numeric-metric text-[16px] font-bold text-primary-container font-numeric-data">$ 279.030</span>
 </div>
-<div class="space-y-1">
-<div class="flex items-center gap-2 flex-wrap text-sm">
-<span class="font-semibold text-brand-maroon">Cristian</span>
-<span class="text-gray-400">registró venta de</span>
-<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">GOMA COLAGENO X 70 GR</span>
-<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 3</span>
-</div>
-<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-<span class="inline-flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<time class="text-gray-600" datetime="2026-09-22T13:04:00">22/09/26 · 1:04 p. m.</time>
-</span>
-<span class="text-gray-300">•</span>
-<span class="text-[11px] text-gray-500">Módulo: Punto de Venta Express</span>
-<span class="text-gray-300">•</span>
-<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10914</span>
+<div class="w-full bg-surface-container-low rounded-full h-3.5 overflow-hidden">
+<div class="bg-primary-container h-full rounded-full" style="width: 100%;"></div>
 </div>
 </div>
 </div>
-<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</button>
 </div>
 </div>
-<!-- Card 7: Sale Event (Cristian · VINO MONSERRATE) -->
-<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
-<div class="flex items-start justify-between gap-3">
-<div class="flex items-start gap-3.5">
-<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
-<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-</svg>
+<!-- Columna Der: Métodos de Pago y Hallazgos Cruzados -->
+<div class="flex flex-col gap-space-lg">
+<!-- Métodos de Pago (Stacked Bars) -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-md">
+<div class="flex flex-col">
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Método de pago</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+            Qué % de las ventas de cada punto o promotor usa efectivo, transferencia o libranza.
+          </p>
 </div>
-<div class="space-y-1">
-<div class="flex items-center gap-2 flex-wrap text-sm">
-<span class="font-semibold text-brand-maroon">Cristian</span>
-<span class="text-gray-400">registró venta de</span>
-<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">VINO MONSERRATE</span>
-<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 2</span>
+<!-- Leyenda de colores de métodos de pago -->
+<div class="flex items-center gap-space-md flex-wrap font-label-sm text-label-sm">
+<span class="inline-flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-tertiary-fixed-dim"></span>
+            Efectivo
+          </span>
+<span class="inline-flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-secondary-container"></span>
+            Transferencia
+          </span>
+<span class="inline-flex items-center gap-1.5">
+<span class="w-3 h-3 rounded-full bg-primary-container"></span>
+            Libranza institucional
+          </span>
 </div>
-<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-<span class="inline-flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<time class="text-gray-600" datetime="2026-09-22T13:04:00">22/09/26 · 1:04 p. m.</time>
-</span>
-<span class="text-gray-300">•</span>
-<span class="text-[11px] text-gray-500">Módulo: Punto de Venta Express</span>
-<span class="text-gray-300">•</span>
-<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10913</span>
+<!-- Segmento 1: Por Punto -->
+<div class="flex flex-col gap-space-md pt-2">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider">Por punto</span>
+<!-- Centro -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="font-semibold text-on-surface">Centro</span>
+<span class="text-on-surface-variant font-numeric-data">Ef 48% • Tr 42% • Lib 11%</span>
 </div>
-</div>
-</div>
-<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</button>
-</div>
-</div>
-<!-- Card 8: Sale Event (Cristian · BIMBOLETES) -->
-<div class="bg-white rounded-xl p-3.5 sm:p-4 border border-[#eddcd4] shadow-sm hover:shadow transition-shadow">
-<div class="flex items-start justify-between gap-3">
-<div class="flex items-start gap-3.5">
-<div class="h-9 w-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center shrink-0 text-orange-600 shadow-sm mt-0.5">
-<svg class="h-5 w-5" fill="none" stroke="currentColor" viewbox="0 0 24 24">
-<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"></path>
-</svg>
-</div>
-<div class="space-y-1">
-<div class="flex items-center gap-2 flex-wrap text-sm">
-<span class="font-semibold text-brand-maroon">Cristian</span>
-<span class="text-gray-400">registró venta de</span>
-<span class="font-bold text-gray-900 bg-orange-50/70 px-1.5 py-0.5 rounded border border-orange-100">BIMBOLETES X 10 UND</span>
-<span class="text-xs font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">Cant: 1</span>
-</div>
-<div class="flex items-center gap-3 text-xs text-gray-500 flex-wrap pt-0.5">
-<span class="inline-flex items-center gap-1">
-<svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-<time class="text-gray-600" datetime="2026-09-22T12:58:00">22/09/26 · 12:58 p. m.</time>
-</span>
-<span class="text-gray-300">•</span>
-<span class="text-[11px] text-gray-500">Módulo: Punto de Venta Express</span>
-<span class="text-gray-300">•</span>
-<span class="text-emerald-700 font-medium text-[11px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Ticket #10912</span>
+<div class="w-full h-3.5 bg-surface-container-low rounded-full overflow-hidden flex">
+<div class="h-full bg-tertiary-fixed-dim" style="width: 48%;"></div>
+<div class="h-full bg-secondary-container" style="width: 41%;"></div>
+<div class="h-full bg-primary-container" style="width: 11%;"></div>
 </div>
 </div>
+<!-- Sur -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="font-semibold text-on-surface">Sur</span>
+<span class="text-on-surface-variant font-numeric-data">Ef 58% • Tr 30% • Lib 11%</span>
 </div>
-<button class="text-xs text-gray-400 hover:text-brand-maroon p-1 rounded hover:bg-gray-100 transition" title="Ver detalles técnicos" type="button">
-<svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</button>
+<div class="w-full h-3.5 bg-surface-container-low rounded-full overflow-hidden flex">
+<div class="h-full bg-tertiary-fixed-dim" style="width: 58%;"></div>
+<div class="h-full bg-secondary-container" style="width: 31%;"></div>
+<div class="h-full bg-primary-container" style="width: 11%;"></div>
+</div>
+</div>
+<!-- Norte -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="font-semibold text-on-surface">Norte</span>
+<span class="text-on-surface-variant font-numeric-data">Ef 52% • Tr 36% • Lib 11%</span>
+</div>
+<div class="w-full h-3.5 bg-surface-container-low rounded-full overflow-hidden flex">
+<div class="h-full bg-tertiary-fixed-dim" style="width: 52%;"></div>
+<div class="h-full bg-secondary-container" style="width: 37%;"></div>
+<div class="h-full bg-primary-container" style="width: 11%;"></div>
 </div>
 </div>
 </div>
-<!-- END: AuditLogList -->
-<!-- BEGIN: PaginationBar -->
-<div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 pb-8 text-xs text-gray-600 border-t border-[#ebdcd5]" data-purpose="pagination">
-<div>
-            Mostrando registros del <span class="font-semibold text-gray-800">1</span> al <span class="font-semibold text-gray-800">8</span> de <span class="font-semibold text-gray-800">248</span> eventos
-          </div>
-<div class="flex items-center gap-1.5">
-<button class="px-3 py-1 rounded-lg border border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed" disabled="" type="button">
-              Anterior
-            </button>
-<button class="px-3 py-1 rounded-lg bg-brand-maroon text-white font-medium shadow-sm" type="button">
-              1
-            </button>
-<button class="px-3 py-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700" type="button">
-              2
-            </button>
-<button class="px-3 py-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700" type="button">
-              3
-            </button>
-<span class="px-1 text-gray-400">...</span>
-<button class="px-3 py-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700" type="button">
-              31
-            </button>
-<button class="px-3 py-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 text-gray-700" type="button">
-              Siguiente
-            </button>
+<!-- Segmento 2: Por Promotor -->
+<div class="flex flex-col gap-space-md pt-space-sm border-t border-outline-variant/30">
+<span class="font-label-sm text-label-sm font-semibold text-on-surface-variant uppercase tracking-wider">Por promotor</span>
+<!-- Andrés -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="font-semibold text-on-surface">Andrés Pérez</span>
+<span class="text-on-surface-variant font-numeric-data">Ef 48% • Tr 42% • Lib 11%</span>
+</div>
+<div class="w-full h-3.5 bg-surface-container-low rounded-full overflow-hidden flex">
+<div class="h-full bg-tertiary-fixed-dim" style="width: 48%;"></div>
+<div class="h-full bg-secondary-container" style="width: 41%;"></div>
+<div class="h-full bg-primary-container" style="width: 11%;"></div>
 </div>
 </div>
-<!-- END: PaginationBar -->
+<!-- Laura -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="font-semibold text-on-surface">Laura Gómez</span>
+<span class="text-on-surface-variant font-numeric-data">Ef 58% • Tr 30% • Lib 11%</span>
 </div>
-</main>
-<!-- END: MainContentArea -->
+<div class="w-full h-3.5 bg-surface-container-low rounded-full overflow-hidden flex">
+<div class="h-full bg-tertiary-fixed-dim" style="width: 58%;"></div>
+<div class="h-full bg-secondary-container" style="width: 31%;"></div>
+<div class="h-full bg-primary-container" style="width: 11%;"></div>
 </div>
-<!-- END: MainContainer -->
-</body></html>
+</div>
+<!-- Cristian -->
+<div class="flex flex-col gap-1">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="font-semibold text-on-surface">Cristian</span>
+<span class="text-on-surface-variant font-numeric-data">Ef 52% • Tr 36% • Lib 11%</span>
+</div>
+<div class="w-full h-3.5 bg-surface-container-low rounded-full overflow-hidden flex">
+<div class="h-full bg-tertiary-fixed-dim" style="width: 52%;"></div>
+<div class="h-full bg-secondary-container" style="width: 37%;"></div>
+<div class="h-full bg-primary-container" style="width: 11%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Hallazgos Cruzados / Estado de madurez de datos -->
+<div class="flex flex-col bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[22px]">hub</span>
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Hallazgos cruzados</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+          Combinaciones de punto + promotor + producto con la desviación más marcada frente al resto, ordenadas de mayor a menor significancia.
+        </p>
+<div class="mt-space-sm p-space-md rounded-xl bg-surface-container-low flex items-center gap-space-md">
+<span class="material-symbols-outlined text-outline text-[28px]">query_stats</span>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Muestra en consolidación</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">
+              Todavía no hay suficiente historial multi-factorial para encontrar cruces con señal estadística pura (&gt;95% de confianza). Se requiere un mínimo de 15 eventos adicionales.
+            </span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

@@ -10,7 +10,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { SearchBar } from '@/ui/SearchBar';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -106,7 +106,7 @@ export default function Inventario() {
         accion={{ icono: 'add', texto: 'Pedido', onPress: () => router.push('/admin/inventario/pedido') }}
       />
 
-      <ContenedorAncho anchoMaximo={720}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.accionesExport}>
           <Pressable
             style={styles.botonExport}
@@ -154,7 +154,7 @@ export default function Inventario() {
       ) : filtrados.length === 0 ? (
         <EmptyState icono="search-outline" mensaje={`Ningún producto en bodega coincide con "${busqueda.trim()}".`} />
       ) : (
-        <ContenedorAncho anchoMaximo={720} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
           <FlatList
             data={filtrados}
             keyExtractor={(item) => item.producto.id}

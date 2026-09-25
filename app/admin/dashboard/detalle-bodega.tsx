@@ -16,7 +16,7 @@ import {
 } from '@/db/inventario';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -88,7 +88,7 @@ export default function DetalleBodega() {
           { paddingTop: anchaPantalla ? 16 : insets.top + 16 },
         ]}
       >
-        <ContenedorAncho anchoMaximo={1200}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
           <View style={styles.encabezadoFila}>
             <Pressable
               style={anchaPantalla ? styles.volverBotonAncho : styles.volverBoton}
@@ -122,7 +122,7 @@ export default function DetalleBodega() {
           data={movimientos}
           keyExtractor={(m) => m.id}
           ListHeaderComponent={
-            <ContenedorAncho anchoMaximo={1200}>
+            <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
               <View style={styles.cuerpo}>
                 {serieNeta.length > 0 && (
                   <View style={styles.tarjeta}>
@@ -157,12 +157,12 @@ export default function DetalleBodega() {
             </ContenedorAncho>
           }
           ListEmptyComponent={
-            <ContenedorAncho anchoMaximo={1200}>
+            <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
               <Text style={styles.vacio}>Sin movimientos de bodega en este período.</Text>
             </ContenedorAncho>
           }
           renderItem={({ item }) => (
-            <ContenedorAncho anchoMaximo={1200}>
+            <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
               <View style={styles.filaMovimiento}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.filaMovimientoTipo}>{ETIQUETAS_TIPO[item.tipo] ?? item.tipo}</Text>

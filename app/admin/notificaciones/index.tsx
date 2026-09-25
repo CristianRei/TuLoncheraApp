@@ -27,7 +27,7 @@ import {
 } from '@/db/notificaciones';
 import { listarPersonalCompleto } from '@/db/personal';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -212,7 +212,7 @@ export default function NotificacionesYMensajes() {
           { paddingTop: anchaPantalla ? 20 : insets.top + 20 },
         ]}
       >
-        <ContenedorAncho anchoMaximo={720}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
           <View style={styles.encabezadoFila}>
             {!anchaPantalla && (
               <Pressable style={styles.volverBoton} onPress={() => router.back()}>
@@ -226,7 +226,7 @@ export default function NotificacionesYMensajes() {
         </ContenedorAncho>
       </View>
 
-      <ContenedorAncho anchoMaximo={720}>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
         <View style={styles.pestanas}>
           <Pressable
             style={[styles.pestana, pestana === 'ALERTAS' && styles.pestanaActiva]}
@@ -249,7 +249,7 @@ export default function NotificacionesYMensajes() {
 
       {pestana === 'ALERTAS' ? (
         <>
-          <ContenedorAncho anchoMaximo={720}>
+          <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
             <View style={styles.tabsFiltro}>
               <Pressable
                 style={[styles.tabFiltro, filtroAlertas === 'NO_LEIDAS' && styles.tabFiltroActivo]}
@@ -281,7 +281,7 @@ export default function NotificacionesYMensajes() {
               </Text>
             </View>
           ) : (
-            <ContenedorAncho anchoMaximo={720} llenarAlto>
+            <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
               <FlatList
                 data={alertasFiltradas}
                 keyExtractor={(n) => n.id}
@@ -328,7 +328,7 @@ export default function NotificacionesYMensajes() {
         </>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ContenedorAncho anchoMaximo={720} style={{ gap: 16 }}>
+          <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} style={{ gap: 16 }}>
             {aviso && (
               <View style={[styles.aviso, aviso.tipo === 'error' && styles.avisoError]}>
                 <Text style={[styles.avisoTexto, aviso.tipo === 'error' && styles.avisoTextoError]}>

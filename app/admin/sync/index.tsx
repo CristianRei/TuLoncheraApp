@@ -8,7 +8,7 @@ import { obtenerUltimoCiclo, type EstadoUltimoCiclo } from '@/sync/estado';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETA_TABLA: Record<TablaSync, string> = {
@@ -76,7 +76,7 @@ export default function DiagnosticoSync() {
     <View style={styles.contenedor}>
       <Encabezado titulo="Sincronización" rutaVolverTexto="Admin" />
 
-      <ContenedorAncho anchoMaximo={720} llenarAlto>
+      <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
         <View style={styles.resumen}>
           <Text style={styles.resumenTexto}>
             {pendientes === 0 ? 'Todo sincronizado' : `${pendientes} tarea(s) pendiente(s)`}

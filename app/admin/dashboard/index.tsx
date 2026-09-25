@@ -61,7 +61,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontales';
 import { GraficoCircular } from '@/ui/graficas/GraficoCircular';
 import { ModalDetalleSeccion, type SeccionDetalle } from '@/ui/ModalDetalleSeccion';
-import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
@@ -545,7 +545,7 @@ export default function Dashboard() {
           { paddingTop: anchaPantalla ? 16 : insets.top + 16 },
         ]}
       >
-        <ContenedorAncho anchoMaximo={1200}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
           <View style={styles.encabezadoFila}>
             <View style={styles.encabezadoIzquierda}>
               {!anchaPantalla && (
@@ -585,7 +585,7 @@ export default function Dashboard() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <ContenedorAncho anchoMaximo={1200}>
+          <ContenedorAncho anchoMaximo={ANCHO_ADMIN.tablero}>
             <View style={styles.filtrosTarjeta}>
               <View style={styles.filtrosFilaSuperior}>
                 <View style={styles.tabs}>
