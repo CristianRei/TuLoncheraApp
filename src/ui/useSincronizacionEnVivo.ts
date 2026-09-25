@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import type { Rol } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { sincronizarDatosRemotos } from '@/sync/bajada';
+import { notificarDatosActualizados } from '@/sync/eventosDatos';
 import { suscribirCambiosRemotos } from '@/sync/realtime';
 
 const INTERVALO_RESPALDO_MS = 45 * 1000;
@@ -15,9 +16,24 @@ const ESPERA_AGRUPAR_MS = 400;
  * respaldo por si Realtime se cae. Nada de esto bloquea la UI (R5): si no hay
  * red simplemente no llega nada nuevo. Se monta una vez por sección
  * (`app/admin/_layout.tsx`, `app/bodega/_layout.tsx`, `app/promotor/_layout.tsx`).
+ *
+ * `tablasSoloAviso` (opcional) es para tablas que el admin lee DIRECTO de
+ * Supabase bajo demanda (turnos, arqueos_caja — vía turnosRemotos.ts/
+ * arqueosRemotos.ts) en vez de bajarlas a SQLite local con
+ * `sincronizarDatosRemotos`/`bajadaOperativa.ts`: un cambio ahí no dispara
+ * una descarga, solo avisa directo a las pantallas abiertas
+ * (`notificarDatosActualizados`) para que vuelvan a consultar Supabase con
+ * su propio `cargar()` — ver app/admin/turnos/index.tsx.
  */
-export function useSincronizacionEnVivo(usuarioId: string | null, rol: Rol | null, nombre: string, tablas: string[]) {
+export function useSincronizacionEnVivo(
+  usuarioId: string | null,
+  rol: Rol | null,
+  nombre: string,
+  tablas: string[],
+  tablasSoloAviso: string[] = []
+) {
   const tablasClave = tablas.join(',');
+  const tablasSoloAvisoClave = tablasSoloAviso.join(',');
 
   useEffect(() => {
     if (!usuarioId || !rol) return;
@@ -36,13 +52,17 @@ export function useSincronizacionEnVivo(usuarioId: string | null, rol: Rol | nul
       if (temporizador) clearTimeout(temporizador);
       temporizador = setTimeout(sincronizar, ESPERA_AGRUPAR_MS);
     });
+    const cancelarRealtimeSoloAviso = tablasSoloAvisoClave
+      ? suscribirCambiosRemotos(tablasSoloAvisoClave.split(','), () => notificarDatosActualizados())
+      : null;
     const intervalo = setInterval(sincronizar, INTERVALO_RESPALDO_MS);
 
     return () => {
       activo = false;
       cancelarRealtime();
+      cancelarRealtimeSoloAviso?.();
       clearInterval(intervalo);
       if (temporizador) clearTimeout(temporizador);
     };
-  }, [usuarioId, rol, nombre, tablasClave]);
+  }, [usuarioId, rol, nombre, tablasClave, tablasSoloAvisoClave]);
 }

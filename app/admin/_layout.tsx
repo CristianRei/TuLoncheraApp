@@ -23,11 +23,16 @@ export default function AdminLayout() {
 
   // Ventas de los promotores, cargues que bodega entrega y movimientos de la
   // bodega llegan solos (Realtime) — ver src/ui/useSincronizacionEnVivo.ts.
-  useSincronizacionEnVivo(esAdmin ? usuario.id : null, esAdmin ? 'ADMIN' : null, usuario?.nombre ?? '', [
-    'ventas',
-    'cargues',
-    'movimientos',
-  ]);
+  // Turnos y arqueos de caja son "solo aviso": el admin los lee directo de
+  // Supabase bajo demanda (turnosRemotos.ts/arqueosRemotos.ts), así que un
+  // cambio ahí solo avisa a las pantallas abiertas, no dispara una descarga.
+  useSincronizacionEnVivo(
+    esAdmin ? usuario.id : null,
+    esAdmin ? 'ADMIN' : null,
+    usuario?.nombre ?? '',
+    ['ventas', 'cargues', 'movimientos'],
+    ['turnos', 'arqueos_caja']
+  );
 
   if (!pantallaAncha) {
     return <Stack screenOptions={{ headerShown: false }} />;

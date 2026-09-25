@@ -1,6 +1,7 @@
 import { File } from 'expo-file-system';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
 import { pinParaSincronizar } from '@/core/pin';
 import { obtenerArqueoPorId } from '@/db/arqueos';
 import { normalizar as normalizarNombreCategoria, obtenerCategoria } from '@/db/categorias';
@@ -16,6 +17,7 @@ import { obtenerMovimientoParaSync } from '@/db/movimientos';
 import { obtenerPersona } from '@/db/personal';
 import { obtenerProducto } from '@/db/productos';
 import { obtenerPuntoParaSync } from '@/db/puntos';
+import { encolarSync } from '@/db/syncCola';
 import type { TablaSync } from '@/db/syncCola';
 import { obtenerTraslado } from '@/db/traslados';
 import { obtenerTurno } from '@/db/turnos';
@@ -152,6 +154,37 @@ export async function drenarColaSync(): Promise<void> {
   }
 }
 
+/**
+ * Cierra localmente un turno que perdió la carrera por el índice único de
+ * Supabase (ver el `case 'turnos'` de `subirFila`, error 23505 —
+ * `turnos.promotor_id` no puede repetirse con `hora_fin IS NULL`, así que
+ * si el upsert falla así es porque YA existe otro turno abierto de ese
+ * promotor en Supabase). `hora_fin = hora_inicio` dura cero: nunca debió
+ * existir como turno independiente. Reencola la fila para que el siguiente
+ * ciclo suba el cierre — ya no choca con el índice, que solo aplica a
+ * `hora_fin IS NULL`.
+ *
+ * SOLO actúa sobre turnos de días ANTERIORES a hoy (Bogotá) — nunca el de
+ * hoy. Un duplicado de hoy puede seguir en uso activo en ese mismo celular
+ * (el promotor vendiendo ahora mismo): cerrarlo de golpe le bloquearía la
+ * venta sin avisarle. Uno de hoy simplemente queda pendiente en la cola con
+ * error, sin romper nada más — se resuelve solo la próxima vez que la
+ * persona abra la app (mismo flujo de `iniciarTurno`, que ya adopta el
+ * turno remoto ganador si lo encuentra).
+ */
+async function cerrarTurnoDuplicadoPerdedor(db: SQLiteDatabase, turnoId: string, horaInicio: string): Promise<void> {
+  if (fechaBogota(horaInicio) >= fechaHoyBogota()) {
+    throw new Error('Turno duplicado de hoy — se deja pendiente, no se cierra automáticamente.');
+  }
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE turnos SET hora_fin = ? WHERE id = ? AND hora_fin IS NULL', [
+      horaInicio,
+      turnoId,
+    ]);
+    await encolarSync(db, { tabla: 'turnos', entidadId: turnoId, tipoTarea: 'FILA' });
+  });
+}
+
 async function subirFila(
   db: SQLiteDatabase,
   supabase: Awaited<ReturnType<typeof getSupabaseClient>>,
@@ -175,8 +208,21 @@ async function subirFila(
         ts_cliente: turno.horaInicio,
         dispositivo_id: dispositivoId,
       });
-      if (error) throw error;
-      return;
+      if (!error) return;
+
+      // Índice único parcial en Supabase (turnos.promotor_id WHERE hora_fin
+      // IS NULL, ver supabase/migraciones/0015) — dos dispositivos abrieron
+      // turno casi al mismo tiempo (carrera) y este perdió. En vez de
+      // reintentar para siempre (nunca va a lograr subir un segundo turno
+      // abierto del mismo promotor), se cierra localmente este duplicado
+      // con su propia hora de inicio como hora de fin — nunca debió existir
+      // como turno independiente — y se deja que el siguiente ciclo lo suba
+      // ya cerrado, sin chocar con el índice.
+      if (turno.horaFin === null && error.code === '23505') {
+        await cerrarTurnoDuplicadoPerdedor(db, turno.id, turno.horaInicio);
+        return;
+      }
+      throw error;
     }
 
     case 'comprobantes_venta': {

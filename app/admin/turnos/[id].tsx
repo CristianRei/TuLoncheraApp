@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { fechaBogota, fechaHoyBogota } from '@/core/analitica';
@@ -14,6 +14,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { COLORES_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 function formatearFecha(ts: string): string {
   return new Date(ts).toLocaleString('es-CO', { dateStyle: 'long', timeStyle: 'short' });
@@ -41,42 +42,49 @@ export default function DetalleTurno() {
   const [arqueo, setArqueo] = useState<ArqueoCaja | null>(null);
   const [cargando, setCargando] = useState(true);
 
+  const cargar = useCallback(async () => {
+    const db = await getDb();
+    let encontrado: Turno | null = await obtenerTurno(db, id);
+    if (!encontrado) {
+      // No está en este dispositivo — puede ser un turno originado en otro.
+      try {
+        const remotos = await listarTurnosRemotos();
+        encontrado = remotos.find((t) => t.id === id) ?? null;
+      } catch {
+        encontrado = null;
+      }
+    }
+    setTurno(encontrado);
+
+    // Solo se cruza con el calendario si el turno es de hoy — no hay
+    // forma de resolver "evento de una fecha pasada" sin construir una
+    // función nueva, fuera de alcance de esta rebanada informativa.
+    if (encontrado && fechaBogota(encontrado.horaInicio) === fechaHoyBogota()) {
+      setEventoDelDia(await obtenerEventoDeHoyPromotor(db, encontrado.promotorId));
+    }
+
+    if (encontrado?.horaFin) {
+      let arqueoEncontrado = await obtenerArqueoPorTurno(db, id);
+      if (!arqueoEncontrado) {
+        try {
+          arqueoEncontrado = await obtenerArqueoRemotoPorTurno(id);
+        } catch {
+          arqueoEncontrado = null;
+        }
+      }
+      setArqueo(arqueoEncontrado);
+    }
+    setCargando(false);
+  }, [id]);
+
   useEffect(() => {
     (async () => {
-      const db = await getDb();
-      let encontrado: Turno | null = await obtenerTurno(db, id);
-      if (!encontrado) {
-        // No está en este dispositivo — puede ser un turno originado en otro.
-        try {
-          const remotos = await listarTurnosRemotos();
-          encontrado = remotos.find((t) => t.id === id) ?? null;
-        } catch {
-          encontrado = null;
-        }
-      }
-      setTurno(encontrado);
-
-      // Solo se cruza con el calendario si el turno es de hoy — no hay
-      // forma de resolver "evento de una fecha pasada" sin construir una
-      // función nueva, fuera de alcance de esta rebanada informativa.
-      if (encontrado && fechaBogota(encontrado.horaInicio) === fechaHoyBogota()) {
-        setEventoDelDia(await obtenerEventoDeHoyPromotor(db, encontrado.promotorId));
-      }
-
-      if (encontrado?.horaFin) {
-        let arqueoEncontrado = await obtenerArqueoPorTurno(db, id);
-        if (!arqueoEncontrado) {
-          try {
-            arqueoEncontrado = await obtenerArqueoRemotoPorTurno(id);
-          } catch {
-            arqueoEncontrado = null;
-          }
-        }
-        setArqueo(arqueoEncontrado);
-      }
-      setCargando(false);
+      await cargar();
     })();
-  }, [id]);
+  }, [cargar]);
+  // Si el turno sigue en curso, el admin ve el cierre y el arqueo de caja
+  // aparecer solos apenas el promotor cierra desde su celular (Realtime).
+  useRecargarConDatosNuevos(cargar);
 
   if (!usuario) return null;
 

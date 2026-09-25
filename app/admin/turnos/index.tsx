@@ -17,6 +17,7 @@ import { FilterTabs } from '@/ui/FilterTabs';
 import { ListRow } from '@/ui/ListRow';
 import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 type FiltroEstado = 'TODOS' | 'EN_CURSO' | 'FINALIZADO';
 
@@ -140,6 +141,9 @@ export default function Turnos() {
       cargar();
     }, [cargar])
   );
+  // Un check-in, cierre de turno o arqueo de caja en otro celular llega solo
+  // (Realtime, ver app/admin/_layout.tsx y src/ui/useSincronizacionEnVivo.ts).
+  useRecargarConDatosNuevos(cargar);
 
   // Período/Estado/Promotor se combinan (AND) — mismo criterio que Bitácora
   // y auditoría. El volumen de turnos es bajo, así que se filtra en memoria

@@ -115,6 +115,18 @@ function crearFake() {
     from(nombre) {
       const consulta = new Consulta(nombre);
       consulta.upsert = async (rows) => {
+        // Simula el índice único parcial real de supabase/migraciones/0015:
+        // turnos.promotor_id no puede repetirse con hora_fin IS NULL.
+        if (nombre === 'turnos') {
+          for (const r of Array.isArray(rows) ? rows : [rows]) {
+            if (r.hora_fin === null || r.hora_fin === undefined) {
+              const otroAbierto = [...t('turnos').values()].some(
+                (x) => x.promotor_id === r.promotor_id && x.id !== r.id && (x.hora_fin ?? null) === null
+              );
+              if (otroAbierto) return { error: { code: '23505', message: 'duplicate key value violates unique constraint "idx_turnos_un_abierto_por_promotor"' } };
+            }
+          }
+        }
         for (const r of Array.isArray(rows) ? rows : [rows]) { guardar(nombre, r); capturas.push({ tabla: nombre, fila: r }); }
         return { error: null };
       };
@@ -1066,6 +1078,105 @@ console.log('\n== K. Un promotor nunca queda con dos turnos abiertos a la vez ==
     globalThis.__supabase = { from: () => ({ select: () => ({ eq: () => ({ is: () => ({ gte: () => ({ order: () => ({ limit: () => ({ returns: async () => { throw new Error('Network request failed'); } }) }) }) }) }) }) }) };
     const turno = await iniciarTurnoJ(dbJ3, { promotorId: otroPromotor.id, selfieUri: 'file:///offline.jpg', latitud: 3, longitud: 3 }, dispJ3);
     assert.equal(turno.selfieUri, 'file:///offline.jpg');
+  });
+
+  // El chequeo de arriba (`iniciarTurnoJ`) es best-effort: si dos
+  // dispositivos abren turno casi al mismo tiempo, ninguno ve todavía el
+  // turno del otro y ambos terminan subiendo el suyo. El índice único de
+  // Supabase (supabase/migraciones/0015) es la garantía real — y cuando el
+  // motor de sync choca con él, debe resolverlo sin quedar reintentando para
+  // siempre ni romper un turno de hoy que puede seguir en uso.
+  const { drenarColaSync: drenarColaSyncK } = await imp('sync/motor.ts');
+
+  await paso('motor de sync: turno duplicado de un día ANTERIOR se cierra solo al chocar con el índice único', async () => {
+    const dbK1 = crearDb();
+    await aplicar(dbK1, migs);
+    const dispK1 = 'k1k1k1k1-0000-4000-8000-000000000000';
+    await sembrarUsuariosDePrueba(dbK1, dispK1);
+    const promotorK = await dbK1.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+
+    const idViejo = randomUUID();
+    const horaViejo = '2026-09-20T13:00:00.000Z'; // día anterior al reloj fijo del fake (2026-09-23)
+    await dbK1.runAsync(
+      `INSERT INTO turnos (id, promotor_id, selfie_uri, latitud, longitud, hora_inicio, hora_fin, ts_cliente, dispositivo_id)
+       VALUES (?, ?, 'file:///viejo.jpg', 1, 1, ?, NULL, ?, ?)`,
+      [idViejo, promotorK.id, horaViejo, horaViejo, dispK1]
+    );
+    await dbK1.runAsync(
+      `INSERT INTO _sync_pendiente (id, tabla, entidad_id, tipo_tarea, intentos, creado_ts) VALUES (?, 'turnos', ?, 'FILA', 0, ?)`,
+      [randomUUID(), idViejo, horaViejo]
+    );
+
+    const fakeK = crearFake();
+    // Otro dispositivo ya ganó la carrera: un turno abierto distinto, mismo promotor, ya en Supabase.
+    await fakeK.from('turnos').upsert({
+      id: randomUUID(),
+      promotor_id: promotorK.id,
+      promotor_nombre: promotorK.nombre,
+      selfie_path: 'ganador.jpg',
+      latitud: 2,
+      longitud: 2,
+      hora_inicio: horaViejo,
+      hora_fin: null,
+      dispositivo_id: 'otro-dispositivo',
+    });
+
+    globalThis.__db = dbK1;
+    globalThis.__supabase = fakeK;
+    await drenarColaSyncK();
+
+    const filaLocal = await dbK1.getFirstAsync('SELECT hora_fin FROM turnos WHERE id = ?', [idViejo]);
+    assert.ok(filaLocal.hora_fin, 'el turno viejo duplicado debió cerrarse solo');
+
+    const pendientes = await dbK1.getAllAsync(
+      "SELECT tabla, ultimo_error FROM _sync_pendiente WHERE tabla = 'turnos' AND completado_ts IS NULL"
+    );
+    assert.equal(pendientes.length, 1, 'debió quedar una tarea nueva pendiente para subir el cierre');
+  });
+
+  await paso('motor de sync: turno duplicado de HOY se deja pendiente, nunca se cierra solo', async () => {
+    const dbK2 = crearDb();
+    await aplicar(dbK2, migs);
+    const dispK2 = 'k2k2k2k2-0000-4000-8000-000000000000';
+    await sembrarUsuariosDePrueba(dbK2, dispK2);
+    const promotorK2 = await dbK2.getFirstAsync(`SELECT id, nombre FROM usuarios WHERE pin='8509'`);
+
+    const idHoy = randomUUID();
+    const horaHoy = new Date().toISOString();
+    await dbK2.runAsync(
+      `INSERT INTO turnos (id, promotor_id, selfie_uri, latitud, longitud, hora_inicio, hora_fin, ts_cliente, dispositivo_id)
+       VALUES (?, ?, 'file:///hoy.jpg', 1, 1, ?, NULL, ?, ?)`,
+      [idHoy, promotorK2.id, horaHoy, horaHoy, dispK2]
+    );
+    await dbK2.runAsync(
+      `INSERT INTO _sync_pendiente (id, tabla, entidad_id, tipo_tarea, intentos, creado_ts) VALUES (?, 'turnos', ?, 'FILA', 0, ?)`,
+      [randomUUID(), idHoy, horaHoy]
+    );
+
+    const fakeK2 = crearFake();
+    await fakeK2.from('turnos').upsert({
+      id: randomUUID(),
+      promotor_id: promotorK2.id,
+      promotor_nombre: promotorK2.nombre,
+      selfie_path: 'ganador.jpg',
+      latitud: 2,
+      longitud: 2,
+      hora_inicio: horaHoy,
+      hora_fin: null,
+      dispositivo_id: 'otro-dispositivo',
+    });
+
+    globalThis.__db = dbK2;
+    globalThis.__supabase = fakeK2;
+    await drenarColaSyncK();
+
+    const filaLocal = await dbK2.getFirstAsync('SELECT hora_fin FROM turnos WHERE id = ?', [idHoy]);
+    assert.equal(filaLocal.hora_fin, null, 'un turno de HOY nunca debe cerrarse automáticamente');
+
+    const pendiente = await dbK2.getFirstAsync(
+      "SELECT ultimo_error FROM _sync_pendiente WHERE tabla = 'turnos' AND completado_ts IS NULL"
+    );
+    assert.ok(pendiente?.ultimo_error, 'debe quedar pendiente con el error, sin romper nada más');
   });
 }
 
