@@ -61,7 +61,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontales';
 import { GraficoCircular } from '@/ui/graficas/GraficoCircular';
 import { ModalDetalleSeccion, type SeccionDetalle } from '@/ui/ModalDetalleSeccion';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
@@ -1569,18 +1569,16 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.superficie,
   },
   titulo: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloSeccion,
     color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    ...TEXTO_ADMIN.tituloPantalla,
     color: COLORES_ADMIN.vino,
   },
   encabezadoDerecha: {
@@ -1598,8 +1596,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   botonNotificacionesTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
   },
   botonRecibos: {
@@ -1612,8 +1609,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   botonRecibosTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   centrado: {
@@ -1623,8 +1619,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   avisoAngosto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
     maxWidth: 320,
@@ -1671,9 +1666,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.vino,
   },
   tabTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   tabTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -1691,9 +1685,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.dorado,
   },
   actualizadoTexto: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.datoSecundario,
   },
   botonRefrescar: {
     flexDirection: 'row',
@@ -1705,9 +1697,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   botonRefrescarTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
   },
   selectoresFila: {
     flexDirection: 'row',
@@ -1725,10 +1716,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   selectorLabel: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
+    ...TEXTO_ADMIN.etiqueta,
     letterSpacing: 0.5,
   },
   selectorBoton: {
@@ -1743,9 +1731,8 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   selectorBotonTexto: {
+    ...TEXTO_ADMIN.boton,
     flex: 1,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
   },
   masFiltrosBoton: {
@@ -1762,9 +1749,8 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   masFiltrosTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.boton,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.texto,
   },
   masFiltrosBadge: {
     backgroundColor: COLORES_ADMIN.superficieMasAlta,
@@ -1790,9 +1776,8 @@ const styles = StyleSheet.create({
     borderTopColor: COLORES_ADMIN.superficie,
   },
   chipsEtiqueta: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   chip: {
     flexDirection: 'row',
@@ -1806,7 +1791,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   chipTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.texto,
   },
@@ -1817,7 +1802,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   limpiarFiltrosTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
   },
@@ -1846,10 +1831,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   kpiEtiqueta: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
+    ...TEXTO_ADMIN.etiqueta,
     letterSpacing: 0.5,
   },
   kpiValorFila: {
@@ -1859,8 +1841,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   kpiValor: {
-    fontSize: 24,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    ...TEXTO_ADMIN.datoGrande,
     color: COLORES_ADMIN.vino,
   },
   kpiVariacionChip: {
@@ -1878,9 +1859,8 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   kpiPie: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   kpiPieFila: {
     flexDirection: 'row',
@@ -1921,32 +1901,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   seccionTitulo: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloSeccion,
     color: COLORES_ADMIN.vino,
   },
   seccionSubtitulo: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     marginTop: 2,
   },
   seccionEtiquetaChica: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
+    ...TEXTO_ADMIN.etiqueta,
     letterSpacing: 0.5,
   },
   vacio: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
   },
   margenCobertura: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.nota,
     marginBottom: 10,
   },
   graficoBloque: {
@@ -1969,9 +1939,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.dorado,
   },
   graficoPicoTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   graficoPicoTextoFuerte: {
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
@@ -2047,8 +2016,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   desgloseHoraTitulo: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   desgloseHoraFila: {
@@ -2057,8 +2025,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   desgloseHoraPromotor: {
+    ...TEXTO_ADMIN.nota,
     width: 100,
-    fontSize: 12,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.texto,
   },
@@ -2075,9 +2043,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   desgloseHoraMonto: {
+    ...TEXTO_ADMIN.datoSecundario,
     width: 90,
     textAlign: 'right',
-    fontSize: 12,
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
@@ -2092,9 +2060,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   barraProgresoNombre: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.boton,
     flexShrink: 1,
   },
   barraProgresoValores: {
@@ -2103,7 +2069,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   barraProgresoMonto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.dato,
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
@@ -2153,17 +2119,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.dorado,
   },
   filaRankingMedallaTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.datoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
   },
   filaRankingMedallaTextoPrimera: {
     color: COLORES_ADMIN.vino,
   },
   filaRankingNombre: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.boton,
   },
   filaRankingSub: {
     fontSize: 11,
@@ -2174,7 +2137,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   filaRankingMonto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.dato,
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
@@ -2260,9 +2223,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.vino,
   },
   filaProductoNombre: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.boton,
   },
   filaProductoUnidades: {
     fontSize: 11,
@@ -2270,7 +2231,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   filaProductoTotal: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.dato,
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
@@ -2291,9 +2252,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   piePaginaTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
   },
   piePaginaEnlace: {
     flexDirection: 'row',
@@ -2301,8 +2260,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   piePaginaEnlaceTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   fondoModal: {
@@ -2319,8 +2277,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalCalendarioTitulo: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloTarjeta,
     color: COLORES_ADMIN.vino,
     textAlign: 'center',
   },
@@ -2331,7 +2288,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCalendarioConfirmarTexto: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.textoInverso,
   },
@@ -2366,9 +2323,8 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   modalFiltroTabTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   modalFiltroTabTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -2383,16 +2339,14 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORES_ADMIN.superficie,
   },
   modalFiltroFilaTexto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.cuerpo,
   },
   modalCerrar: {
     alignItems: 'center',
     paddingVertical: 12,
   },
   modalCerrarTexto: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
   },
@@ -2418,9 +2372,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.vino,
   },
   mininTabEtiqueta: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
   },
   mininTabEtiquetaActiva: {
     color: COLORES_ADMIN.textoInverso,
@@ -2442,8 +2395,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   botonAgregarMetaTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   proyeccionFila: {

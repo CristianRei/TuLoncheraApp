@@ -16,7 +16,7 @@ import {
 } from '@/db/inventario';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -223,23 +223,21 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.superficie,
   },
   volverTextoAncho: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.vino,
   },
   titulo: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloSeccion,
     color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    ...TEXTO_ADMIN.tituloPantalla,
     color: COLORES_ADMIN.vino,
   },
   centrado: {
@@ -249,8 +247,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   avisoAngosto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
     maxWidth: 320,
@@ -272,20 +269,14 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   seccionTitulo: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   vacio: {
+    ...TEXTO_ADMIN.cuerpoSecundario,
     paddingHorizontal: 20,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
   },
   vacioInline: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
   },
   listaProductos: {
     gap: 8,
@@ -297,20 +288,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filaProductoNombre: {
+    ...TEXTO_ADMIN.cuerpoSecundario,
     flex: 1,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.texto,
   },
   filaProductoSaldo: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.datoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.monoMedio,
-    color: COLORES_ADMIN.textoSecundario,
     minWidth: 60,
     textAlign: 'right',
   },
   filaProductoValor: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.datoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.monoMedio,
     color: COLORES_ADMIN.texto,
     minWidth: 90,
@@ -326,14 +315,12 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORES_ADMIN.superficie,
   },
   filaMovimientoTipo: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.texto,
   },
   filaMovimientoProducto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     marginTop: 2,
   },
   filaMovimientoFecha: {

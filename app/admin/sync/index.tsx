@@ -8,7 +8,7 @@ import { obtenerUltimoCiclo, type EstadoUltimoCiclo } from '@/sync/estado';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const ETIQUETA_TABLA: Record<TablaSync, string> = {
@@ -154,11 +154,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   ultimoCicloTitulo: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    ...TEXTO_ADMIN.etiqueta,
   },
   ultimoCicloTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.texto },
   ultimoCicloTextoError: { color: COLORES_ADMIN.error },

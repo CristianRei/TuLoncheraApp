@@ -21,7 +21,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { ListRow } from '@/ui/ListRow';
 import { SearchBar } from '@/ui/SearchBar';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function ClientesAdmin() {
@@ -262,22 +262,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalTitulo: {
-    fontSize: 16,
+    ...TEXTO_ADMIN.tituloSeccion,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: COLORES_ADMIN.texto,
   },
   modalScroll: {
     gap: 12,
   },
   modalInput: {
+    ...TEXTO_ADMIN.cuerpo,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: RADII_ADMIN.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
     marginBottom: 12,
   },
   modalInputMultilinea: {
@@ -303,8 +300,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalConfirmarTexto: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   botonDeshabilitado: {

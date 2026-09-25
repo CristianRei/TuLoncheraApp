@@ -147,6 +147,12 @@ export const TEXTO_ADMIN = {
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
   },
+  /** Texto pequeño de apoyo: pie de tarjeta, aclaraciones, fechas en texto. */
+  nota: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    color: COLORES_ADMIN.textoSecundario,
+  },
   /** Etiqueta de campo o encabezado de columna — va en MAYÚSCULAS. */
   etiqueta: {
     fontSize: 11,

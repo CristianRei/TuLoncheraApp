@@ -19,7 +19,7 @@ import { crearPunto, listarPuntos } from '@/db/puntos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function DetalleEmpresa() {
@@ -187,14 +187,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   filaNombre: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   filaDetalle: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.nota,
   },
   fondoModal: {
     flex: 1,
@@ -212,19 +208,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalTitulo: {
-    fontSize: 16,
+    ...TEXTO_ADMIN.tituloSeccion,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: COLORES_ADMIN.texto,
   },
   modalInput: {
+    ...TEXTO_ADMIN.cuerpo,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: RADII_ADMIN.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
   },
   modalAcciones: {
     flexDirection: 'row',
@@ -245,8 +238,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalConfirmarTexto: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   botonDeshabilitado: {

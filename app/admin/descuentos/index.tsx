@@ -11,7 +11,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type Filtro = 'VIGENTES' | 'VENCIDOS';
@@ -267,14 +267,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   filaAlcance: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.boton,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.texto,
   },
   filaVigencia: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.datoSecundario,
   },
   botonDesactivar: {
     borderWidth: 1,
@@ -284,7 +281,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   botonDesactivarTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.error,
   },

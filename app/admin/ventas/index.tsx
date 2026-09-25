@@ -15,7 +15,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { ListRow } from '@/ui/ListRow';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -249,9 +249,8 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   tabFechaTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   tabFechaTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -276,15 +275,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalTitulo: {
-    fontSize: 16,
+    ...TEXTO_ADMIN.tituloSeccion,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: COLORES_ADMIN.texto,
   },
   modalCerrar: {
     paddingVertical: ESPACIADO_ADMIN.sm,
   },
   modalCerrarTexto: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.textoSecundario,
   },

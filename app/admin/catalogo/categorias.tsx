@@ -15,7 +15,7 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function CategoriasCatalogo() {
@@ -143,9 +143,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.background,
   },
   subtitulo: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.nota,
     paddingTop: ESPACIADO_ADMIN.xs,
   },
   formulario: {
@@ -154,14 +152,12 @@ const styles = StyleSheet.create({
     paddingTop: ESPACIADO_ADMIN.lg,
   },
   input: {
+    ...TEXTO_ADMIN.cuerpo,
     flex: 1,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.md,
     paddingHorizontal: ESPACIADO_ADMIN.lg,
     paddingVertical: 11,
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
   },
@@ -176,8 +172,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonAgregarTexto: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   centrado: {
@@ -208,17 +204,13 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   filaNombre: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   filaNombreInactivo: {
     textDecorationLine: 'line-through',
   },
   filaDetalle: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.nota,
   },
   botonAlternar: {
     borderWidth: 1,
@@ -228,7 +220,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   botonAlternarTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
     color: COLORES_ADMIN.vino,
   },

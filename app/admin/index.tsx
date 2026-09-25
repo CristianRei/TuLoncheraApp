@@ -13,7 +13,7 @@ import { contarPromotoresConPuntoVigente } from '@/db/eventos';
 import { contarNotificacionesNoLeidas, generarNotificaciones } from '@/db/notificaciones';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { MODULOS_ADMIN } from '@/ui/modulosAdmin';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { TarjetaModulo } from '@/ui/TarjetaModulo';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useSesion } from '@/ui/SesionContext';
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   nombreApp: {
-    fontSize: 16,
+    ...TEXTO_ADMIN.tituloSeccion,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
     color: COLORES_ADMIN.textoInverso,
   },
@@ -242,8 +242,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   cerrarSesion: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
   },
   scroll: {
@@ -271,10 +270,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.dorado,
   },
   bannerEyebrow: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
+    ...TEXTO_ADMIN.etiqueta,
     letterSpacing: 1,
   },
   bannerTitulo: {
@@ -283,8 +279,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.vino,
   },
   bannerDescripcion: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoSecundario,
     lineHeight: 20,
     maxWidth: 600,

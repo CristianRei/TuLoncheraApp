@@ -21,7 +21,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { ListRow } from '@/ui/ListRow';
 import { SelectorProductosConCantidad } from '@/ui/SelectorProductosConCantidad';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -463,8 +463,7 @@ const styles = StyleSheet.create({
     gap: ESPACIADO_ADMIN.sm,
   },
   subtituloSeccion: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoSecundario,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -488,10 +487,9 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.bordeSuave,
   },
   resumenOrigenTexto: {
+    ...TEXTO_ADMIN.cuerpoSecundario,
     flexShrink: 1,
-    fontSize: 13,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   resumenOrigenCifra: {
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
@@ -512,8 +510,8 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   botonTodoTexto: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   botonTodoTextoActivo: {
@@ -529,8 +527,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonConfirmarTexto: {
+    ...TEXTO_ADMIN.tituloTarjeta,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
 });

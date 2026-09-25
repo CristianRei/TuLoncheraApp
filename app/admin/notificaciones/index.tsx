@@ -27,7 +27,7 @@ import {
 } from '@/db/notificaciones';
 import { listarPersonalCompleto } from '@/db/personal';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -484,18 +484,16 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.superficie,
   },
   titulo: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloSeccion,
     color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    ...TEXTO_ADMIN.tituloPantalla,
     color: COLORES_ADMIN.vino,
   },
   pestanas: {
@@ -518,8 +516,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   pestanaTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoSecundario,
   },
   pestanaTextoActiva: {
@@ -544,9 +541,8 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   tabFiltroTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   tabFiltroTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -559,8 +555,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   vacio: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
   },
@@ -606,11 +601,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filaTipo: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    ...TEXTO_ADMIN.etiqueta,
   },
   filaTiempo: {
     fontSize: 11,
@@ -618,14 +609,11 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   filaTitulo: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
   },
   filaDetalle: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     lineHeight: 17,
   },
   botonLeida: {
@@ -657,8 +645,7 @@ const styles = StyleSheet.create({
     borderColor: ESTADO_ADMIN.error.borde,
   },
   avisoTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: ESTADO_ADMIN.exito.texto,
   },
   avisoTextoError: {
@@ -673,14 +660,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tarjetaTitulo: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.tituloSeccion,
   },
   tarjetaDescripcion: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
   },
   filaProgreso: {
     flexDirection: 'row',
@@ -690,12 +673,10 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORES_ADMIN.bordeSuave,
   },
   filaProgresoNombre: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.cuerpo,
   },
   filaProgresoPct: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
   },
@@ -716,9 +697,8 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   chipRolTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   chipRolTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -731,13 +711,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   etiquetaSeleccion: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.nota,
     flex: 1,
   },
   enlaceSeleccion: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
     textDecorationLine: 'underline',
@@ -762,26 +740,22 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   checkboxMarca: {
+    ...TEXTO_ADMIN.nota,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 12,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   filaCheckboxTexto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.cuerpo,
   },
   textoMensaje: {
+    ...TEXTO_ADMIN.cuerpo,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
     borderRadius: RADII_ADMIN.sm,
     padding: 12,
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
     minHeight: 80,
     textAlignVertical: 'top',
     marginTop: 6,
-    color: COLORES_ADMIN.texto,
   },
   boton: {
     backgroundColor: COLORES_ADMIN.vino,
@@ -794,8 +768,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonTexto: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   notaConductor: {

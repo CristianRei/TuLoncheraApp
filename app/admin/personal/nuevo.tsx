@@ -10,7 +10,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { FormularioPersona, type ValoresPersona } from '@/ui/FormularioPersona';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 const OPCIONES_ROL: { valor: Rol; etiqueta: string }[] = [
@@ -105,8 +105,7 @@ const styles = StyleSheet.create({
     gap: ESPACIADO_ADMIN.md,
   },
   selectorRolEtiqueta: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoSecundario,
   },
 });

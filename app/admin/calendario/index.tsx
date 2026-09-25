@@ -38,7 +38,7 @@ import { listarPromotores } from '@/db/usuarios';
 import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from '@/ui/calendarioGrilla';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { SelectorDesplegable } from '@/ui/SelectorDesplegable';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -1023,8 +1023,8 @@ const styles = StyleSheet.create({
   },
   encabezadoContenido: { gap: 4 },
   volver: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
   },
@@ -1130,9 +1130,7 @@ const styles = StyleSheet.create({
   leyendaTotal: { fontSize: 11, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
   leyendaTotalNumero: { fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita, color: COLORES_ADMIN.texto },
   vacio: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     textAlign: 'center',
   },
   vacioContenedor: { alignItems: 'center', gap: 8, paddingVertical: 24 },
@@ -1179,22 +1177,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   detalleDiaTitulo: {
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.tituloPantalla,
     marginTop: 4,
   },
   detalleDiaSubtitulo: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
     textTransform: 'capitalize',
   },
   itinerarioTitulo: {
-    fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.etiqueta,
     color: COLORES_ADMIN.vino,
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   // Dorado de la marca (CLAUDE.md sección 13) con texto vinotinto: blanco
@@ -1248,18 +1241,16 @@ const styles = StyleSheet.create({
   },
   modalTitulo: { fontSize: 16, fontFamily: TIPOGRAFIA_ADMIN.negrita, color: COLORES_ADMIN.texto },
   modalSubtitulo: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
     marginTop: 8,
     textTransform: 'uppercase',
   },
   modalTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.regular, color: COLORES_ADMIN.textoSecundario },
   modalTextoMotivo: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.medio, color: COLORES_ADMIN.error },
   modalTextoAviso: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
     backgroundColor: COLORES_ADMIN.superficieBaja,
     borderRadius: RADII_ADMIN.sm,
     padding: 8,
@@ -1309,14 +1300,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   errorTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.error,
   },
   ayudaTexto: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.nota,
   },
   botonGuardarMeta: {
     width: 26,

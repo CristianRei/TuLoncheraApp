@@ -41,7 +41,7 @@ import { GraficoBarrasHorizontales } from '@/ui/graficas/GraficoBarrasHorizontal
 import { GraficoDispersion } from '@/ui/graficas/GraficoDispersion';
 import { GraficoLinea } from '@/ui/graficas/GraficoLinea';
 import { MapaCalor } from '@/ui/graficas/MapaCalor';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -719,18 +719,16 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.superficie,
   },
   titulo: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloSeccion,
     color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    ...TEXTO_ADMIN.tituloPantalla,
     color: COLORES_ADMIN.vino,
   },
   centrado: {
@@ -740,8 +738,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   avisoAngosto: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoSecundario,
     textAlign: 'center',
     maxWidth: 320,
@@ -769,9 +766,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.vino,
   },
   tabTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   tabTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -796,9 +792,8 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   tabVistaTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   tabVistaTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -831,14 +826,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   recomendacionTitulo: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
   },
   recomendacionDetalle: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     marginTop: 3,
     lineHeight: 18,
   },
@@ -861,23 +853,19 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   verGraficaTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.vino,
     textDecorationLine: 'underline',
   },
   seccionTitulo: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   seccionEspaciada: {
     marginTop: 20,
   },
   seccionSubtitulo: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     marginBottom: 4,
   },
   tarjeta: {
@@ -894,14 +882,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tarjetaTitulo: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
   },
   tarjetaSubtitulo: {
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.nota,
     marginTop: 2,
   },
   badgeInsuficiente: {
@@ -916,9 +901,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   textoAviso: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.textoSecundario,
+    ...TEXTO_ADMIN.cuerpoSecundario,
   },
   listaProductos: {
     gap: 8,
@@ -929,18 +912,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filaProductoNombre: {
+    ...TEXTO_ADMIN.cuerpoSecundario,
     flex: 1,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.texto,
   },
   filaProductoDato: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.datoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.monoMedio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   verMasTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.vino,
   },
@@ -955,9 +936,8 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   textoHallazgo: {
+    ...TEXTO_ADMIN.cuerpoSecundario,
     flex: 1,
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.texto,
     lineHeight: 19,
   },
@@ -965,9 +945,8 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   leyendaGrafico: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
     marginBottom: 6,
   },
   diasFila: {
@@ -999,9 +978,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   filaMetodoPagoNombre: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.boton,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.texto,
   },
   barraMetodoPagoTrack: {
     flexDirection: 'row',

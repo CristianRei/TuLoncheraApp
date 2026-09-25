@@ -10,7 +10,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { ModalConfirmacion } from '@/ui/ModalConfirmacion';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 function formatearFecha(iso: string): string {
@@ -155,9 +155,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   campoValor: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   botonEliminar: {
     borderWidth: 1.5,
@@ -167,8 +165,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   botonEliminarTexto: {
+    ...TEXTO_ADMIN.tituloTarjeta,
     color: COLORES_ADMIN.error,
-    fontSize: 15,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   botonDeshabilitado: {

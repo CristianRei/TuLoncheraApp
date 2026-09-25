@@ -10,7 +10,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { SearchBar } from '@/ui/SearchBar';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   botonExportTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
     textAlign: 'center',
@@ -227,10 +227,9 @@ const styles = StyleSheet.create({
     gap: ESPACIADO_ADMIN.md,
   },
   filaNombre: {
+    ...TEXTO_ADMIN.cuerpo,
     flex: 1,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
   },
   filaSaldo: {
     fontSize: 15,

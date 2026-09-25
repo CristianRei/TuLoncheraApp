@@ -27,7 +27,7 @@ import { listarPromotores } from '@/db/usuarios';
 import { CalendarioRango } from '@/ui/CalendarioRango';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
-import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, TIPOGRAFIA_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 type PasoSelector = 'PRODUCTO' | 'PUNTO' | 'PROMOTOR' | null;
@@ -464,26 +464,24 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   volver: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.superficie,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
   },
   volverAncho: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.vino,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
   },
   tituloAncho: {
+    ...TEXTO_ADMIN.tituloPantalla,
     color: COLORES_ADMIN.vino,
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   titulo: {
+    ...TEXTO_ADMIN.tituloSeccion,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   centrado: {
     flex: 1,
@@ -495,13 +493,11 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   buscador: {
+    ...TEXTO_ADMIN.cuerpo,
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderRadius: RADII_ADMIN.sm,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
-    color: COLORES_ADMIN.texto,
     borderWidth: 1,
     borderColor: COLORES_ADMIN.bordeSuave,
   },
@@ -517,9 +513,8 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   filaSelectorTexto: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.texto,
   },
   form: {
     padding: 20,
@@ -530,9 +525,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   etiqueta: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.textoSecundario,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
@@ -563,8 +557,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.superficieMasBaja,
   },
   botonHoyTexto: {
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   filaHoras: {
@@ -577,19 +570,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   etiquetaHora: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   errorTexto: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.error,
   },
   resumenVigencia: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   selectorBotonIconoTexto: {
     flexDirection: 'row',
@@ -597,12 +588,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectorBotonTexto: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
-    color: COLORES_ADMIN.texto,
   },
   quitar: {
-    fontSize: 12,
+    ...TEXTO_ADMIN.nota,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.error,
   },
@@ -623,9 +613,8 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   tipoBotonTexto: {
-    fontSize: 13,
+    ...TEXTO_ADMIN.cuerpoSecundario,
     fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.textoSecundario,
   },
   tipoBotonTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -653,9 +642,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonGuardarTexto: {
+    ...TEXTO_ADMIN.tituloTarjeta,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   fondoModal: {
     flex: 1,
@@ -670,8 +658,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   modalCalendarioTitulo: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloTarjeta,
     color: COLORES_ADMIN.vino,
     textAlign: 'center',
   },
@@ -682,7 +669,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCalendarioConfirmarTexto: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.textoInverso,
   },
@@ -691,7 +678,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   modalCerrarTexto: {
-    fontSize: 14,
+    ...TEXTO_ADMIN.cuerpo,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
   },

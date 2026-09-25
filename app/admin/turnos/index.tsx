@@ -343,9 +343,8 @@ const styles = StyleSheet.create({
     gap: ESPACIADO_ADMIN.md,
   },
   modalTitulo: {
-    fontSize: 16,
+    ...TEXTO_ADMIN.tituloSeccion,
     fontFamily: TIPOGRAFIA_ADMIN.negrita,
-    color: COLORES_ADMIN.texto,
   },
   opcionQuitar: {
     paddingVertical: ESPACIADO_ADMIN.sm,
@@ -362,8 +361,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonAplicarTexto: {
+    ...TEXTO_ADMIN.cuerpo,
     color: COLORES_ADMIN.textoInverso,
-    fontSize: 14,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
 });
