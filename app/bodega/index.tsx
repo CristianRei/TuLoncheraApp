@@ -1,17 +1,18 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { EncabezadoInicio } from '@/ui/EncabezadoInicio';
 import { useSesion } from '@/ui/SesionContext';
+import { TarjetaModulo } from '@/ui/TarjetaModulo';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN } from '@/ui/tema';
+import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function HomeBodega() {
   const usuario = useRequiereSesion(['BODEGA']);
   const { cerrarSesion } = useSesion();
-  const insets = useSafeAreaInsets();
+  const anchaPantalla = useEsPantallaAncha();
 
   if (!usuario) return null;
 
@@ -22,49 +23,36 @@ export default function HomeBodega() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
-        <ContenedorAncho anchoMaximo={640}>
-          <View style={styles.encabezadoFila}>
-            <View>
-              <Text style={styles.etiqueta}>Bodega</Text>
-              <Text style={styles.saludo}>{usuario.nombre}</Text>
-            </View>
-            <Pressable onPress={salir}>
-              <Text style={styles.cerrarSesion}>Cerrar sesión</Text>
-            </Pressable>
+      <EncabezadoInicio rol="Bodega" titulo={usuario.nombre} onCerrarSesion={salir} anchoMaximo={ANCHO_ADMIN.lista} />
+
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista}>
+          <View style={[styles.grilla, anchaPantalla && styles.grillaAncha]}>
+            <TarjetaModulo
+              icono="arrow-down-circle-outline"
+              titulo="Ingresar pedido"
+              descripcion="Registra lo que llegó a bodega."
+              ancha={anchaPantalla}
+              onPress={() => router.push('/bodega/pedido')}
+            />
+            <TarjetaModulo
+              icono="arrow-up-circle-outline"
+              titulo="Entregar cargues"
+              descripcion="Entrega a cada promotor lo que admin ya planeó."
+              destacada
+              ancha={anchaPantalla}
+              onPress={() => router.push('/bodega/cargues')}
+            />
+            <TarjetaModulo
+              icono="notifications-outline"
+              titulo="Notificaciones"
+              descripcion="Mensajes que te envió el administrador."
+              ancha={anchaPantalla}
+              onPress={() => router.push('/bodega/notificaciones')}
+            />
           </View>
         </ContenedorAncho>
-      </View>
-
-      <ContenedorAncho anchoMaximo={640} llenarAlto>
-        <View style={styles.opciones}>
-          <Pressable style={styles.tarjeta} onPress={() => router.push('/bodega/pedido')}>
-            <View style={styles.tarjetaIcono}>
-              <Ionicons name="arrow-down-circle-outline" size={28} color={COLORES.oscuro} />
-            </View>
-            <Text style={styles.tarjetaTitulo}>Ingresar pedido</Text>
-            <Text style={styles.tarjetaDescripcion}>Registra lo que llegó a bodega.</Text>
-          </Pressable>
-
-          <Pressable style={styles.tarjeta} onPress={() => router.push('/bodega/cargues')}>
-            <View style={styles.tarjetaIcono}>
-              <Ionicons name="arrow-up-circle-outline" size={28} color={COLORES.oscuro} />
-            </View>
-            <Text style={styles.tarjetaTitulo}>Entregar cargues</Text>
-            <Text style={styles.tarjetaDescripcion}>
-              Entrega a cada promotor lo que admin ya planeó.
-            </Text>
-          </Pressable>
-
-          <Pressable style={styles.tarjeta} onPress={() => router.push('/bodega/notificaciones')}>
-            <View style={styles.tarjetaIcono}>
-              <Ionicons name="notifications-outline" size={28} color={COLORES.oscuro} />
-            </View>
-            <Text style={styles.tarjetaTitulo}>Notificaciones</Text>
-            <Text style={styles.tarjetaDescripcion}>Mensajes que te envió el administrador.</Text>
-          </Pressable>
-        </View>
-      </ContenedorAncho>
+      </ScrollView>
     </View>
   );
 }
@@ -72,60 +60,19 @@ export default function HomeBodega() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FBEDED',
+    backgroundColor: COLORES_ADMIN.background,
   },
-  encabezado: {
-    backgroundColor: COLORES.oscuro,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
+  scroll: {
+    paddingTop: ESPACIADO_ADMIN.xl,
+    paddingBottom: 40,
   },
-  encabezadoFila: {
+  grilla: {
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
+    gap: ESPACIADO_ADMIN.md,
+  },
+  grillaAncha: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  etiqueta: {
-    fontSize: 12,
-    color: '#F3D6D6',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  saludo: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  cerrarSesion: {
-    fontSize: 13,
-    color: '#FFFFFF',
-    textDecorationLine: 'underline',
-  },
-  opciones: {
-    padding: 20,
-    gap: 14,
-  },
-  tarjeta: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    gap: 6,
-  },
-  tarjetaIcono: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FBEDED',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  tarjetaTitulo: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#333',
-  },
-  tarjetaDescripcion: {
-    fontSize: 13,
-    color: '#888',
   },
 });

@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ContenedorAncho } from './ContenedorAncho';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from './tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from './tema';
 import { useEsPantallaAncha } from './useEsPantallaAncha';
 
 interface Accion {
@@ -22,6 +22,11 @@ interface Props {
   /** Botón de acción a la derecha del título (ej. "+ Nuevo"). Un solo estilo, sin variantes. */
   accion?: Accion;
   anchoMaximo?: number;
+  /**
+   * true en roles sin sidebar (Bodega): la franja vino con botón de volver se
+   * mantiene también en pantalla ancha, porque no hay otra forma de volver.
+   */
+  sinMenuLateral?: boolean;
 }
 
 /**
@@ -32,9 +37,16 @@ interface Props {
  * de volver (el sidebar cumple esa función) y el título en color oscuro. En
  * celular, franja vino de siempre con botón de volver.
  */
-export function Encabezado({ titulo, rutaVolverTexto, onVolver, accion, anchoMaximo = ANCHO_ADMIN.lista }: Props) {
+export function Encabezado({
+  titulo,
+  rutaVolverTexto,
+  onVolver,
+  accion,
+  anchoMaximo = ANCHO_ADMIN.lista,
+  sinMenuLateral = false,
+}: Props) {
   const insets = useSafeAreaInsets();
-  const anchaPantalla = useEsPantallaAncha();
+  const anchaPantalla = useEsPantallaAncha() && !sinMenuLateral;
 
   return (
     <View
@@ -55,7 +67,7 @@ export function Encabezado({ titulo, rutaVolverTexto, onVolver, accion, anchoMax
           </View>
           {accion && (
             <Pressable style={styles.botonAccion} onPress={accion.onPress}>
-              <Ionicons name={accion.icono} size={16} color="#FFFFFF" />
+              <Ionicons name={accion.icono} size={16} color={COLORES_ADMIN.textoInverso} />
               {accion.texto && <Text style={styles.botonAccionTexto}>{accion.texto}</Text>}
             </Pressable>
           )}
@@ -89,20 +101,18 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   volver: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.cuerpo,
+    color: COLORES_ADMIN.textoInverso,
     textDecorationLine: 'underline',
   },
   titulo: {
-    color: '#FFFFFF',
+    ...TEXTO_ADMIN.tituloSeccion,
     fontSize: 17,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.textoInverso,
   },
   tituloAncho: {
+    ...TEXTO_ADMIN.tituloPantalla,
     color: COLORES_ADMIN.vino,
-    fontSize: 20,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   botonAccion: {
     flexDirection: 'row',
@@ -114,8 +124,7 @@ const styles = StyleSheet.create({
     paddingVertical: ESPACIADO_ADMIN.sm,
   },
   botonAccionTexto: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
+    color: COLORES_ADMIN.textoInverso,
   },
 });

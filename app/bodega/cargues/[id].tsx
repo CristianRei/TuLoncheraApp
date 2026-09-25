@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Haptics from 'expo-haptics';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
@@ -12,16 +12,18 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Cargue, CargueLinea } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { confirmarLineaCargue, obtenerCargue, SinTurnoParaCargueError } from '@/db/cargues';
 import { buscarProductoPorCodigoBarras } from '@/db/productos';
-import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { Encabezado } from '@/ui/Encabezado';
+import { EmptyState } from '@/ui/EmptyState';
 import { EscanerCodigoBarras } from '@/ui/EscanerCodigoBarras';
+import { Insignia } from '@/ui/Insignia';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -36,7 +38,6 @@ export default function EntregarCargue() {
   const [cantidadTexto, setCantidadTexto] = useState('');
   const [motivoTexto, setMotivoTexto] = useState('');
   const [guardando, setGuardando] = useState(false);
-  const insets = useSafeAreaInsets();
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -128,34 +129,28 @@ export default function EntregarCargue() {
 
   return (
     <View style={styles.contenedor}>
-      <View style={[styles.encabezado, { paddingTop: insets.top + 20 }]}>
-        <ContenedorAncho anchoMaximo={640} style={styles.encabezadoContenido}>
-          <Pressable onPress={() => router.back()}>
-            <Text style={styles.volver}>‹ Cargues</Text>
-          </Pressable>
-          <Text style={styles.titulo}>{cargue ? `Cargue de ${cargue.promotorNombre}` : 'Cargue'}</Text>
-        </ContenedorAncho>
-      </View>
+      <Encabezado
+        titulo={cargue ? `Cargue de ${cargue.promotorNombre}` : 'Cargue'}
+        rutaVolverTexto="Cargues"
+        anchoMaximo={ANCHO_ADMIN.formulario}
+        sinMenuLateral
+      />
 
       {cargando ? (
         <View style={styles.centrado}>
-          <ActivityIndicator size="large" color={COLORES.oscuro} />
+          <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
         </View>
       ) : !cargue ? (
-        <View style={styles.centrado}>
-          <Text style={styles.vacio}>Este cargue ya no existe.</Text>
-        </View>
+        <EmptyState icono="cube-outline" mensaje="Este cargue ya no existe." />
       ) : (
-        <ContenedorAncho anchoMaximo={640} llenarAlto>
+        <ContenedorAncho anchoMaximo={ANCHO_ADMIN.formulario} llenarAlto>
           <Pressable style={styles.botonEscanear} onPress={() => setEscanerVisible(true)}>
-            <Ionicons name="camera-outline" size={18} color="#FFF" />
+            <Ionicons name="camera-outline" size={18} color={COLORES_ADMIN.textoInverso} />
             <Text style={styles.botonEscanearTexto}>Escanear producto</Text>
           </Pressable>
 
           {lineas.length === 0 ? (
-            <View style={styles.centrado}>
-              <Text style={styles.vacio}>Este cargue no tiene productos.</Text>
-            </View>
+            <EmptyState icono="cube-outline" mensaje="Este cargue no tiene productos." />
           ) : (
             <FlatList
               data={lineas}
@@ -177,19 +172,14 @@ export default function EntregarCargue() {
                         : `Entregado: ${item.cantidadEntregada} de ${item.cantidadPlaneada}`}
                     </Text>
                   </View>
-                  <Text
-                    style={[
-                      styles.filaEstado,
-                      item.estado === 'ENTREGADA' && styles.filaEstadoEntregada,
-                      item.estado === 'REVISAR' && styles.filaEstadoRevisar,
-                    ]}
-                  >
-                    {item.estado === 'PENDIENTE'
-                      ? 'Toca para entregar'
-                      : item.estado === 'ENTREGADA'
-                        ? 'Entregado'
-                        : 'A revisar'}
-                  </Text>
+                  {item.estado === 'PENDIENTE' ? (
+                    <Text style={styles.filaAccion}>Toca para entregar</Text>
+                  ) : (
+                    <Insignia
+                      texto={item.estado === 'ENTREGADA' ? 'Entregado' : 'A revisar'}
+                      estado={item.estado === 'ENTREGADA' ? 'exito' : 'error'}
+                    />
+                  )}
                 </Pressable>
               )}
             />
@@ -200,7 +190,7 @@ export default function EntregarCargue() {
       <EscanerCodigoBarras
         visible={escanerVisible}
         activa={!lineaPendiente}
-        colorAcento={COLORES.oscuro}
+        colorAcento={COLORES_ADMIN.vino}
         titulo="Escanear producto del cargue"
         onCerrar={() => setEscanerVisible(false)}
         onDetectado={manejarCodigoEscaneado}
@@ -215,7 +205,7 @@ export default function EntregarCargue() {
                 <TextInput
                   style={styles.modalInput}
                   placeholder="0"
-                  placeholderTextColor="#999"
+                  placeholderTextColor={COLORES_ADMIN.textoSecundario}
                   value={cantidadTexto}
                   onChangeText={(texto) => setCantidadTexto(texto.replace(/\D/g, ''))}
                   keyboardType="number-pad"
@@ -228,7 +218,7 @@ export default function EntregarCargue() {
                       <TextInput
                         style={styles.modalInputMotivo}
                         placeholder="Ej. se dañó, no aparece..."
-                        placeholderTextColor="#999"
+                        placeholderTextColor={COLORES_ADMIN.textoSecundario}
                         value={motivoTexto}
                         onChangeText={setMotivoTexto}
                         multiline
@@ -248,7 +238,7 @@ export default function EntregarCargue() {
                     onPress={confirmar}
                   >
                     {guardando ? (
-                      <ActivityIndicator color="#fff" size="small" />
+                      <ActivityIndicator color={COLORES_ADMIN.textoInverso} size="small" />
                     ) : (
                       <Text style={styles.modalConfirmarTexto}>Confirmar</Text>
                     )}
@@ -264,78 +254,72 @@ export default function EntregarCargue() {
 }
 
 const styles = StyleSheet.create({
-  contenedor: { flex: 1, backgroundColor: '#FBEDED' },
-  encabezado: { backgroundColor: COLORES.oscuro, paddingHorizontal: 20, paddingBottom: 16 },
-  encabezadoContenido: { gap: 4 },
-  volver: { color: '#FFFFFF', fontSize: 14, textDecorationLine: 'underline' },
-  titulo: { color: '#FFFFFF', fontSize: 17, fontWeight: '700' },
-  centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  vacio: { fontSize: 14, color: '#888', textAlign: 'center' },
+  contenedor: { flex: 1, backgroundColor: COLORES_ADMIN.background },
+  centrado: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: ESPACIADO_ADMIN.xxl },
   botonEscanear: {
     flexDirection: 'row',
-    margin: 20,
-    marginBottom: 12,
-    backgroundColor: COLORES.oscuro,
-    borderRadius: 14,
-    paddingVertical: 16,
+    margin: ESPACIADO_ADMIN.xl,
+    marginBottom: ESPACIADO_ADMIN.md,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.md,
+    paddingVertical: ESPACIADO_ADMIN.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: ESPACIADO_ADMIN.sm,
   },
-  botonEscanearTexto: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  lista: { paddingHorizontal: 20, paddingBottom: 20, gap: 10 },
+  botonEscanearTexto: { ...TEXTO_ADMIN.tituloTarjeta, color: COLORES_ADMIN.textoInverso },
+  lista: { paddingHorizontal: ESPACIADO_ADMIN.xl, paddingBottom: ESPACIADO_ADMIN.xl, gap: ESPACIADO_ADMIN.sm },
   fila: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    gap: 12,
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.md,
+    padding: ESPACIADO_ADMIN.lg,
+    gap: ESPACIADO_ADMIN.md,
   },
-  filaCompletada: {
-    opacity: 0.6,
-  },
+  filaCompletada: { opacity: 0.6 },
   filaTexto: { flex: 1, gap: 2 },
-  filaNombre: { fontSize: 14, fontWeight: '600', color: '#333' },
-  filaCantidad: { fontSize: 13, color: '#777' },
-  filaEstado: { fontSize: 11, fontWeight: '700', color: COLORES.oscuro, textAlign: 'right' },
-  filaEstadoEntregada: { color: '#2E7D32' },
-  filaEstadoRevisar: { color: '#B00020' },
+  filaNombre: TEXTO_ADMIN.tituloTarjeta,
+  filaCantidad: TEXTO_ADMIN.datoSecundario,
+  filaAccion: { ...TEXTO_ADMIN.boton, color: COLORES_ADMIN.vino, textAlign: 'right' },
   fondoModal: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(41,23,15,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: ESPACIADO_ADMIN.xxl,
   },
   tarjetaModal: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#FFF',
-    borderRadius: 18,
-    padding: 22,
-    gap: 10,
-  },
-  modalTitulo: { fontSize: 16, fontWeight: '700', color: '#333' },
-  modalTexto: { fontSize: 13, color: '#777' },
-  modalInput: {
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 22,
-    fontWeight: '700',
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.lg,
+    padding: ESPACIADO_ADMIN.xxl,
+    gap: ESPACIADO_ADMIN.sm,
+  },
+  modalTitulo: TEXTO_ADMIN.tituloSeccion,
+  modalTexto: TEXTO_ADMIN.cuerpoSecundario,
+  modalInput: {
+    ...TEXTO_ADMIN.datoGrande,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.md,
+    paddingHorizontal: ESPACIADO_ADMIN.lg,
+    paddingVertical: ESPACIADO_ADMIN.md,
     textAlign: 'center',
   },
   modalInputMotivo: {
+    ...TEXTO_ADMIN.cuerpo,
     borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
+    borderColor: COLORES_ADMIN.bordeSuave,
+    borderRadius: RADII_ADMIN.md,
+    paddingHorizontal: ESPACIADO_ADMIN.lg,
+    paddingVertical: ESPACIADO_ADMIN.sm,
     minHeight: 56,
     textAlignVertical: 'top',
   },
@@ -343,18 +327,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: 20,
-    marginTop: 4,
+    gap: ESPACIADO_ADMIN.xl,
+    marginTop: ESPACIADO_ADMIN.xs,
   },
-  modalCancelar: { fontSize: 14, color: '#888' },
+  modalCancelar: TEXTO_ADMIN.boton,
   modalConfirmar: {
-    backgroundColor: COLORES.oscuro,
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: RADII_ADMIN.sm,
+    paddingHorizontal: ESPACIADO_ADMIN.xl,
+    paddingVertical: ESPACIADO_ADMIN.sm,
     minWidth: 100,
     alignItems: 'center',
   },
-  modalConfirmarTexto: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  modalConfirmarTexto: { ...TEXTO_ADMIN.boton, color: COLORES_ADMIN.textoInverso },
   botonDeshabilitado: { opacity: 0.5 },
 });
