@@ -179,6 +179,12 @@ export const TEXTO_ADMIN = {
     fontFamily: TIPOGRAFIA_ADMIN.monoMedio,
     color: COLORES_ADMIN.texto,
   },
+  /** Total o monto que cierra una fila (ej. total de la venta, monto del ranking). */
+  datoDestacado: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    color: COLORES_ADMIN.texto,
+  },
   /** Cifra secundaria o unidad, en gris. */
   datoSecundario: {
     fontSize: 12,

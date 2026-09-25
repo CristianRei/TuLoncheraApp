@@ -2057,7 +2057,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   barraProgresoMonto: {
-    ...TEXTO_ADMIN.dato,
+    ...TEXTO_ADMIN.datoDestacado,
     color: COLORES_ADMIN.vino,
   },
   barraProgresoSub: {
@@ -2122,7 +2122,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   filaRankingMonto: {
-    ...TEXTO_ADMIN.dato,
+    ...TEXTO_ADMIN.datoDestacado,
     color: COLORES_ADMIN.vino,
   },
   filaRankingPorcentaje: {
@@ -2214,7 +2214,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.textoSecundario,
   },
   filaProductoTotal: {
-    ...TEXTO_ADMIN.dato,
+    ...TEXTO_ADMIN.datoDestacado,
     color: COLORES_ADMIN.vino,
   },
   piePagina: {

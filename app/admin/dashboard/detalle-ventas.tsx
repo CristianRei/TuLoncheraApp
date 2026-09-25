@@ -332,6 +332,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   filaVentaTotal: {
-    ...TEXTO_ADMIN.dato,
+    ...TEXTO_ADMIN.datoDestacado,
   },
 });
