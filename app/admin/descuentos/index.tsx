@@ -267,8 +267,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   filaAlcance: {
-    ...TEXTO_ADMIN.boton,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.cuerpo,
   },
   filaVigencia: {
     ...TEXTO_ADMIN.datoSecundario,
@@ -281,8 +280,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   botonDesactivarTexto: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.error,
   },
 });

@@ -19,7 +19,7 @@ import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { ListRow } from '@/ui/ListRow';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function Empresas() {
@@ -185,7 +185,6 @@ const styles = StyleSheet.create({
   },
   modalTitulo: {
     ...TEXTO_ADMIN.tituloSeccion,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   modalInput: {
     ...TEXTO_ADMIN.cuerpo,
@@ -214,9 +213,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalConfirmarTexto: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   botonDeshabilitado: {
     opacity: 0.5,

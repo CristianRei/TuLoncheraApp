@@ -165,9 +165,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   botonEliminarTexto: {
-    ...TEXTO_ADMIN.tituloTarjeta,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.error,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   botonDeshabilitado: {
     opacity: 0.5,

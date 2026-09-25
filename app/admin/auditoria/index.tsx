@@ -677,11 +677,10 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   pillTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
+    ...TEXTO_ADMIN.boton,
   },
   pillTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   restablecer: {
     ...TEXTO_ADMIN.boton,

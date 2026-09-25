@@ -464,15 +464,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   volver: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.superficie,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
   },
   volverAncho: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
   },
   tituloAncho: {
@@ -514,7 +512,6 @@ const styles = StyleSheet.create({
   },
   filaSelectorTexto: {
     ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
   },
   form: {
     padding: 20,
@@ -526,7 +523,6 @@ const styles = StyleSheet.create({
   },
   etiqueta: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
@@ -571,16 +567,13 @@ const styles = StyleSheet.create({
   },
   etiquetaHora: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
   },
   errorTexto: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.error,
   },
   resumenVigencia: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
   },
   selectorBotonIconoTexto: {
     flexDirection: 'row',
@@ -588,12 +581,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectorBotonTexto: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
   },
   quitar: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.error,
   },
   tipoFila: {
@@ -613,8 +604,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   tipoBotonTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   tipoBotonTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -669,8 +659,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCalendarioConfirmarTexto: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
   },
   modalCerrar: {
@@ -678,8 +667,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   modalCerrarTexto: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
 });

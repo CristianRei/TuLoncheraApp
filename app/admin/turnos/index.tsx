@@ -17,7 +17,7 @@ import { FilterTabs } from '@/ui/FilterTabs';
 import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
 import { ListRow } from '@/ui/ListRow';
 import { SelectorModal } from '@/ui/SelectorModal';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, ESTADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
@@ -344,7 +344,6 @@ const styles = StyleSheet.create({
   },
   modalTitulo: {
     ...TEXTO_ADMIN.tituloSeccion,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   opcionQuitar: {
     paddingVertical: ESPACIADO_ADMIN.sm,
@@ -361,8 +360,7 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonAplicarTexto: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
 });

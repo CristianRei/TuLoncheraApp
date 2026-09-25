@@ -719,8 +719,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.superficie,
   },
   titulo: {
@@ -766,8 +765,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.vino,
   },
   tabTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   tabTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -792,8 +790,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   tabVistaTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   tabVistaTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -826,8 +823,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.superficieBaja,
   },
   recomendacionTitulo: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   recomendacionDetalle: {
     ...TEXTO_ADMIN.cuerpoSecundario,
@@ -853,8 +849,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   verGraficaTexto: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
     textDecorationLine: 'underline',
   },
@@ -882,8 +877,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tarjetaTitulo: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   tarjetaSubtitulo: {
     ...TEXTO_ADMIN.nota,
@@ -918,11 +912,9 @@ const styles = StyleSheet.create({
   },
   filaProductoDato: {
     ...TEXTO_ADMIN.datoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.monoMedio,
   },
   verMasTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   tarjetaHallazgo: {
@@ -946,7 +938,6 @@ const styles = StyleSheet.create({
   },
   leyendaGrafico: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
     marginBottom: 6,
   },
   diasFila: {
@@ -978,8 +969,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   filaMetodoPagoNombre: {
-    ...TEXTO_ADMIN.boton,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   barraMetodoPagoTrack: {
     flexDirection: 'row',

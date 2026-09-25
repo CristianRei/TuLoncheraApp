@@ -15,7 +15,7 @@ import { getDispositivoId } from '@/db/dispositivo';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 export default function CategoriasCatalogo() {
@@ -172,9 +172,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonAgregarTexto: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   centrado: {
     flex: 1,
@@ -220,8 +219,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   botonAlternarTexto: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
 });

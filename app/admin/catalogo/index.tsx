@@ -24,7 +24,7 @@ import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterTabs } from '@/ui/FilterTabs';
 import { SearchBar } from '@/ui/SearchBar';
-import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
+import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -361,8 +361,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.bordeSuave,
   },
   botonExportarTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   chipsCategoria: {
     flexDirection: 'row',

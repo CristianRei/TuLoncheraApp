@@ -484,8 +484,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.superficie,
   },
   titulo: {
@@ -541,8 +540,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   tabFiltroTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   tabFiltroTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -605,12 +603,9 @@ const styles = StyleSheet.create({
   },
   filaTiempo: {
     fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
-    color: COLORES_ADMIN.textoSecundario,
   },
   filaTitulo: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   filaDetalle: {
     ...TEXTO_ADMIN.cuerpoSecundario,
@@ -673,11 +668,10 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORES_ADMIN.bordeSuave,
   },
   filaProgresoNombre: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.tituloTarjeta,
   },
   filaProgresoPct: {
     ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
   },
   tabsRol: {
@@ -697,8 +691,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   chipRolTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   chipRolTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -715,8 +708,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   enlaceSeleccion: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
     textDecorationLine: 'underline',
   },
@@ -742,7 +734,6 @@ const styles = StyleSheet.create({
   checkboxMarca: {
     ...TEXTO_ADMIN.nota,
     color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   filaCheckboxTexto: {
     ...TEXTO_ADMIN.cuerpo,
@@ -768,9 +759,8 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   botonTexto: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   notaConductor: {
     fontSize: 11,

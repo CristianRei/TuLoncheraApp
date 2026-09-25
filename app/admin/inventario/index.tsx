@@ -197,8 +197,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   botonExportTexto: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
     textAlign: 'center',
   },
@@ -227,9 +226,8 @@ const styles = StyleSheet.create({
     gap: ESPACIADO_ADMIN.md,
   },
   filaNombre: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.tituloTarjeta,
     flex: 1,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   filaSaldo: {
     fontSize: 15,

@@ -249,8 +249,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   tabFechaTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   tabFechaTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -276,14 +275,12 @@ const styles = StyleSheet.create({
   },
   modalTitulo: {
     ...TEXTO_ADMIN.tituloSeccion,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
   },
   modalCerrar: {
     paddingVertical: ESPACIADO_ADMIN.sm,
   },
   modalCerrarTexto: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoSecundario,
   },
   centrado: {

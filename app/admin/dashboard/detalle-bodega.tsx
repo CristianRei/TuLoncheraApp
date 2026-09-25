@@ -223,13 +223,11 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.superficie,
   },
   volverTextoAncho: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   titulo: {
@@ -294,13 +292,11 @@ const styles = StyleSheet.create({
   },
   filaProductoSaldo: {
     ...TEXTO_ADMIN.datoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.monoMedio,
     minWidth: 60,
     textAlign: 'right',
   },
   filaProductoValor: {
     ...TEXTO_ADMIN.datoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.monoMedio,
     color: COLORES_ADMIN.texto,
     minWidth: 90,
     textAlign: 'right',
@@ -316,7 +312,6 @@ const styles = StyleSheet.create({
   },
   filaMovimientoTipo: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.texto,
   },
   filaMovimientoProducto: {

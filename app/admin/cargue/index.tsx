@@ -489,7 +489,6 @@ const styles = StyleSheet.create({
   resumenOrigenTexto: {
     ...TEXTO_ADMIN.cuerpoSecundario,
     flexShrink: 1,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
   },
   resumenOrigenCifra: {
     fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
@@ -510,9 +509,8 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   botonTodoTexto: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
   },
   botonTodoTextoActivo: {
     color: COLORES_ADMIN.vino,

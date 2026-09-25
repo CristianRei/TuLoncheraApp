@@ -1023,9 +1023,8 @@ const styles = StyleSheet.create({
   },
   encabezadoContenido: { gap: 4 },
   volver: {
-    ...TEXTO_ADMIN.cuerpo,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
     textDecorationLine: 'underline',
   },
   titulo: { color: COLORES_ADMIN.textoInverso, fontSize: 18, fontFamily: TIPOGRAFIA_ADMIN.negrita },
@@ -1182,7 +1181,6 @@ const styles = StyleSheet.create({
   },
   detalleDiaSubtitulo: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     textTransform: 'capitalize',
   },
   itinerarioTitulo: {
@@ -1242,7 +1240,6 @@ const styles = StyleSheet.create({
   modalTitulo: { fontSize: 16, fontFamily: TIPOGRAFIA_ADMIN.negrita, color: COLORES_ADMIN.texto },
   modalSubtitulo: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     marginTop: 8,
     textTransform: 'uppercase',
   },
@@ -1250,7 +1247,6 @@ const styles = StyleSheet.create({
   modalTextoMotivo: { fontSize: 13, fontFamily: TIPOGRAFIA_ADMIN.medio, color: COLORES_ADMIN.error },
   modalTextoAviso: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
     backgroundColor: COLORES_ADMIN.superficieBaja,
     borderRadius: RADII_ADMIN.sm,
     padding: 8,
@@ -1301,7 +1297,6 @@ const styles = StyleSheet.create({
   },
   errorTexto: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.error,
   },
   ayudaTexto: {

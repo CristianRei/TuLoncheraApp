@@ -259,13 +259,11 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.superficie,
   },
   volverTextoAncho: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   titulo: {
@@ -335,6 +333,5 @@ const styles = StyleSheet.create({
   },
   filaVentaTotal: {
     ...TEXTO_ADMIN.dato,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
   },
 });

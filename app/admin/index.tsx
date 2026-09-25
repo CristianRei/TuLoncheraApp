@@ -222,7 +222,6 @@ const styles = StyleSheet.create({
   },
   nombreApp: {
     ...TEXTO_ADMIN.tituloSeccion,
-    fontFamily: TIPOGRAFIA_ADMIN.negrita,
     color: COLORES_ADMIN.textoInverso,
   },
   encabezadoAcciones: {

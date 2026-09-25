@@ -1569,8 +1569,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   volverTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.superficie,
   },
   titulo: {
@@ -1666,8 +1665,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.vino,
   },
   tabTexto: {
-    ...TEXTO_ADMIN.cuerpoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   tabTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -1697,8 +1695,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   botonRefrescarTexto: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
   },
   selectoresFila: {
     flexDirection: 'row',
@@ -1750,7 +1747,6 @@ const styles = StyleSheet.create({
   },
   masFiltrosTexto: {
     ...TEXTO_ADMIN.boton,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
   },
   masFiltrosBadge: {
     backgroundColor: COLORES_ADMIN.superficieMasAlta,
@@ -1776,8 +1772,7 @@ const styles = StyleSheet.create({
     borderTopColor: COLORES_ADMIN.superficie,
   },
   chipsEtiqueta: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   chip: {
     flexDirection: 'row',
@@ -1791,9 +1786,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   chipTexto: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
-    color: COLORES_ADMIN.texto,
+    ...TEXTO_ADMIN.boton,
   },
   limpiarFiltrosBoton: {
     flexDirection: 'row',
@@ -1802,8 +1795,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   limpiarFiltrosTexto: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   cuerpo: {
@@ -1860,7 +1852,6 @@ const styles = StyleSheet.create({
   },
   kpiPie: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
   },
   kpiPieFila: {
     flexDirection: 'row',
@@ -1940,7 +1931,6 @@ const styles = StyleSheet.create({
   },
   graficoPicoTexto: {
     ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
   },
   graficoPicoTextoFuerte: {
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
@@ -2027,7 +2017,6 @@ const styles = StyleSheet.create({
   desgloseHoraPromotor: {
     ...TEXTO_ADMIN.nota,
     width: 100,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
     color: COLORES_ADMIN.texto,
   },
   desgloseHoraBarraTrack: {
@@ -2046,7 +2035,6 @@ const styles = StyleSheet.create({
     ...TEXTO_ADMIN.datoSecundario,
     width: 90,
     textAlign: 'right',
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
   grilla2Columnas: {
@@ -2070,7 +2058,6 @@ const styles = StyleSheet.create({
   },
   barraProgresoMonto: {
     ...TEXTO_ADMIN.dato,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
   barraProgresoSub: {
@@ -2120,17 +2107,15 @@ const styles = StyleSheet.create({
   },
   filaRankingMedallaTexto: {
     ...TEXTO_ADMIN.datoSecundario,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
   },
   filaRankingMedallaTextoPrimera: {
     color: COLORES_ADMIN.vino,
   },
   filaRankingNombre: {
-    ...TEXTO_ADMIN.boton,
+    ...TEXTO_ADMIN.cuerpo,
   },
   filaRankingSub: {
     fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
   },
   filaRankingDerecha: {
@@ -2138,7 +2123,6 @@ const styles = StyleSheet.create({
   },
   filaRankingMonto: {
     ...TEXTO_ADMIN.dato,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
   filaRankingPorcentaje: {
@@ -2223,16 +2207,14 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.vino,
   },
   filaProductoNombre: {
-    ...TEXTO_ADMIN.boton,
+    ...TEXTO_ADMIN.cuerpo,
   },
   filaProductoUnidades: {
     fontSize: 11,
-    fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
   },
   filaProductoTotal: {
     ...TEXTO_ADMIN.dato,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
     color: COLORES_ADMIN.vino,
   },
   piePagina: {
@@ -2288,8 +2270,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalCalendarioConfirmarTexto: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.textoInverso,
   },
   botonDeshabilitado: {
@@ -2323,8 +2304,7 @@ const styles = StyleSheet.create({
     borderColor: COLORES_ADMIN.vino,
   },
   modalFiltroTabTexto: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    ...TEXTO_ADMIN.boton,
   },
   modalFiltroTabTextoActivo: {
     color: COLORES_ADMIN.textoInverso,
@@ -2346,8 +2326,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   modalCerrarTexto: {
-    ...TEXTO_ADMIN.cuerpo,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
     color: COLORES_ADMIN.vino,
   },
   mininTabs: {
@@ -2372,8 +2351,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORES_ADMIN.vino,
   },
   mininTabEtiqueta: {
-    ...TEXTO_ADMIN.nota,
-    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    ...TEXTO_ADMIN.boton,
   },
   mininTabEtiquetaActiva: {
     color: COLORES_ADMIN.textoInverso,
