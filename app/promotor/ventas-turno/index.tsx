@@ -3,12 +3,13 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { calcularRangoDiaBogota } from '@/core/analitica';
 import { formatearPesos } from '@/core/dinero';
 import type { MetodoPago, Venta } from '@/core/tipos';
 import { getDb } from '@/db/client';
-import { obtenerProgresoMetasDiarias, type ProgresoMetaDiaria } from '@/db/metasDiarias';
-import { obtenerTurnoAbiertoHoy } from '@/db/turnos';
-import { listarVentasTurno } from '@/db/ventas';
+import { obtenerProgresoMetaDelPromotor, type ProgresoMetaDiaria } from '@/db/metasDiarias';
+import { obtenerEventoDeHoyPromotor, obtenerTurnoAbiertoHoy } from '@/db/turnos';
+import { listarVentasEquipoHoy, listarVentasTurno } from '@/db/ventas';
 import { BarraMetaDiaria } from '@/ui/BarraMetaDiaria';
 import { COLORES, TIPOGRAFIA_PROMOTOR } from '@/ui/colores';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -30,12 +31,19 @@ function formatearHora(iso: string): string {
   return new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 }
 
+type Pestana = 'MIAS' | 'EQUIPO';
+
 export default function VentasTurno() {
   const usuario = useRequiereSesion(['PROMOTOR']);
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [cargando, setCargando] = useState(true);
   const [sinTurno, setSinTurno] = useState(false);
   const [meta, setMeta] = useState<ProgresoMetaDiaria | null>(null);
+  // Compañeros del evento de hoy (si hay más de uno): comparten la meta del
+  // día y cada uno puede ver lo que venden los demás.
+  const [equipo, setEquipo] = useState<{ ids: string[]; nombres: string[] } | null>(null);
+  const [ventasEquipo, setVentasEquipo] = useState<Venta[]>([]);
+  const [pestana, setPestana] = useState<Pestana>('MIAS');
 
   const cargar = useCallback(async (promotorId: string) => {
     setCargando(true);
@@ -54,32 +62,52 @@ export default function VentasTurno() {
     }
   }, []);
 
-  // La meta es del DÍA (todas las ventas de hoy en Bogotá), no solo del turno
-  // — misma cifra que "Cierre de jornada" (src/db/metasDiarias.ts).
-  const cargarMeta = useCallback(async (promotorId: string) => {
+  // La meta es del EVENTO y del DÍA (todas las ventas de hoy de todo el
+  // equipo), no solo de este turno — misma cifra que "Cierre de jornada"
+  // (src/db/metasDiarias.ts). Se recarga sin parpadeo cuando llegan ventas
+  // de los compañeros.
+  const cargarEquipoYMeta = useCallback(async (promotorId: string) => {
     const db = await getDb();
-    const metas = await obtenerProgresoMetasDiarias(db);
-    setMeta(metas.find((m) => m.promotorId === promotorId) ?? null);
+    const [progreso, evento] = await Promise.all([
+      obtenerProgresoMetaDelPromotor(db, promotorId),
+      obtenerEventoDeHoyPromotor(db, promotorId),
+    ]);
+    setMeta(progreso);
+    if (evento && evento.promotorIds.length > 1) {
+      setEquipo({ ids: evento.promotorIds, nombres: evento.promotorNombres });
+      setVentasEquipo(await listarVentasEquipoHoy(db, evento.promotorIds, calcularRangoDiaBogota(evento.fecha)));
+    } else {
+      setEquipo(null);
+      setVentasEquipo([]);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       if (usuario) {
         cargar(usuario.id);
-        cargarMeta(usuario.id);
+        cargarEquipoYMeta(usuario.id);
       }
-    }, [usuario, cargar, cargarMeta])
+    }, [usuario, cargar, cargarEquipoYMeta])
   );
-  // Si admin le asigna o cambia la meta de hoy con la pantalla abierta, la
-  // barra se actualiza sola — ver src/ui/useVersionDatos.ts.
+  // Si admin cambia la meta, o un compañero vende, con la pantalla abierta,
+  // todo se actualiza solo — ver src/ui/useVersionDatos.ts.
   useRecargarConDatosNuevos(() => {
-    if (usuario) cargarMeta(usuario.id);
+    if (usuario) cargarEquipoYMeta(usuario.id);
   });
 
   if (!usuario) return null;
 
-  const activas = ventas.filter((v) => !v.anulada);
-  const totalTurno = activas.reduce((suma, v) => suma + v.total, 0);
+  const viendoEquipo = pestana === 'EQUIPO' && equipo !== null;
+  const lista = viendoEquipo ? ventasEquipo : ventas;
+  const activas = lista.filter((v) => !v.anulada);
+  const totalLista = activas.reduce((suma, v) => suma + v.total, 0);
+  const totalPorPromotor = equipo
+    ? equipo.ids.map((id, i) => ({
+        nombre: equipo.nombres[i],
+        total: ventasEquipo.filter((v) => v.promotorId === id && !v.anulada).reduce((suma, v) => suma + v.total, 0),
+      }))
+    : [];
 
   return (
     <View style={styles.contenedor}>
@@ -96,17 +124,46 @@ export default function VentasTurno() {
         <View style={styles.botonIcono} />
       </View>
 
+      {equipo && !sinTurno && (
+        <View style={styles.pestanas}>
+          {(['MIAS', 'EQUIPO'] as const).map((valor) => (
+            <Pressable
+              key={valor}
+              style={[styles.pestana, pestana === valor && styles.pestanaActiva]}
+              onPress={() => setPestana(valor)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: pestana === valor }}
+            >
+              <Text style={[styles.pestanaTexto, pestana === valor && styles.pestanaTextoActiva]}>
+                {valor === 'MIAS' ? 'Mis ventas' : 'Todo el equipo'}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       {!cargando && !sinTurno && activas.length > 0 && (
         <View style={styles.resumen}>
-          <View>
-            <Text style={styles.resumenEtiqueta}>Total vendido</Text>
-            <Text style={styles.resumenValor}>{formatearPesos(totalTurno)}</Text>
+          <View style={styles.resumenFila}>
+            <View>
+              <Text style={styles.resumenEtiqueta}>{viendoEquipo ? 'Vendido hoy por el equipo' : 'Total vendido'}</Text>
+              <Text style={styles.resumenValor}>{formatearPesos(totalLista)}</Text>
+            </View>
+            <View style={styles.resumenDivisor} />
+            <View>
+              <Text style={styles.resumenEtiqueta}>Ventas</Text>
+              <Text style={styles.resumenValor}>{activas.length}</Text>
+            </View>
           </View>
-          <View style={styles.resumenDivisor} />
-          <View>
-            <Text style={styles.resumenEtiqueta}>Ventas</Text>
-            <Text style={styles.resumenValor}>{activas.length}</Text>
-          </View>
+          {viendoEquipo && (
+            <View style={styles.desglose}>
+              {totalPorPromotor.map((fila) => (
+                <Text key={fila.nombre} style={styles.desgloseTexto}>
+                  {fila.nombre}: <Text style={styles.desgloseCifra}>{formatearPesos(fila.total)}</Text>
+                </Text>
+              ))}
+            </View>
+          )}
         </View>
       )}
 
@@ -118,49 +175,65 @@ export default function VentasTurno() {
         <View style={styles.centrado}>
           <Text style={styles.vacio}>No tienes un turno abierto.</Text>
         </View>
-      ) : ventas.length === 0 ? (
+      ) : lista.length === 0 ? (
         <View style={styles.centrado}>
-          <Text style={styles.vacio}>Todavía no has registrado ventas en este turno.</Text>
+          <Text style={styles.vacio}>
+            {viendoEquipo
+              ? 'Todavía nadie del equipo ha registrado ventas hoy.'
+              : 'Todavía no has registrado ventas en este turno.'}
+          </Text>
         </View>
       ) : (
         <FlatList
-          data={ventas}
+          data={lista}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.lista}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.tarjeta}
-              onPress={() => router.push(`/promotor/ventas-turno/${item.id}`)}
-            >
-              <View style={[styles.icono, item.anulada && styles.iconoAnulado]}>
-                <Ionicons
-                  name={ICONO_METODO[item.metodoPago]}
-                  size={20}
-                  color={item.anulada ? COLORES.textoSecundario : COLORES.oscuro}
-                />
-              </View>
-              <View style={styles.tarjetaTexto}>
-                <Text style={styles.tarjetaRecibo}>{item.numeroRecibo}</Text>
-                <Text style={styles.tarjetaDetalle}>
-                  {ETIQUETA_METODO[item.metodoPago]} · {formatearHora(item.tsCliente)}
-                </Text>
-                {item.clienteNombre && (
-                  <View style={styles.tarjetaClienteFila}>
-                    <Ionicons name="person-outline" size={11} color={COLORES.textoSecundario} />
-                    <Text style={styles.tarjetaCliente} numberOfLines={1}>
-                      {item.clienteNombre}
-                    </Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.tarjetaDerecha}>
-                <Text style={[styles.tarjetaTotal, item.anulada && styles.tarjetaTotalAnulado]}>
-                  {formatearPesos(item.total)}
-                </Text>
-                {item.anulada && <Text style={styles.chipAnulada}>Anulada</Text>}
-              </View>
-            </Pressable>
-          )}
+          renderItem={({ item }) => {
+            const propia = item.promotorId === usuario.id;
+            const contenido = (
+              <>
+                <View style={[styles.icono, item.anulada && styles.iconoAnulado]}>
+                  <Ionicons
+                    name={ICONO_METODO[item.metodoPago]}
+                    size={20}
+                    color={item.anulada ? COLORES.textoSecundario : COLORES.oscuro}
+                  />
+                </View>
+                <View style={styles.tarjetaTexto}>
+                  <Text style={styles.tarjetaRecibo}>{item.numeroRecibo}</Text>
+                  {viendoEquipo && (
+                    <Text style={styles.tarjetaPromotor}>{propia ? 'Tú' : item.promotorNombre}</Text>
+                  )}
+                  <Text style={styles.tarjetaDetalle}>
+                    {ETIQUETA_METODO[item.metodoPago]} · {formatearHora(item.tsCliente)}
+                  </Text>
+                  {item.clienteNombre && (
+                    <View style={styles.tarjetaClienteFila}>
+                      <Ionicons name="person-outline" size={11} color={COLORES.textoSecundario} />
+                      <Text style={styles.tarjetaCliente} numberOfLines={1}>
+                        {item.clienteNombre}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.tarjetaDerecha}>
+                  <Text style={[styles.tarjetaTotal, item.anulada && styles.tarjetaTotalAnulado]}>
+                    {formatearPesos(item.total)}
+                  </Text>
+                  {item.anulada && <Text style={styles.chipAnulada}>Anulada</Text>}
+                </View>
+              </>
+            );
+            // Las ventas de los compañeros solo se consultan: el detalle (y
+            // asignarles cliente) es de quien las hizo.
+            return propia ? (
+              <Pressable style={styles.tarjeta} onPress={() => router.push(`/promotor/ventas-turno/${item.id}`)}>
+                {contenido}
+              </Pressable>
+            ) : (
+              <View style={styles.tarjeta}>{contenido}</View>
+            );
+          }}
         />
       )}
 
@@ -199,16 +272,67 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_PROMOTOR.negrita,
     color: COLORES.textoSobreOscuro,
   },
-  resumen: {
+  pestanas: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginTop: 14,
+    backgroundColor: COLORES.superficie,
+    borderRadius: 12,
+    padding: 4,
+    gap: 4,
+  },
+  pestana: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 9,
+  },
+  pestanaActiva: {
+    backgroundColor: COLORES.primario,
+  },
+  pestanaTexto: {
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.textoSecundario,
+  },
+  pestanaTextoActiva: {
+    color: COLORES.textoSobreOscuro,
+  },
+  resumenFila: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 20,
+  },
+  desglose: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: COLORES.borde,
+  },
+  desgloseTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_PROMOTOR.medio,
+    color: COLORES.textoSecundario,
+  },
+  desgloseCifra: {
+    fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita,
+    color: COLORES.oscuro,
+  },
+  tarjetaPromotor: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_PROMOTOR.semiNegrita,
+    color: COLORES.oscuro,
+  },
+  resumen: {
     backgroundColor: COLORES.superficie,
     marginHorizontal: 16,
     marginTop: 16,
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 20,
-    gap: 20,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 6,

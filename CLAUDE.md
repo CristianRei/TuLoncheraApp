@@ -28,14 +28,14 @@ catálogo (productos/categorías) y los datos OPERATIVOS: el admin ve las
 ventas de los promotores, bodega ve los cargues que admin planea, y una
 RECARGA hecha en bodega llega al inventario del promotor — con Realtime, casi
 al instante (ver sección 10 y 11) — y también empresas y puntos (sedes) y
-los eventos del calendario (con la meta diaria). Descuentos siguen sin bajar
-todavía. Las notificaciones push las envía Supabase (trigger con `pg_net`),
+los eventos del calendario (con la meta diaria) y los descuentos (incluidos
+los asignados a un promotor con horario). Las notificaciones push las envía Supabase (trigger con `pg_net`),
 no el dispositivo del admin. La sincronización de ventas entre celular y
 computador ya la confirmó el usuario con dispositivos reales (2026-09-23); el
 resto está probado con SQLite y Postgres reales de laboratorio (`npm run
 test:db`, `npm run test:sql`). En el Supabase real ya están aplicadas 0009 y
 0010; faltan 0011 (traslados), 0012 (empresas/puntos), 0013 (push desde el
-servidor) y 0014 (eventos) — ver sección 11.
+servidor), 0014 (eventos) y 0015 (descuentos) — ver sección 11.
 
 ---
 
@@ -60,7 +60,7 @@ Términos del negocio. Úsalos tal cual en código, tablas, variables y UI.
 | **Bodega** | Rol operativo que alista recargas y recibe devoluciones. |
 | **Cliente** | Persona natural que un promotor registra en campo (nombre, teléfono, dirección, ciudad, empresa, nota). No es un actor del sistema, no inicia sesión — solo se le puede asignar la factura de una venta. |
 | **Categoría** | Clasificación de producto (ej. Galletas, Lácteos). Lista cerrada y administrable por admin, nunca texto libre — para que el filtro del dashboard no se rompa en variantes ("Galleta" vs "galleta"). |
-| **Meta** | Objetivo de venta que un admin le asigna a un promotor o a un punto. Hay dos escalas independientes: **meta diaria** (por promotor, en cada evento/jornada — ej. $1.800.000 o $2.500.000 para hoy) y **meta mensual** (por promotor o por punto, contra el mes calendario). Ambas se comparan contra las ventas reales del período correspondiente, nunca contra un número inventado. |
+| **Meta** | Objetivo de venta que un admin le asigna a un promotor o a un punto. Hay dos escalas independientes: **meta diaria** (por EVENTO, compartida por todo su equipo de promotores — ej. $1.000.000 para hoy: si entre los dos venden $500.000, los dos van en 50 %) y **meta mensual** (por promotor o por punto, contra el mes calendario). Ambas se comparan contra las ventas reales del período correspondiente, nunca contra un número inventado. |
 
 ---
 
@@ -165,7 +165,7 @@ pasa por una única función**, nunca `if (rol === 'admin')` disperso por la UI.
 | Móvil | React Native + Expo, TypeScript, `expo-router` |
 | Escáner | `expo-camera` (`CameraView` + `onBarcodeScanned`) |
 | Datos | `expo-sqlite` (fuente de verdad local, siempre) |
-| Backend | **Supabase, parcial** — de celular a Supabase (subida) sincronizan turnos, comprobantes de transferencia, mensajes/push (sección 10 "Mensajes") y el motor completo de inventario/ventas (ventas, movimientos, lotes, cargues, conteos, arqueos de caja). De Supabase a celular (bajada) sincronizan personal/PINs y catálogo (productos/categorías, sin fotos — sección 11) y los datos operativos (ventas → admin; cargues → bodega y admin; movimientos de inventario → bodega, admin y el promotor dueño), orquestado por `src/sync/bajada.ts`, con **Realtime** de Supabase (`src/sync/realtime.ts`) para que el cambio llegue al instante. Empresas y puntos también bajan (admin → Promotor/Bodega, `supabase/migraciones/0012_empresas_puntos.sql`), y los eventos del calendario con sus promotores y meta diaria (`0014_eventos.sql`, con Realtime). Descuentos no sincronizan en ninguna dirección todavía. |
+| Backend | **Supabase, parcial** — de celular a Supabase (subida) sincronizan turnos, comprobantes de transferencia, mensajes/push (sección 10 "Mensajes") y el motor completo de inventario/ventas (ventas, movimientos, lotes, cargues, conteos, arqueos de caja). De Supabase a celular (bajada) sincronizan personal/PINs y catálogo (productos/categorías, sin fotos — sección 11) y los datos operativos (ventas → admin; cargues → bodega y admin; movimientos de inventario → bodega, admin y el promotor dueño), orquestado por `src/sync/bajada.ts`, con **Realtime** de Supabase (`src/sync/realtime.ts`) para que el cambio llegue al instante. Empresas y puntos también bajan (admin → Promotor/Bodega, `supabase/migraciones/0012_empresas_puntos.sql`), y los eventos del calendario con sus promotores y meta diaria (`0014_eventos.sql`, con Realtime), y los descuentos (`0015_descuentos.sql`, con Realtime). |
 | Notificaciones push | `expo-notifications` + `expo-device` para registrar el token de cada celular (`src/sync/push.ts`). El envío lo hace **Supabase**: un trigger sobre `mensaje_destinatarios` llama al servicio de Expo Push con `pg_net` (`supabase/migraciones/0013_push_desde_servidor.sql`) — sin servidor propio, y funciona también con el admin en el navegador (antes el dispositivo del admin llamaba a Expo directo y CORS lo bloqueaba en web). Ver sección 10 "Mensajes". |
 | Panel admin | **No existe todavía.** Por ahora, pantallas de admin dentro de la misma app móvil. |
 | Build/distribución | EAS Build (`eas.json`) — perfil `preview` genera un `.apk` Android de distribución interna (compartir directo, sin Play Store); `production` genera el `.aab` para Play Store. Requiere cuenta de Expo (`npx eas-cli login`), proyecto vinculado en `@ooojulians-team/tulonchera`. Publicar en Play Store exige además cuenta de Google Play Developer (~$25 USD pago único); iOS no está configurado en `eas.json` todavía — para probar en iPhone sin pagar, usar Expo Go con el dev server (`npx expo start`), igual que en Android. |
@@ -237,7 +237,7 @@ tulonchera/
       catalogo/                         ← alta / edición / baja de productos; categorias.tsx gestiona la lista de categorías
       empresas/                          ← empresas cliente y sus puntos (sedes)
       clientes/                           ← admin ve/busca/elimina clientes finales registrados por los promotores
-      descuentos/                          ← crear / ver descuentos por producto y/o punto
+      descuentos/                          ← crear / ver descuentos por producto, punto y/o promotor, con fecha y horario
       dashboard/                            ← KPIs, gráfico circular, ranking de productos, exportar informe, metas del mes + proyección
       analisis/                              ← repetibilidad por punto, rendimiento por promotor, cruces punto×promotor×producto
       notificaciones/                        ← UNA pantalla, dos pestañas (fusión solo visual, UX/UI — las tablas siguen separadas): "Alertas del sistema" (stock bajo, lote por vencer, cargue a revisar, desbloqueo de PIN) y "Mensajes" (admin envía push a Promotor/Bodega, manual o "progreso de meta del día"); ver sección 10 "Notificaciones y mensajes"
@@ -257,8 +257,9 @@ tulonchera/
       analitica/                   ← agruparVentasPorHora (zona horaria Bogotá), fechaHoyBogota
       analisis/                     ← repetibilidad/rendimiento/cruce/Pearson/día-semana/temporada + property tests
       calendario/                    ← TEMPORADAS_2026 (Navidad, Semana Santa, vacaciones, fechas especiales)
-      descuentos/                   ← aplicarDescuento + su test
+      descuentos/                   ← aplicarDescuento, elegirMayorDescuento (nunca se suman) + sus tests
       dinero/                        ← formatearPesos / parsearPesos
+      horas/                          ← parsearHora / formatearHora / formatearRangoHoras ("HH:MM", horario de eventos y descuentos) + tests
       errores/                        ← mensajeDeError: extrae un mensaje legible de un Error de JS o de un PostgrestError de supabase-js (objeto plano, no `instanceof Error`)
       eventos/                        ← calcularOcurrencias (series recurrentes del calendario) + property test
       inventario/                      ← calcularSaldosPorProducto + su property test
@@ -266,7 +267,7 @@ tulonchera/
       seguridadPin/                      ← backoff/bloqueo de PIN
       tipos/                                ← tipos de dominio compartidos
     db/                         ← SQLite: cliente, migraciones, una query file por tabla/tema
-      migraciones/                ← 0001 a 0030, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`; la 0030 agrega DESBLOQUEO_PIN + columna `modo` a `notificaciones`)
+      migraciones/                ← 0001 a 0032, versionadas, nunca se editan una vez aplicadas (la 0025 rehace `_sync_pendiente` sin el CHECK viejo de `tabla`; la 0026 crea `_sync_estado`; la 0030 agrega DESBLOQUEO_PIN + columna `modo` a `notificaciones`; la 0031 agrega `promotor_id` a `descuentos`; la 0032 agrega horario y meta diaria a `eventos`)
       arqueos.ts                   ← registra y lee el arqueo de caja de un turno (una fila por turno)
       arqueosRemotos.ts             ← lectura desde Supabase, para cuando el turno no se abrió en este dispositivo
       cargues.ts                   ← planear/reducir/entregar cargue (cabecera + líneas)
@@ -275,7 +276,7 @@ tulonchera/
       categorias.ts                   ← categorías de producto: crear-o-reusar por nombre normalizado, desactivar
       clientes.ts                      ← alta/listado/eliminación (DELETE real) de clientes finales
       conteos.ts                        ← conteo de cierre
-      descuentos.ts                      ← reglas de descuento + resolución del vigente
+      descuentos.ts                      ← reglas de descuento (producto/punto/promotor, con fecha y hora) + `resolverPreciosConDescuento` (el mayor gana) + subida/bajada
       empresas.ts / puntos.ts             ← empresas cliente y sus puntos; suben al crearse y Promotor/Bodega los descargan (`descargarEmpresasNuevas`/`descargarPuntosNuevos`)
       eventos.ts                           ← calendario de eventos + punto vigente del promotor (por fecha) + meta diaria por (evento, promotor); suben al cambiar y Promotor/Bodega los descargan (`descargarEventosNuevos`)
       mensajes.ts                           ← enviarMensajes/descargarMensajesNuevos/listarMensajesRecibidos/marcarMensajeLeido — mensajes push, ver sección 10 "Mensajes"
@@ -306,6 +307,7 @@ tulonchera/
       useSincronizacionEnVivo.ts           ← hook de layout: descarga al entrar, al recibir un aviso Realtime, y cada 45 s de respaldo
       useVersionDatos.ts                    ← `useRecargarConDatosNuevos(fn)`: una pantalla se recarga sola cuando llegan datos nuevos de Supabase
       ModalConfirmacion.tsx               ← reemplaza Alert.alert para confirmaciones de 2 botones (Alert.alert no tiene UI en React Native Web)
+      SelectorDesplegable.tsx              ← menú desplegable de admin (uno o varios, con buscador si hay muchas opciones); se despliega en el mismo lugar, no en otro Modal
       BarraMetaDiaria.tsx                  ← barra animada de cumplimiento de la meta DIARIA, de rojo a verde según el avance (Ventas del turno del promotor)
       CalendarioRango.tsx                  ← calendario de mes, reusado para "Rango personalizado" (dashboard), fecha específica (Ventas) y un solo día
       calendarioGrilla.ts                   ← grilla de mes compartida por CalendarioRango/calendario de eventos
@@ -411,22 +413,27 @@ puntos            (id, empresa_id, nombre, direccion[opcional], activo)
                     Sur). Gestión en app/admin/empresas/.
 eventos           (id, empresa_id, punto_id, fecha, estado[PLANEADO|EN_CURSO|
                    CERRADO|CANCELADO], motivo_cancelacion[opcional],
-                   serie_id[opcional], creado_por, ts_cliente, dispositivo_id)
+                   serie_id[opcional], hora_inicio, hora_fin, meta_diaria[opcional],
+                   creado_por, ts_cliente, dispositivo_id)
                   ← desde la 0014, jornada real con fecha planeada (antes era
                     solo "asignación vigente sin fecha" — ver ADR 0005, luego
                     corregido por la 0014). El punto vigente del promotor se
                     resuelve por fecha (evento de hoy), no por estado manual.
                     Calendario: app/admin/calendario/, app/promotor/calendario.tsx.
-evento_promotores (evento_id, promotor_id, meta_diaria[opcional])  ← N-a-N, en uso
+                    Desde la 0032: `hora_inicio`/`hora_fin` ("HH:MM", hora de
+                    Colombia; obligatorio al crear desde el calendario, NULL en
+                    eventos viejos) y `meta_diaria` (Pesos) — la meta de venta
+                    del día es del EVENTO y la comparte todo su equipo: se
+                    compara contra lo que venden ENTRE TODOS sus promotores ese
+                    día (si es de $1.000.000 y entre dos venden $500.000, los
+                    dos van en 50 %; decisión del negocio, 2026-09-24).
+                    Independiente de la meta MENSUAL (tabla `metas`).
+evento_promotores (evento_id, promotor_id, meta_diaria[MUERTA])  ← N-a-N, en uso
                   desde la 0014. Reemplaza la columna promotor_id directa — un
                   evento puede tener varios promotores (lo usual es uno solo).
-                  `meta_diaria` (Pesos, desde la 0023) es la meta de venta de
-                  ESE día para ESE promotor en ESE evento — ver glosario
-                  "Meta" y app/admin/notificaciones/ (pestaña Mensajes).
-                  Independiente de la meta
-                  MENSUAL (tabla `metas`, más abajo): un promotor puede tener
-                  las dos al mismo tiempo, un promotor puede cumplir la del
-                  día y no la del mes o viceversa.
+                  `meta_diaria` (0023) era la meta POR PROMOTOR; la 0032 la
+                  pasó a `eventos.meta_diaria` (la mayor del evento) y la
+                  columna quedó sin uso, siempre se ignora.
 series_recurrencia (id, frecuencia[DIAS|SEMANAS|MESES|ANIOS], intervalo,
                    fecha_desde, fecha_hasta, ts_cliente, dispositivo_id)
                   ← en uso desde la 0014. Solo trazabilidad de una serie
@@ -502,13 +509,19 @@ conteo_lineas     (conteo_id, producto_id, teorico, contado,
                     AJUSTE_CONTEO (bodega→promotor si sobra, promotor→afuera
                     si falta) para que el saldo real converja a lo contado.
 descuentos        (id UUID PK, producto_id[opcional], punto_id[opcional],
-                   tipo[PORCENTAJE|MONTO_FIJO], valor, desde, hasta, activo,
-                   creado_por, ts_cliente, dispositivo_id)
-                  ← en uso desde la 0012 (ver ADR 0005). producto_id/punto_id
-                    NULL = "aplica a todos" en esa dimensión. Prioridad al
-                    resolver: producto+punto > solo producto > solo punto.
+                   promotor_id[opcional], tipo[PORCENTAJE|MONTO_FIJO], valor,
+                   desde, hasta, activo, creado_por, ts_cliente, dispositivo_id)
+                  ← en uso desde la 0012 (ver ADR 0005); promotor_id desde la
+                    0031. producto_id/punto_id/promotor_id NULL = "aplica a
+                    todos" en esa dimensión. `desde`/`hasta` son instantes
+                    (fecha + hora): el horario es CONTINUO del primer día a la
+                    hora de inicio hasta el último a la hora de fin. Si a un
+                    producto le aplican varias reglas, gana la que más
+                    descuenta en pesos — nunca se suman (decisión del
+                    negocio, 2026-09-24; antes ganaba la más específica).
                     activo se puede apagar antes de tiempo; el valor/vigencia
-                    nunca se edita — se crea una regla nueva.
+                    nunca se edita — se crea una regla nueva. Sincroniza
+                    (subida y bajada, `supabase/migraciones/0015_descuentos.sql`).
 notificaciones    (id UUID PK, tipo[STOCK_BAJO|LOTE_POR_VENCER|CARGUE_REVISAR|
                    DESBLOQUEO_PIN], nivel[INFO|ALERTA|CRITICO], titulo, detalle,
                    producto_id[opcional], lote_id[opcional], modo[opcional],
@@ -704,7 +717,7 @@ por R7, ver sección 11), Fase 5 con tres rebanadas de SUBIDA construidas
 (turnos/comprobantes, mensajes push, y el motor de inventario/ventas
 completo) y la BAJADA ya construida para personal/PINs, catálogo y datos
 operativos (ventas, cargues, movimientos) con Realtime, empresas/puntos y
-eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastante avanzada
+eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avanzada
 (dashboard, análisis, categorías, metas de venta diaria y mensual).**
 
 | Fase | Alcance | Estado |
@@ -713,7 +726,7 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
 | 2 | Motor de inventario: movimientos, saldos por promotor, recarga, conteo de cierre con teórico vs contado | ✅ Recarga, saldos y conteo de cierre listos. Falta solo la aprobación de descuadres de R7 (bloqueada por el umbral sin definir, ver sección 11) |
 | 3 | Ventas: carrito por escáner, medios de pago, recibo interno, arqueo | ✅ Venta, recibo interno, comprobante de transferencia, clientes finales, asignación de factura a cliente, y arqueo de caja al cerrar turno — completa |
 | 4 | Bodega: cargue por escáner en dos pasos, niveles objetivo, alertas de vencimiento | 🔄 Stock de bodega, entrada de inventario, y cargue en dos pasos (admin planea/bodega entrega por escáner) listos; falta niveles objetivo y alertas de vencimiento por producto próximo a vencer (sí existe notificación de cargue a revisar) |
-| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 SUBIDA (celular → Supabase) completa para turnos, comprobantes de transferencia, mensajes push y todo el motor de inventario/ventas (ventas/venta_items/movimientos/lotes/cargues/conteos/arqueos_caja). BAJADA (Supabase → celular) construida para personal/PINs, catálogo (productos/categorías, sin fotos) y datos operativos (ventas → admin, cargues → bodega/admin, movimientos → bodega/admin/promotor) , empresas/puntos y eventos (con meta diaria) — falta descuentos y conteos hacia admin. **Realtime** construido (ventas, cargues, movimientos, eventos): el admin ve una venta nueva sin refrescar, bodega ve un cargue apenas se planea, el promotor ve un evento nuevo en su calendario. Push enviado desde Supabase. Sin panel web todavía. Solo las ventas se han probado con dispositivos reales |
+| 5 | Sincronización y servidor. Panel web. Visibilidad en tiempo real | 🔄 SUBIDA (celular → Supabase) completa para turnos, comprobantes de transferencia, mensajes push y todo el motor de inventario/ventas (ventas/venta_items/movimientos/lotes/cargues/conteos/arqueos_caja). BAJADA (Supabase → celular) construida para personal/PINs, catálogo (productos/categorías, sin fotos) y datos operativos (ventas → admin, cargues → bodega/admin, movimientos → bodega/admin/promotor) , empresas/puntos, eventos (con meta diaria) y descuentos — falta conteos hacia admin. **Realtime** construido (ventas, cargues, movimientos, eventos): el admin ve una venta nueva sin refrescar, bodega ve un cargue apenas se planea, el promotor ve un evento nuevo en su calendario. Push enviado desde Supabase. Sin panel web todavía. Solo las ventas se han probado con dispositivos reales |
 | 6 | Reportes administrativos. Recomendador de recarga afinado | 🔄 Dashboard extendido (filtros, puntos, descuentos, categorías, gráfico circular, ranking de productos, exportar informe, metas de venta mensual con proyección de cierre) + meta de venta DIARIA por evento, y sección Análisis (repetibilidad/rendimiento/cruces) listos; recomendador de recarga sigue sin construir |
 
 ### Qué existe hoy, concretamente
@@ -882,7 +895,8 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   código de barras) y baja lógica (`activo=0`) de productos. Solo admin.
   Catálogo real del cliente ya cargado (123 productos, migración 0005).
 - **Stock de bodega** (`app/admin/inventario/`): vista de solo lectura del
-  saldo por producto. La única forma de que entre stock es "Ingresar
+  saldo por producto, con barra de búsqueda (nombre, SKU, código de barras
+  o marca; sin distinguir tildes ni mayúsculas). La única forma de que entre stock es "Ingresar
   pedido" (`src/ui/PantallaIngresarPedido.tsx`, compartida con Bodega):
   escanear el producto y teclear la cantidad (suelen ser +60 unidades, por
   eso teclear y no un contador +/-) → `COMPRA_PROVEEDOR`, con fecha de
@@ -909,8 +923,12 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   producto directo del inventario de un promotor al de otro, sin pasar
   físicamente por bodega. Vive dentro del mismo módulo Cargue, mismo
   patrón de dos pasos: admin elige promotor origen → promotor destino →
-  productos (topados al saldo REAL del origen, `obtenerSaldosPromotor`,
-  nunca al de bodega) y planea; bodega confirma línea por línea igual que
+  productos — la lista muestra SOLO lo que el origen tiene en su
+  inventario (`listarInventarioPromotor`, saldo > 0), topado a ese saldo
+  REAL, nunca al de bodega; un botón "Trasladar todo" marca el inventario
+  completo de una vez (y "Quitar todo" lo desmarca), y un origen sin
+  inventario muestra un aviso en vez de pedir destino — y planea; bodega
+  confirma línea por línea igual que
   un cargue normal (mismo componente de escaneo, misma lista combinada de
   "Cargues por entregar" en `app/bodega/cargues/`, con una insignia
   "Traslado" para distinguir la fila) — ahí nace el movimiento `TRASLADO`
@@ -946,7 +964,15 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   reemplazó por completo la pantalla vieja "Asignar punto a promotor"
   (eliminada). Admin planea eventos (empresa + punto + fecha, uno o varios
   promotores por evento, series recurrentes) en una vista de calendario
-  mensual; el promotor ve en su propio calendario dónde le toca cada día.
+  mensual; el promotor ve en su propio calendario dónde le toca cada día,
+  a qué hora, su meta ("Tu meta" o "Meta del equipo") y con quién. El
+  formulario "Nuevo evento" (botón en el dorado de la marca) usa menús
+  desplegables para empresa, punto y promotores (`src/ui/SelectorDesplegable.tsx`,
+  con buscador cuando son muchos), horario obligatorio ("Desde las – Hasta
+  las", `src/core/horas`) y la meta del día en pesos (opcional; con varios
+  promotores avisa que es del equipo). En el detalle del evento se corrigen
+  el horario y la meta. El recuadro del evento de hoy en la pantalla de
+  venta del promotor muestra también el horario.
   Cancelación en caliente con motivo obligatorio, nunca se borra un evento.
   El "punto vigente" del promotor (usado al vender y al resolver
   descuentos) se resuelve por fecha real —
@@ -1063,19 +1089,37 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   Diagnóstico (qué está pendiente, qué falló y por qué) en `app/admin/sync/`,
   ya existente, ahora con etiquetas para las tablas nuevas.
 - **Descuentos** (`app/admin/descuentos/`, `src/db/descuentos.ts`,
-  `src/core/descuentos/`, migración 0012): admin crea reglas de descuento
-  (porcentaje o monto fijo) por producto y/o punto, con vigencia. Se
-  aplican automáticamente al cobrar (ver "Venta del promotor" abajo). Listar
-  vigentes/vencidos, desactivar antes de tiempo — nunca se edita una regla
-  ya creada.
+  `src/core/descuentos/`, migraciones 0012 y 0031): admin crea reglas de
+  descuento (porcentaje o monto fijo) por producto, punto y/o **promotor**
+  ("Cristian hoy de 8 am a 4 pm tiene 10 % en sus productos"), con fechas y
+  horario opcional — "Todo el día" o "Horario específico", continuo del
+  primer día a la hora de inicio hasta el último a la hora de fin (hora de
+  Bogotá, UTC-5 fijo); botón "Solo hoy". El listado ("Vigentes y próximos"
+  / "Vencidos / inactivos") muestra a quién aplica, fecha y hora, y marca
+  "Programado" lo que todavía no empieza. Si varias reglas le aplican a un
+  producto, gana la que más descuenta en pesos, nunca se suman
+  (`elegirMayorDescuento`). Desactivar antes de tiempo — nunca se edita una
+  regla ya creada. **Sincronizan** (desde 2026-09-24,
+  `supabase/migraciones/0015_descuentos.sql`, Bloque 5): suben al crearse o
+  desactivarse (con el `sku` del producto: los 123 iniciales tienen id
+  distinto por dispositivo) y el celular del promotor los baja en
+  `descargarDatosDeAdmin` después de eventos, con Realtime. Un descuento de
+  un producto o punto que el celular no conoce se omite — nunca se amplía a
+  "todos". En el seed de demo no suben (`sincronizar: false`).
 - **Venta del promotor** (`app/promotor/index.tsx`): grilla de su propio
   inventario con buscador, escáner de código de barras, ticket (carrito) y
   cobro con los 3 medios de pago. Topa la cantidad vendible al saldo
-  calculado tanto al tocar la grilla como al escanear. Al cobrar, resuelve
-  el punto vigente del promotor y aplica automáticamente cualquier
-  descuento vigente para cada producto en ese punto (ver ADR 0005) — el
-  precio que queda en el recibo ya es el precio con descuento. Los
-  descuadres reales se resuelven en el conteo de cierre.
+  calculado tanto al tocar la grilla como al escanear. **El descuento se ve
+  desde que el producto entra al ticket** (`resolverPreciosConDescuento`,
+  por producto, por su punto de hoy o asignado a él): la grilla muestra el
+  precio con descuento, el original tachado y "-10 %"; el ticket, cada línea
+  con su descuento y "Descuento aplicado"; la pantalla de cobro, "Incluye
+  descuento de $X". Se recalcula al abrir el ticket, antes de cobrar y cada
+  minuto (un horario empieza o termina solo). `registrarVenta` guarda tal
+  cual el precio que el promotor vio — antes aplicaba el descuento a
+  escondidas al guardar: el ticket mostraba el precio lleno, el cliente
+  pagaba eso y la venta quedaba con descuento (el arqueo no cuadraba).
+  Los descuadres reales se resuelven en el conteo de cierre.
 - **Ventas del admin** (`app/admin/ventas/`): listado (promotor + total,
   pestañas Activas/Anuladas) y detalle (líneas) de cada venta. Se puede
   anular una venta con motivo obligatorio — nunca se borra, se marca y se
@@ -1158,11 +1202,18 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   de la meta DIARIA (`src/ui/BarraMetaDiaria.tsx`): se llena con animación y
   cambia de rojo a verde (pasando por naranja y ámbar) según el porcentaje,
   con "Te faltan $X" o "¡Meta cumplida!". Mide TODAS las ventas del día en
-  Bogotá (misma cifra que "Cierre de jornada", `obtenerProgresoMetasDiarias`),
-  no solo las del turno — por eso puede no coincidir con el "Total vendido"
-  del turno si hubo ventas antes. Sin meta asignada hoy, solo un aviso
-  discreto. Se actualiza sola si admin cambia la meta con la pantalla
-  abierta.
+  Bogotá de TODO el equipo del evento (misma cifra que "Cierre de jornada",
+  `obtenerProgresoMetaDelPromotor`), no solo las del turno — por eso puede no
+  coincidir con el "Total vendido" del turno. Sin meta asignada hoy, solo un
+  aviso discreto. Si el evento de hoy tiene varios promotores, la pantalla
+  tiene dos pestañas: "Mis ventas" y "Todo el equipo" (las ventas de hoy de
+  todos, con quién vendió cada una y el total por persona; las de los
+  compañeros solo se consultan). Para eso el celular del promotor baja las
+  ventas de HOY en el punto de su evento (`descargarVentasNuevas` con ámbito
+  EQUIPO, por punto y no por persona: el punto tiene el mismo id en todos
+  los dispositivos), con Realtime; nunca entran en "Mis ventas" ni en su
+  arqueo. Todo se actualiza solo si admin cambia la meta o un compañero
+  vende.
 - **Dashboard: gráfico circular, ranking de productos, exportar informe y
   metas de venta** (`app/admin/dashboard/`, `src/ui/graficas/GraficoCircular.tsx`,
   `src/db/metas.ts`, migración 0021): "Por método de pago" ahora es una
@@ -1243,9 +1294,11 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   `app/bodega/notificaciones.tsx`, `src/db/eventos.ts`, `src/db/metasDiarias.ts`,
   `src/db/mensajes.ts`, `src/sync/push.ts`, `src/core/errores/`, migración
   0023, `supabase/migraciones/0003_mensajes.sql`): al planear o editar un
-  evento en el Calendario, admin puede fijar una meta de venta DIARIA por
-  promotor asignado (`evento_promotores.meta_diaria`) — distinta de la meta
-  MENSUAL (`metas`, más arriba). `app/admin/notificaciones/` es UNA pantalla
+  evento en el Calendario, admin puede fijar la meta de venta DIARIA del
+  evento (`eventos.meta_diaria`, compartida por todo su equipo desde la
+  0032) — distinta de la meta MENSUAL (`metas`, más arriba). "Enviar
+  progreso" manda un mensaje por evento a todos sus promotores, con el
+  avance del equipo. `app/admin/notificaciones/` es UNA pantalla
   con dos pestañas — fusión solo visual (UX/UI, a pedido del usuario), las
   tablas de datos siguen 100% separadas: "Alertas del sistema" (lo que antes
   era el módulo "Notificaciones" solo, ver más abajo) y "Mensajes" (antes el
@@ -1391,7 +1444,7 @@ eventos del calendario — ver más abajo; faltan descuentos —, Fase 6 bastant
   mensajes (su ausencia daba "Could not find the table 'public.mensajes'").
 
 Lo que falta de cada fase (aprobación de descuadres R7, niveles objetivo,
-alertas de vencimiento, bajada de descuentos, panel
+alertas de vencimiento, panel
 web, recomendador de recarga) sigue sin construirse — no asumir que existe.
 
 ### Decisiones registradas (`docs/03-decisiones/`, [índice completo](docs/03-decisiones/README.md))
@@ -1454,10 +1507,10 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [x] ~~BAJADA de eventos del calendario (con promotores y meta diaria)~~
       — **construida el 2026-09-23** (Bloque 4, sección 10 bullet
       "Calendario de eventos", `supabase/migraciones/0014_eventos.sql`).
-- [ ] **Sigue faltando la BAJADA de descuentos** (Bloque 5): una regla
-      creada por admin no se aplica en el celular del promotor. Mismo
-      patrón que eventos (los descuentos por punto ya pueden resolverse:
-      el promotor tiene su punto vigente). También pendiente: conteos
+- [x] ~~BAJADA de descuentos~~ — **construida el 2026-09-24** (Bloque 5,
+      junto con los descuentos por promotor con horario; sección 10 bullet
+      "Descuentos", `supabase/migraciones/0015_descuentos.sql`).
+- [ ] **Pendiente de la sincronización:** conteos
       de cierre hacia admin (hoy el admin no ve los conteos hechos en el
       celular; las líneas ya suben con `producto_sku`), lotes en movimientos,
       y fotos de comprobante/selfie de ventas descargadas.
@@ -1498,6 +1551,9 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [ ] **Correr `supabase/migraciones/0014_eventos.sql`** (idempotente,
       después de 0012). Sin esto, los eventos quedan pendientes en la cola
       (`app/admin/sync/`) y no llegan al celular del promotor.
+- [ ] **Correr `supabase/migraciones/0015_descuentos.sql`** (idempotente,
+      después de 0012). Sin esto, los descuentos quedan pendientes en la
+      cola y el celular del promotor cobra sin ellos.
 - [ ] **Mensajes/notificaciones push no llegaban** (reportado 2026-09-23,
       admin en el computador → promotor en el celular) — **arreglado en
       código el 2026-09-23, falta aplicar 0013 y probarlo**. Dos causas:
@@ -1576,8 +1632,8 @@ etiqueta no funciona.
 
 - No escribir columnas de stock. Ver R1.
 - No usar `AUTOINCREMENT` como clave primaria de tablas de dominio. Ver R3.
-- No asumir que TODO sincroniza: descuentos y `ubicaciones`
-  siguen 100% locales, y las fotos de producto tampoco viajan
+- No asumir que TODO sincroniza: `ubicaciones`
+  sigue 100% local, y las fotos de producto tampoco viajan
   (ver sección 10 y 11 para qué sí sincroniza y en qué dirección). No
   extender la sincronización a otras tablas sin decidirlo explícitamente
   primero. Nunca correr la bajada de personal/catálogo

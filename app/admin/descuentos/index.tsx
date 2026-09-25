@@ -2,6 +2,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { formatearPesos } from '@/core/dinero';
 import type { Descuento } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { desactivarDescuento, listarDescuentos } from '@/db/descuentos';
@@ -16,22 +17,43 @@ import { useRequiereSesion } from '@/ui/useRequiereSesion';
 type Filtro = 'VIGENTES' | 'VENCIDOS';
 
 const OPCIONES_FILTRO: { valor: Filtro; etiqueta: string }[] = [
-  { valor: 'VIGENTES', etiqueta: 'Vigentes' },
+  { valor: 'VIGENTES', etiqueta: 'Vigentes y próximos' },
   { valor: 'VENCIDOS', etiqueta: 'Vencidos / inactivos' },
 ];
+
+/** Hora de Bogotá "HH:MM" de un instante (UTC-5 fijo). */
+function horaBogota(iso: string): string {
+  return new Date(new Date(iso).getTime() - 5 * 3600 * 1000).toISOString().slice(11, 16);
+}
 
 function formatearFecha(iso: string): string {
   return new Date(iso).toLocaleDateString('es-CO', { dateStyle: 'medium' });
 }
 
+function formatearFechaHora(iso: string): string {
+  return new Date(iso).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+/**
+ * "24 sept 2026 — 30 sept 2026" para un descuento de días completos;
+ * con fecha y hora si tiene horario ("24 sept 2026, 8:00 a. m. — ...").
+ */
+function describirVigencia(descuento: Descuento): string {
+  const diasCompletos = horaBogota(descuento.desde) === '00:00' && horaBogota(descuento.hasta) === '23:59';
+  return diasCompletos
+    ? `${formatearFecha(descuento.desde)} — ${formatearFecha(descuento.hasta)}`
+    : `${formatearFechaHora(descuento.desde)} — ${formatearFechaHora(descuento.hasta)}`;
+}
+
 function describirValor(descuento: Descuento): string {
-  return descuento.tipo === 'PORCENTAJE' ? `${descuento.valor}%` : `$ ${descuento.valor}`;
+  return descuento.tipo === 'PORCENTAJE' ? `${descuento.valor}%` : formatearPesos(descuento.valor);
 }
 
 function describirAlcance(descuento: Descuento): string {
+  const promotor = descuento.promotorNombre ?? 'Todos los promotores';
   const producto = descuento.productoNombre ?? 'Todos los productos';
   const punto = descuento.puntoNombre ?? 'Todos los puntos';
-  return `${producto} · ${punto}`;
+  return `${promotor} · ${producto} · ${punto}`;
 }
 
 export default function Descuentos() {
@@ -61,10 +83,10 @@ export default function Descuentos() {
   if (!usuario) return null;
 
   const ahora = new Date().toISOString();
-  const filtrados = descuentos.filter((d) => {
-    const vigente = d.activo && d.desde <= ahora && d.hasta >= ahora;
-    return filtro === 'VIGENTES' ? vigente : !vigente;
-  });
+  // Un descuento programado para más tarde (ej. hoy desde las 8 am) todavía
+  // no aplica, pero tampoco está vencido: va con los vigentes.
+  const vigenteOProximo = (d: Descuento) => d.activo && d.hasta >= ahora;
+  const filtrados = descuentos.filter((d) => (filtro === 'VIGENTES' ? vigenteOProximo(d) : !vigenteOProximo(d)));
 
   async function confirmarDesactivar() {
     if (!idParaDesactivar) return;
@@ -100,7 +122,9 @@ export default function Descuentos() {
       ) : filtrados.length === 0 ? (
         <EmptyState
           icono="pricetag-outline"
-          mensaje={filtro === 'VIGENTES' ? 'No hay descuentos vigentes.' : 'No hay descuentos vencidos o inactivos.'}
+          mensaje={
+            filtro === 'VIGENTES' ? 'No hay descuentos vigentes ni programados.' : 'No hay descuentos vencidos o inactivos.'
+          }
         />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
@@ -114,9 +138,15 @@ export default function Descuentos() {
                   <View style={styles.filaEncabezado}>
                     <Text style={styles.filaValor}>{describirValor(item)}</Text>
                     {filtro === 'VIGENTES' ? (
-                      <View style={styles.badgeVigente}>
-                        <Text style={styles.badgeVigenteTexto}>Vigente</Text>
-                      </View>
+                      item.desde > ahora ? (
+                        <View style={styles.badgeProgramado}>
+                          <Text style={styles.badgeProgramadoTexto}>Programado</Text>
+                        </View>
+                      ) : (
+                        <View style={styles.badgeVigente}>
+                          <Text style={styles.badgeVigenteTexto}>Vigente</Text>
+                        </View>
+                      )
                     ) : (
                       <View style={styles.badgeInactivo}>
                         <Text style={styles.badgeInactivoTexto}>
@@ -126,9 +156,7 @@ export default function Descuentos() {
                     )}
                   </View>
                   <Text style={styles.filaAlcance}>{describirAlcance(item)}</Text>
-                  <Text style={styles.filaVigencia}>
-                    {formatearFecha(item.desde)} — {formatearFecha(item.hasta)}
-                  </Text>
+                  <Text style={styles.filaVigencia}>{describirVigencia(item)}</Text>
                 </View>
                 {filtro === 'VIGENTES' && (
                   <Pressable style={styles.botonDesactivar} onPress={() => setIdParaDesactivar(item.id)}>
@@ -210,6 +238,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.positivo,
+    textTransform: 'uppercase',
+  },
+  badgeProgramado: {
+    backgroundColor: '#FFF4DB',
+    borderWidth: 1,
+    borderColor: '#F5D48A',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeProgramadoTexto: {
+    fontSize: 10,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: '#8A5A00',
     textTransform: 'uppercase',
   },
   badgeInactivo: {

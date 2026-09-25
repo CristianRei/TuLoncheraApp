@@ -186,24 +186,64 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
     await db.exec('set role authenticated');
     try {
       const id = U(), p1 = U(), p2 = U(), disp = U();
-      const sql = `insert into eventos (id, empresa_id, punto_id, fecha, estado, motivo_cancelacion, creado_por, creado_por_nombre, promotores, ts_cliente, dispositivo_id)
-                   values ($1,$2,$3,'2026-09-24',$4,$5,$6,'Admin',$7::jsonb,$8,$6)
+      const sql = `insert into eventos (id, empresa_id, punto_id, fecha, estado, motivo_cancelacion, creado_por, creado_por_nombre, promotores, hora_inicio, hora_fin, meta_diaria, ts_cliente, dispositivo_id)
+                   values ($1,$2,$3,'2026-09-24',$4,$5,$6,'Admin',$7::jsonb,'08:00','16:00',1000000,$8,$6)
                    on conflict (id) do update set estado = excluded.estado, motivo_cancelacion = excluded.motivo_cancelacion, promotores = excluded.promotores`;
       const [e, p] = [U(), U()];
-      await db.query(sql, [id, e, p, 'PLANEADO', null, disp, JSON.stringify([{ promotor_id: p1, promotor_nombre: 'Laura', meta_diaria: 1800000 }, { promotor_id: p2, promotor_nombre: 'Pedro', meta_diaria: null }]), ahora]);
+      await db.query(sql, [id, e, p, 'PLANEADO', null, disp, JSON.stringify([{ promotor_id: p1, promotor_nombre: 'Laura' }, { promotor_id: p2, promotor_nombre: 'Pedro' }]), ahora]);
       const antes = (await db.query(`select subido_ts from eventos where id=$1`, [id])).rows[0].subido_ts;
       await new Promise((r) => setTimeout(r, 15));
-      await db.query(sql, [id, e, p, 'CANCELADO', 'Lluvia', disp, JSON.stringify([{ promotor_id: p1, promotor_nombre: 'Laura', meta_diaria: 1800000 }]), ahora]);
-      const f = (await db.query(`select estado, motivo_cancelacion, fecha::text as fecha, promotores, subido_ts from eventos where id=$1`, [id])).rows[0];
+      await db.query(sql, [id, e, p, 'CANCELADO', 'Lluvia', disp, JSON.stringify([{ promotor_id: p1, promotor_nombre: 'Laura' }]), ahora]);
+      const f = (await db.query(`select estado, motivo_cancelacion, fecha::text as fecha, promotores, hora_inicio, hora_fin, meta_diaria, subido_ts from eventos where id=$1`, [id])).rows[0];
       assert.deepEqual([f.estado, f.motivo_cancelacion, f.fecha], ['CANCELADO', 'Lluvia', '2026-09-24']);
-      assert.deepEqual(f.promotores, [{ promotor_id: p1, promotor_nombre: 'Laura', meta_diaria: 1800000 }]);
+      assert.deepEqual([f.hora_inicio, f.hora_fin, Number(f.meta_diaria)], ['08:00', '16:00', 1000000]);
+      assert.deepEqual(f.promotores, [{ promotor_id: p1, promotor_nombre: 'Laura' }]);
       assert.ok(new Date(f.subido_ts) > new Date(antes), 'subido_ts no cambió al actualizar');
     } finally { await db.exec('reset role'); }
+  });
+  await paso(`0014 le agrega horario y meta a una tabla eventos creada con la versión anterior (proyecto ${nombre})`, async () => {
+    await db.exec(`alter table eventos drop column hora_inicio; alter table eventos drop column hora_fin; alter table eventos drop column meta_diaria;`);
+    await db.exec(leer('0014_eventos.sql'));
+    const r = await db.query(`select column_name from information_schema.columns where table_name = 'eventos'`);
+    const cols = new Set(r.rows.map((x) => x.column_name));
+    for (const c of ['hora_inicio', 'hora_fin', 'meta_diaria']) assert.ok(cols.has(c), `falta ${c}`);
   });
   await paso(`Realtime habilitado en eventos y sin política de DELETE (proyecto ${nombre})`, async () => {
     const r = await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime'`);
     assert.ok(r.rows.some((x) => x.tablename === 'eventos'), 'no está eventos');
     const d = await db.query(`select 1 from pg_policies where tablename = 'eventos' and cmd = 'DELETE'`);
+    assert.equal(d.rows.length, 0);
+  });
+}
+
+console.log('\n== 0015 (descuentos) encima de 0014, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  const U = () => crypto.randomUUID();
+  await paso(`0015 aplica sin error y es idempotente (proyecto ${nombre})`, async () => {
+    await db.exec(leer('0015_descuentos.sql'));
+    await db.exec(leer('0015_descuentos.sql'));
+  });
+  await paso(`como usuario autenticado: subir un descuento de promotor con horario y desactivarlo (upsert); subido_ts avanza (proyecto ${nombre})`, async () => {
+    await db.exec('set role authenticated');
+    try {
+      const id = U(), admin = U(), cristian = U(), disp = U();
+      const sql = `insert into descuentos (id, promotor_id, promotor_nombre, tipo, valor, desde, hasta, activo, creado_por, creado_por_nombre, ts_cliente, dispositivo_id)
+                   values ($1,$2,'Cristian','PORCENTAJE',10,'2026-09-24T13:00:00Z','2026-09-24T21:00:00Z',$3,$4,'Admin',now(),$5)
+                   on conflict (id) do update set activo = excluded.activo`;
+      await db.query(sql, [id, cristian, true, admin, disp]);
+      const antes = (await db.query(`select subido_ts from descuentos where id=$1`, [id])).rows[0].subido_ts;
+      await new Promise((r) => setTimeout(r, 15));
+      await db.query(sql, [id, cristian, false, admin, disp]);
+      const f = (await db.query(`select activo, valor, subido_ts from descuentos where id=$1`, [id])).rows[0];
+      assert.equal(f.activo, false);
+      assert.equal(Number(f.valor), 10);
+      assert.ok(new Date(f.subido_ts) > new Date(antes), 'subido_ts no cambió al desactivar');
+    } finally { await db.exec('reset role'); }
+  });
+  await paso(`Realtime habilitado en descuentos y sin política de DELETE (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime'`);
+    assert.ok(r.rows.some((x) => x.tablename === 'descuentos'), 'no está descuentos');
+    const d = await db.query(`select 1 from pg_policies where tablename = 'descuentos' and cmd = 'DELETE'`);
     assert.equal(d.rows.length, 0);
   });
 }

@@ -9,15 +9,34 @@ import { listarTodosLosMovimientos } from '@/db/movimientos';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
+import { SearchBar } from '@/ui/SearchBar';
 import { COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
+
+/** Minúsculas y sin tildes: "limon" encuentra "LIMÓN". */
+function normalizar(texto: string): string {
+  return texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/** Busca por nombre, SKU, código de barras o marca. */
+function coincide(item: ItemInventario, busqueda: string): boolean {
+  const termino = normalizar(busqueda);
+  if (!termino) return true;
+  const { nombre, sku, codigoBarras, marca } = item.producto;
+  return [nombre, sku, codigoBarras, marca].some((campo) => campo && normalizar(campo).includes(termino));
+}
 
 export default function Inventario() {
   const usuario = useRequiereSesion(['ADMIN']);
   const [items, setItems] = useState<ItemInventario[]>([]);
   const [cargando, setCargando] = useState(true);
   const [exportando, setExportando] = useState<'inventario' | 'movimientos' | null>(null);
+  const [busqueda, setBusqueda] = useState('');
 
   const cargarInventario = useCallback(async () => {
     setCargando(true);
@@ -77,6 +96,8 @@ export default function Inventario() {
 
   if (!usuario) return null;
 
+  const filtrados = items.filter((item) => coincide(item, busqueda));
+
   return (
     <View style={styles.contenedor}>
       <Encabezado
@@ -110,6 +131,15 @@ export default function Inventario() {
             )}
           </Pressable>
         </View>
+        {items.length > 0 && (
+          <View style={styles.busqueda}>
+            <SearchBar
+              valor={busqueda}
+              onCambiar={setBusqueda}
+              placeholder="Buscar por nombre, SKU, código de barras o marca..."
+            />
+          </View>
+        )}
       </ContenedorAncho>
 
       {cargando ? (
@@ -121,11 +151,14 @@ export default function Inventario() {
           icono="cube-outline"
           mensaje={'Todavía no hay stock en bodega. Toca "+ Pedido" para registrar lo que llegó.'}
         />
+      ) : filtrados.length === 0 ? (
+        <EmptyState icono="search-outline" mensaje={`Ningún producto en bodega coincide con "${busqueda.trim()}".`} />
       ) : (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
-            data={items}
+            data={filtrados}
             keyExtractor={(item) => item.producto.id}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
               <View style={styles.fila}>
@@ -168,6 +201,9 @@ const styles = StyleSheet.create({
     fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
     color: COLORES_ADMIN.vino,
     textAlign: 'center',
+  },
+  busqueda: {
+    paddingTop: ESPACIADO_ADMIN.md,
   },
   centrado: {
     flex: 1,

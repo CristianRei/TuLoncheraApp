@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -6,7 +7,7 @@ import type { Cargue, Producto, Traslado, UsuarioSesion } from '@/core/tipos';
 import { crearCargue, listarCargues, StockInsuficienteError } from '@/db/cargues';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
-import { obtenerSaldosBodega, obtenerSaldosPromotor } from '@/db/inventario';
+import { listarInventarioPromotor, obtenerSaldosBodega } from '@/db/inventario';
 import { listarProductos } from '@/db/productos';
 import {
   crearTraslado,
@@ -56,11 +57,13 @@ export default function PantallaCargue() {
   const [cargues, setCargues] = useState<Cargue[]>([]);
 
   // Traslado entre promotores: primero se elige origen, luego destino, y
-  // recién ahí aparece el selector de productos (topado al inventario del
-  // origen, nunca al de bodega) — mismo flujo de "elegir promotor" del
-  // cargue normal, con un paso extra.
+  // recién ahí aparece el selector de productos — SOLO los que el origen
+  // tiene en su inventario (saldo > 0), topados a ese saldo, nunca al de
+  // bodega. Mismo flujo de "elegir promotor" del cargue normal, con un paso
+  // extra.
   const [promotorOrigen, setPromotorOrigen] = useState<UsuarioSesion | null>(null);
   const [promotorDestino, setPromotorDestino] = useState<UsuarioSesion | null>(null);
+  const [productosOrigen, setProductosOrigen] = useState<Producto[]>([]);
   const [disponiblesOrigen, setDisponiblesOrigen] = useState<Record<string, number>>({});
   const [cantidadesTraslado, setCantidadesTraslado] = useState<Record<string, number>>({});
   const [busquedaTraslado, setBusquedaTraslado] = useState('');
@@ -141,15 +144,20 @@ export default function PantallaCargue() {
   }
 
   async function elegirPromotorOrigen(elegido: UsuarioSesion) {
-    setPromotorOrigen(elegido);
+    // El inventario se carga ANTES de mostrar el siguiente paso, para no
+    // mostrar por un instante "no tiene productos" mientras llega.
     const db = await getDb();
-    const saldos = await obtenerSaldosPromotor(db, elegido.id);
-    setDisponiblesOrigen(Object.fromEntries(saldos));
+    const inventario = await listarInventarioPromotor(db, elegido.id);
+    setProductosOrigen(inventario.map((i) => i.producto));
+    setDisponiblesOrigen(Object.fromEntries(inventario.map((i) => [i.producto.id, i.saldo])));
+    setPromotorOrigen(elegido);
   }
 
   function cerrarTraslado() {
     setPromotorOrigen(null);
     setPromotorDestino(null);
+    setProductosOrigen([]);
+    setDisponiblesOrigen({});
     setCantidadesTraslado({});
     setBusquedaTraslado('');
   }
@@ -163,6 +171,16 @@ export default function PantallaCargue() {
   }
 
   const totalUnidadesTraslado = Object.values(cantidadesTraslado).reduce((suma, c) => suma + c, 0);
+  const unidadesOrigen = Object.values(disponiblesOrigen).reduce((suma, c) => suma + c, 0);
+  const todoMarcado =
+    productosOrigen.length > 0 && productosOrigen.every((p) => cantidadesTraslado[p.id] === disponiblesOrigen[p.id]);
+
+  // "Trasladar todo": marca el inventario COMPLETO del origen (cada producto
+  // con todo su saldo) — el traslado igual se confirma con "Planear
+  // traslado". Si ya estaba todo marcado, lo desmarca.
+  function alternarTrasladarTodo() {
+    setCantidadesTraslado(todoMarcado ? {} : { ...disponiblesOrigen });
+  }
 
   async function confirmarTraslado() {
     if (!promotorOrigen || !promotorDestino || totalUnidadesTraslado === 0) return;
@@ -276,8 +294,32 @@ export default function PantallaCargue() {
         </ContenedorAncho>
       ) : promotorOrigen && promotorDestino ? (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
+          <View style={styles.resumenOrigen}>
+            <Text style={styles.resumenOrigenTexto}>
+              Inventario de {promotorOrigen.nombre}:{' '}
+              <Text style={styles.resumenOrigenCifra}>
+                {productosOrigen.length} {productosOrigen.length === 1 ? 'producto' : 'productos'} ·{' '}
+                {unidadesOrigen} {unidadesOrigen === 1 ? 'unidad' : 'unidades'}
+              </Text>
+            </Text>
+            <Pressable
+              style={[styles.botonTodo, todoMarcado && styles.botonTodoActivo]}
+              onPress={alternarTrasladarTodo}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name={todoMarcado ? 'close-circle-outline' : 'checkmark-done-outline'}
+                size={18}
+                color={todoMarcado ? COLORES_ADMIN.vino : '#FFF'}
+              />
+              <Text style={[styles.botonTodoTexto, todoMarcado && styles.botonTodoTextoActivo]}>
+                {todoMarcado ? 'Quitar todo' : 'Trasladar todo'}
+              </Text>
+            </Pressable>
+          </View>
+
           <SelectorProductosConCantidad
-            productos={productos}
+            productos={productosOrigen}
             cantidades={cantidadesTraslado}
             disponibles={disponiblesOrigen}
             onCambiarCantidad={cambiarCantidadTraslado}
@@ -305,6 +347,11 @@ export default function PantallaCargue() {
             </Pressable>
           </View>
         </ContenedorAncho>
+      ) : promotorOrigen && productosOrigen.length === 0 ? (
+        <EmptyState
+          icono="cube-outline"
+          mensaje={`${promotorOrigen.nombre} no tiene productos en su inventario para trasladar.`}
+        />
       ) : promotorOrigen ? (
         <ContenedorAncho anchoMaximo={720} llenarAlto>
           <FlatList
@@ -425,6 +472,52 @@ const styles = StyleSheet.create({
   },
   pie: {
     padding: ESPACIADO_ADMIN.xl,
+  },
+  resumenOrigen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: ESPACIADO_ADMIN.sm,
+    marginHorizontal: ESPACIADO_ADMIN.xl,
+    marginTop: ESPACIADO_ADMIN.lg,
+    padding: ESPACIADO_ADMIN.md,
+    borderRadius: 12,
+    backgroundColor: COLORES_ADMIN.superficieBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.bordeSuave,
+  },
+  resumenOrigenTexto: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontFamily: TIPOGRAFIA_ADMIN.medio,
+    color: COLORES_ADMIN.textoSecundario,
+  },
+  resumenOrigenCifra: {
+    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    color: COLORES_ADMIN.texto,
+  },
+  botonTodo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORES_ADMIN.vino,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  botonTodoActivo: {
+    backgroundColor: COLORES_ADMIN.superficieMasBaja,
+    borderWidth: 1,
+    borderColor: COLORES_ADMIN.vino,
+  },
+  botonTodoTexto: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  botonTodoTextoActivo: {
+    color: COLORES_ADMIN.vino,
   },
   botonConfirmar: {
     backgroundColor: COLORES_ADMIN.vino,

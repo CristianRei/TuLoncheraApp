@@ -1,61 +1,75 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { calcularRangoDiaBogota, fechaHoyBogota } from '@/core/analitica';
-import type { Pesos } from '@/core/tipos';
+import type { Evento, Pesos } from '@/core/tipos';
 
 import { obtenerVentasPorPromotor } from './analitica';
-import { listarEventosPorRango } from './eventos';
+import { listarEventosPorRango, obtenerPuntoVigentePromotor } from './eventos';
 
+/**
+ * Progreso de la meta DIARIA de un evento. La meta es del EQUIPO (migración
+ * 0032): si es de $ 1.000.000 y entre los dos promotores venden $ 500.000,
+ * los dos van en 50 % — decisión del negocio, 2026-09-24. Distinta de la
+ * meta mensual (src/db/metas.ts, ver CLAUDE.md glosario "Meta").
+ */
 export interface ProgresoMetaDiaria {
   eventoId: string;
-  promotorId: string;
-  promotorNombre: string;
+  /** "Empresa · Punto". */
   puntoNombre: string;
+  promotorIds: string[];
+  promotorNombres: string[];
   metaDiaria: Pesos;
+  /** Lo que vendieron ENTRE TODOS los promotores del evento ese día (sin anuladas). */
   totalVendidoHoy: Pesos;
   progresoPct: number;
 }
 
+async function calcularProgreso(
+  db: SQLiteDatabase,
+  eventos: Evento[],
+  fecha: string
+): Promise<ProgresoMetaDiaria[]> {
+  const conMeta = eventos.filter((e) => e.estado !== 'CANCELADO' && e.metaDiaria !== null);
+  if (conMeta.length === 0) return [];
+
+  const ventasPorPromotor = await obtenerVentasPorPromotor(db, calcularRangoDiaBogota(fecha));
+  const totalPorPromotor = new Map(ventasPorPromotor.map((v) => [v.promotorId, v.totalVendido]));
+
+  return conMeta.map((evento) => {
+    const metaDiaria = evento.metaDiaria ?? 0;
+    const totalVendidoHoy = evento.promotorIds.reduce((suma, id) => suma + (totalPorPromotor.get(id) ?? 0), 0);
+    return {
+      eventoId: evento.id,
+      puntoNombre: `${evento.empresaNombre} · ${evento.puntoNombre}`,
+      promotorIds: evento.promotorIds,
+      promotorNombres: evento.promotorNombres,
+      metaDiaria,
+      totalVendidoHoy,
+      progresoPct: metaDiaria === 0 ? 0 : Math.round((totalVendidoHoy / metaDiaria) * 100),
+    };
+  });
+}
+
 /**
- * Progreso de la meta DIARIA de cada promotor con evento asignado en `fecha`
- * (por defecto hoy) — independiente de la meta mensual (src/db/metas.ts, la
- * otra escala, ver CLAUDE.md glosario "Meta"). Solo incluye promotores con
- * `meta_diaria` asignada ese evento (migración 0023) — sin meta, no hay nada
- * que medir. Eventos cancelados no cuentan.
+ * Progreso de cada evento con meta diaria en `fecha` (por defecto hoy) — uno
+ * por evento, no por promotor. Eventos cancelados o sin meta no cuentan. En
+ * el celular de un promotor, las ventas de sus compañeros de evento llegan
+ * de Supabase (`descargarVentasNuevas` con ámbito de punto, src/sync/bajada.ts).
  */
 export async function obtenerProgresoMetasDiarias(
   db: SQLiteDatabase,
   fecha: string = fechaHoyBogota()
 ): Promise<ProgresoMetaDiaria[]> {
-  const eventos = await listarEventosPorRango(db, { desde: fecha, hasta: fecha });
+  return calcularProgreso(db, await listarEventosPorRango(db, { desde: fecha, hasta: fecha }), fecha);
+}
 
-  const pendientes: Omit<ProgresoMetaDiaria, 'totalVendidoHoy' | 'progresoPct'>[] = [];
-  for (const evento of eventos) {
-    if (evento.estado === 'CANCELADO') continue;
-    evento.promotorIds.forEach((promotorId, indice) => {
-      const meta = evento.metaDiariaPorPromotor[promotorId];
-      if (meta === null || meta === undefined) return;
-      pendientes.push({
-        eventoId: evento.id,
-        promotorId,
-        promotorNombre: evento.promotorNombres[indice],
-        puntoNombre: `${evento.empresaNombre} · ${evento.puntoNombre}`,
-        metaDiaria: meta,
-      });
-    });
-  }
-  if (pendientes.length === 0) return [];
-
-  const rango = calcularRangoDiaBogota(fecha);
-  const ventasPorPromotor = await obtenerVentasPorPromotor(db, rango);
-  const totalPorPromotor = new Map(ventasPorPromotor.map((v) => [v.promotorId, v.totalVendido]));
-
-  return pendientes.map((fila) => {
-    const totalVendidoHoy = totalPorPromotor.get(fila.promotorId) ?? 0;
-    return {
-      ...fila,
-      totalVendidoHoy,
-      progresoPct: fila.metaDiaria === 0 ? 0 : Math.round((totalVendidoHoy / fila.metaDiaria) * 100),
-    };
-  });
+/** El progreso del evento de HOY de este promotor (el mismo para todo su equipo), o `null` si no tiene meta. */
+export async function obtenerProgresoMetaDelPromotor(
+  db: SQLiteDatabase,
+  promotorId: string
+): Promise<ProgresoMetaDiaria | null> {
+  const evento = await obtenerPuntoVigentePromotor(db, promotorId);
+  if (!evento) return null;
+  const [progreso] = await calcularProgreso(db, [evento], evento.fecha);
+  return progreso ?? null;
 }

@@ -1,6 +1,7 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { fechaHoyBogota } from '@/core/analitica';
 import type { MetodoPago } from '@/core/tipos';
 
 import { crearCategoria } from './categorias';
@@ -175,8 +176,9 @@ export async function sembrarDatosDemo(
   }
   if (puntosCreados.length === 0) return;
 
-  // Cada promotor queda con un evento de hoy en un punto distinto (rotando si hay más promotores que puntos)
-  const hoy = new Date().toISOString().slice(0, 10);
+  // Cada promotor queda con un evento de hoy en un punto distinto (rotando si hay más promotores que puntos).
+  // Hoy en Bogotá — con la fecha UTC, después de las 7 pm el evento de demo caía en mañana.
+  const hoy = fechaHoyBogota();
   for (let i = 0; i < promotores.length; i++) {
     const punto = puntosCreados[i % puntosCreados.length];
     await crearEvento(
@@ -187,6 +189,8 @@ export async function sembrarDatosDemo(
         fecha: hoy,
         promotorIds: [promotores[i].id],
         creadoPor: adminId,
+        horaInicio: '08:00',
+        horaFin: '16:00',
       },
       dispositivoId,
       { sincronizar: false }
@@ -206,7 +210,8 @@ export async function sembrarDatosDemo(
       hasta: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       creadoPor: adminId,
     },
-    dispositivoId
+    dispositivoId,
+    { sincronizar: false }
   );
 
   // Stock de bodega suficiente para que cada promotor tenga saldo a vender.

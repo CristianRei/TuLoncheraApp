@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,8 +15,10 @@ import {
   View,
 } from 'react-native';
 import { formatearPesos } from '@/core/dinero';
+import { formatearRangoHoras } from '@/core/horas';
 import type { Evento, MetodoPago, Turno } from '@/core/tipos';
 import { getDb } from '@/db/client';
+import { resolverPreciosConDescuento, type PrecioConDescuento } from '@/db/descuentos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { guardarFotoComprobante } from '@/db/fotos';
 import { obtenerSaldoProducto, listarInventarioPromotor, type ItemInventario } from '@/db/inventario';
@@ -53,17 +55,36 @@ export default function HomePromotor() {
   // undefined = todavía no se sabe; null = confirmado que no hay turno abierto hoy.
   const [turno, setTurno] = useState<Turno | null | undefined>(undefined);
   const [eventoHoy, setEventoHoy] = useState<Evento | null>(null);
+  // Precio que se cobra HOY por cada producto de su inventario, con el mayor
+  // descuento vigente ya aplicado (por producto, por su punto de hoy o
+  // asignado a él) — ver src/db/descuentos.ts.
+  const [precios, setPrecios] = useState<Map<string, PrecioConDescuento>>(new Map());
   const avisoTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const cargarInventario = useCallback(async (promotorId: string) => {
-    setCargando(true);
-    try {
-      const db = await getDb();
-      setInventario(await listarInventarioPromotor(db, promotorId));
-    } finally {
-      setCargando(false);
-    }
+  const recalcularPrecios = useCallback(async (promotorId: string, items: ItemInventario[]) => {
+    const db = await getDb();
+    const mapa = await resolverPreciosConDescuento(db, {
+      promotorId,
+      productos: items.map((i) => ({ id: i.producto.id, precio: i.producto.precio })),
+    });
+    setPrecios(mapa);
+    return mapa;
   }, []);
+
+  const cargarInventario = useCallback(
+    async (promotorId: string) => {
+      setCargando(true);
+      try {
+        const db = await getDb();
+        const items = await listarInventarioPromotor(db, promotorId);
+        setInventario(items);
+        await recalcularPrecios(promotorId, items);
+      } finally {
+        setCargando(false);
+      }
+    },
+    [recalcularPrecios]
+  );
 
   const cargarTurno = useCallback(async (promotorId: string) => {
     const db = await getDb();
@@ -88,6 +109,19 @@ export default function HomePromotor() {
       cargarInventario(usuario.id);
     }
   });
+
+  // Un descuento con horario ("hoy de 8 am a 4 pm") empieza y termina solo:
+  // cada minuto se recalculan los precios de la grilla y del ticket, sin
+  // parpadeo de carga.
+  const actualizarPreciosCarrito = carrito.actualizarPrecios;
+  useEffect(() => {
+    if (!usuario || inventario.length === 0) return;
+    const promotorId = usuario.id;
+    const intervalo = setInterval(async () => {
+      actualizarPreciosCarrito(await recalcularPrecios(promotorId, inventario));
+    }, 60 * 1000);
+    return () => clearInterval(intervalo);
+  }, [usuario, inventario, recalcularPrecios, actualizarPreciosCarrito]);
 
   if (!usuario) return null;
   const usuarioActual = usuario;
@@ -142,7 +176,14 @@ export default function HomePromotor() {
       Alert.alert('Sin inventario', `No tienes "${producto.nombre}" en tu inventario.`);
       return;
     }
-    if (agregarAlCarritoConTope(producto, saldo)) {
+    // Precio con descuento de ESTE momento, para que salga así en el ticket.
+    const precio = (
+      await resolverPreciosConDescuento(db, {
+        promotorId: usuarioActual.id,
+        productos: [{ id: producto.id, precio: producto.precio }],
+      })
+    ).get(producto.id);
+    if (agregarAlCarritoConTope(producto, saldo, precio)) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       mostrarAvisoEscaner(`✓ Agregado: ${producto.nombre}`);
     }
@@ -150,7 +191,8 @@ export default function HomePromotor() {
 
   function agregarAlCarritoConTope(
     producto: { id: string; nombre: string; precio: number; fotoUri: string | null },
-    saldo: number
+    saldo: number,
+    precio: PrecioConDescuento | undefined
   ): boolean {
     const enCarrito = carrito.items.find((item) => item.productoId === producto.id)?.cantidad ?? 0;
     if (enCarrito >= saldo) {
@@ -161,13 +203,37 @@ export default function HomePromotor() {
     carrito.agregar({
       id: producto.id,
       nombre: producto.nombre,
-      precio: producto.precio,
+      precio: precio?.precioFinal ?? producto.precio,
+      precioLista: producto.precio,
+      descuento: precio?.descuento ?? null,
       fotoUri: producto.fotoUri,
     });
     return true;
   }
 
-  function abrirCobrar() {
+  /**
+   * Vuelve a calcular el precio de lo que ya está en el ticket — un horario
+   * de descuento pudo empezar o terminar con el ticket abierto. Se hace al
+   * abrir el ticket y antes de cobrar: lo que el promotor ve es lo que cobra.
+   */
+  async function refrescarPreciosTicket() {
+    if (carrito.items.length === 0) return;
+    const db = await getDb();
+    carrito.actualizarPrecios(
+      await resolverPreciosConDescuento(db, {
+        promotorId: usuarioActual.id,
+        productos: carrito.items.map((item) => ({ id: item.productoId, precio: item.precioLista })),
+      })
+    );
+  }
+
+  async function abrirTicket() {
+    await refrescarPreciosTicket();
+    setTicketVisible(true);
+  }
+
+  async function abrirCobrar() {
+    await refrescarPreciosTicket();
     // Ticket y Cobrar son Modal nativos separados — nunca deben quedar
     // visibles los dos a la vez (dos Modal de React Native apilados cuelga
     // los toques en Android, ver comentario en CobrarModal/TicketModal).
@@ -242,6 +308,7 @@ export default function HomePromotor() {
               <Ionicons name="location-outline" size={12} color={COLORES.textoSobreOscuro} />
               <Text style={styles.chipEventoTexto} numberOfLines={1}>
                 {eventoHoy.empresaNombre} · {eventoHoy.puntoNombre}
+                {eventoHoy.horaInicio ? ` · ${formatearRangoHoras(eventoHoy.horaInicio, eventoHoy.horaFin)}` : ''}
               </Text>
             </View>
           )}
@@ -373,7 +440,7 @@ export default function HomePromotor() {
         </Pressable>
         <Pressable
           style={styles.botonTicket}
-          onPress={() => setTicketVisible(true)}
+          onPress={abrirTicket}
           accessibilityRole="button"
           accessibilityLabel="Ver ticket"
         >
@@ -405,16 +472,21 @@ export default function HomePromotor() {
           numColumns={3}
           columnWrapperStyle={styles.filaGrilla}
           contentContainerStyle={styles.grilla}
-          renderItem={({ item }) => (
-            <TarjetaProductoInventario
-              nombre={item.producto.nombre}
-              precio={item.producto.precio}
-              fotoUri={item.producto.fotoUri}
-              saldo={item.saldo}
-              colorAcento={COLORES.primario}
-              onPress={() => agregarAlCarritoConTope(item.producto, item.saldo)}
-            />
-          )}
+          renderItem={({ item }) => {
+            const precio = precios.get(item.producto.id);
+            return (
+              <TarjetaProductoInventario
+                nombre={item.producto.nombre}
+                precio={precio?.precioFinal ?? item.producto.precio}
+                precioLista={item.producto.precio}
+                descuento={precio?.descuento}
+                fotoUri={item.producto.fotoUri}
+                saldo={item.saldo}
+                colorAcento={COLORES.primario}
+                onPress={() => agregarAlCarritoConTope(item.producto, item.saldo, precio)}
+              />
+            );
+          }}
         />
       )}
 
@@ -434,6 +506,7 @@ export default function HomePromotor() {
         visible={ticketVisible && !escanerVisible}
         items={carrito.items}
         total={carrito.total}
+        ahorro={carrito.ahorro}
         colorAcento={COLORES.primario}
         onQuitarUno={carrito.quitarUno}
         onVaciar={carrito.vaciar}
@@ -450,6 +523,7 @@ export default function HomePromotor() {
       <CobrarModal
         visible={cobrarVisible && !escanerVisible}
         total={carrito.total}
+        ahorro={carrito.ahorro}
         colorAcento={COLORES.primario}
         procesando={procesandoVenta}
         onSeleccionar={cobrar}
@@ -465,7 +539,7 @@ export default function HomePromotor() {
         onCerrar={() => setEscanerVisible(false)}
         onDetectado={manejarCodigoEscaneado}
         accionesHeaderExtra={
-          <Pressable style={styles.botonTicketEscaner} onPress={() => setTicketVisible(true)}>
+          <Pressable style={styles.botonTicketEscaner} onPress={abrirTicket}>
             <Text style={styles.botonTicketEscanerTexto}>Ticket</Text>
             {carrito.cantidadTotal > 0 && (
               <View style={styles.botonTicketBadge}>
@@ -494,6 +568,7 @@ export default function HomePromotor() {
               visible={ticketVisible}
               items={carrito.items}
               total={carrito.total}
+              ahorro={carrito.ahorro}
               colorAcento={COLORES.primario}
               onQuitarUno={carrito.quitarUno}
               onVaciar={carrito.vaciar}
@@ -506,6 +581,7 @@ export default function HomePromotor() {
               variante="superpuesto"
               visible={cobrarVisible}
               total={carrito.total}
+              ahorro={carrito.ahorro}
               colorAcento={COLORES.primario}
               procesando={procesandoVenta}
               onSeleccionar={cobrar}

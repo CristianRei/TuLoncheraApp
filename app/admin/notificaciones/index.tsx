@@ -66,11 +66,18 @@ function formatearFechaRelativa(iso: string): string {
   return `hace ${dias} día${dias === 1 ? '' : 's'}`;
 }
 
+/** La meta es del equipo del evento: con varios promotores, el mensaje habla en plural. */
 function mensajeProgreso(fila: ProgresoMetaDiaria): string {
+  const cifras = `${formatearPesos(fila.totalVendidoHoy)} de ${formatearPesos(fila.metaDiaria)}`;
+  const equipo = fila.promotorIds.length > 1;
   if (fila.progresoPct >= 100) {
-    return `¡Felicitaciones! Ya cumpliste tu meta del día en ${fila.puntoNombre} (${formatearPesos(fila.totalVendidoHoy)} de ${formatearPesos(fila.metaDiaria)}).`;
+    return equipo
+      ? `¡Felicitaciones! Ya cumplieron la meta del día en ${fila.puntoNombre} (${cifras}).`
+      : `¡Felicitaciones! Ya cumpliste tu meta del día en ${fila.puntoNombre} (${cifras}).`;
   }
-  return `Ánimo, vas en un ${fila.progresoPct}% de tu meta de hoy en ${fila.puntoNombre} (${formatearPesos(fila.totalVendidoHoy)} de ${formatearPesos(fila.metaDiaria)}) — ¡con esfuerzo la cumples!`;
+  return equipo
+    ? `Ánimo, entre todos van en un ${fila.progresoPct}% de la meta de hoy en ${fila.puntoNombre} (${cifras}) — ¡con esfuerzo la cumplen!`
+    : `Ánimo, vas en un ${fila.progresoPct}% de tu meta de hoy en ${fila.puntoNombre} (${cifras}) — ¡con esfuerzo la cumples!`;
 }
 
 export default function NotificacionesYMensajes() {
@@ -174,6 +181,8 @@ export default function NotificacionesYMensajes() {
     }
   }
 
+  const totalPromotoresConMeta = progresoMetas.reduce((suma, fila) => suma + fila.promotorIds.length, 0);
+
   async function enviarProgresoDeMetas() {
     if (!usuario || progresoMetas.length === 0) return;
     setEnviandoMetas(true);
@@ -183,11 +192,11 @@ export default function NotificacionesYMensajes() {
         progresoMetas.map((fila) => ({
           cuerpo: mensajeProgreso(fila),
           tipo: 'META_PROGRESO',
-          destinatarios: [{ id: fila.promotorId, nombre: fila.promotorNombre }],
+          destinatarios: fila.promotorIds.map((id, i) => ({ id, nombre: fila.promotorNombres[i] })),
         })),
         { id: usuario.id, nombre: usuario.nombre }
       );
-      setAviso({ tipo: 'ok', texto: `Progreso enviado a ${progresoMetas.length} promotor(es).` });
+      setAviso({ tipo: 'ok', texto: `Progreso enviado a ${totalPromotoresConMeta} promotor(es).` });
     } catch (error) {
       setAviso({ tipo: 'error', texto: mensajeDeError(error) });
     } finally {
@@ -340,8 +349,10 @@ export default function NotificacionesYMensajes() {
               ) : (
                 <>
                   {progresoMetas.map((fila) => (
-                    <View key={`${fila.eventoId}-${fila.promotorId}`} style={styles.filaProgreso}>
-                      <Text style={styles.filaProgresoNombre}>{fila.promotorNombre}</Text>
+                    <View key={fila.eventoId} style={styles.filaProgreso}>
+                      <Text style={styles.filaProgresoNombre}>
+                        {fila.promotorNombres.join(', ')} · {fila.puntoNombre}
+                      </Text>
                       <Text style={styles.filaProgresoPct}>{fila.progresoPct}%</Text>
                     </View>
                   ))}
@@ -353,7 +364,7 @@ export default function NotificacionesYMensajes() {
                     {enviandoMetas ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
-                      <Text style={styles.botonTexto}>Enviar progreso a {progresoMetas.length} promotor(es)</Text>
+                      <Text style={styles.botonTexto}>Enviar progreso a {totalPromotoresConMeta} promotor(es)</Text>
                     )}
                   </Pressable>
                 </>

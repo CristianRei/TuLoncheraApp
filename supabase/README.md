@@ -38,6 +38,9 @@ corre una vez en orden:
 7. `migraciones/0014_eventos.sql` — eventos del calendario (con promotores y
    meta diaria) para el celular del promotor, con Realtime. Idempotente;
    después de 0012.
+8. `migraciones/0015_descuentos.sql` — descuentos (por producto, punto y/o
+   promotor, con fecha y hora) para que el celular del promotor cobre con
+   ellos, con Realtime. Idempotente; después de 0012.
 
 Todo se valida contra un Postgres real en memoria con `npm run test:sql`.
 

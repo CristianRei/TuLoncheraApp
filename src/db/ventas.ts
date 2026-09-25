@@ -1,10 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import { aplicarDescuento } from '@/core/descuentos';
 import type { MetodoPago, Pesos, Venta, VentaItem } from '@/core/tipos';
 
-import { obtenerDescuentoVigente } from './descuentos';
 import { obtenerPuntoVigentePromotor } from './eventos';
 import { registrarMovimiento } from './movimientos';
 import { encolarSync } from './syncCola';
@@ -15,6 +13,11 @@ interface ItemVenta {
   productoId: string;
   productoNombre: string;
   cantidad: number;
+  /**
+   * Precio que se COBRA por unidad, ya con el descuento aplicado — el mismo
+   * que el promotor vio en su ticket (`resolverPreciosConDescuento`,
+   * src/db/descuentos.ts). Aquí se guarda tal cual, sin volver a aplicar nada.
+   */
   precioUnitario: Pesos;
 }
 
@@ -108,9 +111,13 @@ async function generarNumeroRecibo(db: SQLiteDatabase, dispositivoId: string): P
  * sola vez y queda grabado en `ventas.punto_id` — no basta con el evento
  * EN_CURSO actual, porque si el admin reasigna al promotor después, una
  * consulta futura perdería en qué punto ocurrió esta venta (ver ADR 0005).
- * Ese mismo punto se usa para resolver el descuento vigente de cada línea:
- * el precio unitario que se guarda ya es el precio con descuento aplicado
- * — el recibo y el total reflejan lo que realmente se cobró, sin necesitar
+ *
+ * El descuento NO se aplica aquí: cada línea llega con el precio que el
+ * promotor ya vio en su ticket y le cobró al cliente (resuelto al agregar el
+ * producto con `resolverPreciosConDescuento`). Antes se aplicaba aquí, a
+ * escondidas: el ticket mostraba el precio lleno, el cliente pagaba eso y la
+ * venta quedaba registrada con descuento — el arqueo de caja no cuadraba.
+ * El recibo y el total reflejan lo que realmente se cobró, sin necesitar
  * columnas extra en `venta_items`.
  */
 export async function registrarVenta(
@@ -126,17 +133,7 @@ export async function registrarVenta(
   const puntoVigente = await obtenerPuntoVigentePromotor(db, datos.promotorId);
   const puntoId = puntoVigente?.puntoId ?? null;
 
-  const itemsConDescuento = await Promise.all(
-    datos.items.map(async (item) => {
-      const descuento = await obtenerDescuentoVigente(db, {
-        productoId: item.productoId,
-        puntoId,
-        ahora,
-      });
-      return { ...item, precioUnitario: aplicarDescuento(item.precioUnitario, descuento) };
-    })
-  );
-  const total = itemsConDescuento.reduce((suma, item) => suma + item.cantidad * item.precioUnitario, 0);
+  const total = datos.items.reduce((suma, item) => suma + item.cantidad * item.precioUnitario, 0);
 
   await db.withTransactionAsync(async () => {
     const numeroRecibo = await generarNumeroRecibo(db, dispositivoId);
@@ -170,7 +167,7 @@ export async function registrarVenta(
       dispositivoId
     );
 
-    for (const item of itemsConDescuento) {
+    for (const item of datos.items) {
       await db.runAsync(
         `INSERT INTO venta_items (venta_id, producto_id, cantidad, precio_unitario, ts_cliente, dispositivo_id)
          VALUES (?, ?, ?, ?, ?, ?)`,
@@ -238,6 +235,29 @@ export async function listarVentasTurno(
      WHERE v.promotor_id = ? AND v.ts_cliente BETWEEN ? AND ?
      ORDER BY v.ts_cliente DESC`,
     [promotorId, turno.horaInicio, hasta]
+  );
+  return filas.map(aVenta);
+}
+
+/**
+ * Ventas de HOY de todos los promotores de un evento (incluido quien
+ * consulta) — el equipo comparte la meta del día. En el celular de un
+ * promotor, las de sus compañeros llegan de Supabase (`descargarVentasNuevas`
+ * con ámbito EQUIPO). Más reciente primero; incluye anuladas (se muestran
+ * marcadas, igual que en "Mis ventas").
+ */
+export async function listarVentasEquipoHoy(
+  db: SQLiteDatabase,
+  promotorIds: string[],
+  rango: { desde: string; hasta: string }
+): Promise<Venta[]> {
+  if (promotorIds.length === 0) return [];
+  const filas = await db.getAllAsync<FilaVenta>(
+    `SELECT ${COLUMNAS_VENTA}
+     ${JOIN_VENTA}
+     WHERE v.promotor_id IN (${promotorIds.map(() => '?').join(', ')}) AND v.ts_cliente BETWEEN ? AND ?
+     ORDER BY v.ts_cliente DESC`,
+    [...promotorIds, rango.desde, rango.hasta]
   );
   return filas.map(aVenta);
 }

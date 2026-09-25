@@ -7,6 +7,7 @@ import { obtenerArqueoPorId } from '@/db/arqueos';
 import { normalizar as normalizarNombreCategoria, obtenerCategoria } from '@/db/categorias';
 import { getDb } from '@/db/client';
 import { obtenerCargue } from '@/db/cargues';
+import { obtenerDescuentoParaSync } from '@/db/descuentos';
 import { obtenerConteo } from '@/db/conteos';
 import { getDispositivoId } from '@/db/dispositivo';
 import { obtenerEmpresaParaSync } from '@/db/empresas';
@@ -37,12 +38,19 @@ interface TareaPendiente {
 let corriendo = false;
 
 /**
- * Puntos ya subidos en esta sesión de la app por la vía de `eventos` — un
- * evento sube antes su punto (y la empresa), pero una serie de 50 eventos en
- * el mismo punto no necesita subirlo 50 veces. Se reinicia al abrir la app:
- * volver a subirlo una vez es idempotente.
+ * Puntos ya subidos en esta sesión de la app por la vía de `eventos` o
+ * `descuentos` — cada uno sube antes su punto (y la empresa), pero una serie
+ * de 50 eventos en el mismo punto no necesita subirlo 50 veces. Se reinicia
+ * al abrir la app: volver a subirlo una vez es idempotente.
  */
-const puntosSubidosPorEventos = new Set<string>();
+const puntosYaSubidos = new Set<string>();
+
+/** Sube el punto (y su empresa) si en esta sesión todavía no se subió — ver `puntosYaSubidos`. */
+async function subirPuntoUnaVez(db: SQLiteDatabase, supabase: ClienteSupabase, puntoId: string, dispositivoId: string) {
+  if (puntosYaSubidos.has(puntoId)) return;
+  await subirPunto(db, supabase, puntoId, dispositivoId);
+  puntosYaSubidos.add(puntoId);
+}
 
 type ClienteSupabase = Awaited<ReturnType<typeof getSupabaseClient>>;
 
@@ -521,10 +529,7 @@ async function subirFila(
       // Su punto (y empresa) primero: sin ellos el celular no puede guardar el
       // evento (FK local). Cubre puntos que nunca se encolaron, como los de
       // la demo en `__DEV__`.
-      if (!puntosSubidosPorEventos.has(evento.puntoId)) {
-        await subirPunto(db, supabase, evento.puntoId, dispositivoId);
-        puntosSubidosPorEventos.add(evento.puntoId);
-      }
+      await subirPuntoUnaVez(db, supabase, evento.puntoId, dispositivoId);
       const { error } = await supabase.from('eventos').upsert({
         id: evento.id,
         empresa_id: evento.empresaId,
@@ -536,13 +541,45 @@ async function subirFila(
         creado_por: evento.creadoPor,
         creado_por_nombre: evento.creadoPorNombre,
         // Los promotores viajan dentro del evento (supabase/migraciones/0014):
-        // reasignar o cambiar una meta reemplaza el conjunto completo.
+        // reasignar reemplaza el conjunto completo.
         promotores: evento.promotores.map((p) => ({
           promotor_id: p.promotorId,
           promotor_nombre: p.promotorNombre,
-          meta_diaria: p.metaDiaria,
         })),
+        hora_inicio: evento.horaInicio,
+        hora_fin: evento.horaFin,
+        // La meta es del evento: la comparte todo el equipo (migración local 0032).
+        meta_diaria: evento.metaDiaria,
         ts_cliente: evento.tsCliente,
+        dispositivo_id: dispositivoId,
+      });
+      if (error) throw error;
+      return;
+    }
+
+    case 'descuentos': {
+      const descuento = await obtenerDescuentoParaSync(db, tarea.entidad_id);
+      if (!descuento) return;
+      // Un descuento por punto necesita ese punto en el celular (FK local).
+      if (descuento.puntoId) await subirPuntoUnaVez(db, supabase, descuento.puntoId, dispositivoId);
+      const { error } = await supabase.from('descuentos').upsert({
+        id: descuento.id,
+        producto_id: descuento.productoId,
+        // Los 123 productos iniciales tienen id distinto en cada dispositivo:
+        // el celular los encuentra por sku (ver mapeoRemoto.ts).
+        producto_sku: descuento.productoSku,
+        producto_nombre: descuento.productoNombre,
+        punto_id: descuento.puntoId,
+        promotor_id: descuento.promotorId,
+        promotor_nombre: descuento.promotorNombre,
+        tipo: descuento.tipo,
+        valor: descuento.valor,
+        desde: descuento.desde,
+        hasta: descuento.hasta,
+        activo: descuento.activo,
+        creado_por: descuento.creadoPor,
+        creado_por_nombre: descuento.creadoPorNombre,
+        ts_cliente: descuento.tsCliente,
         dispositivo_id: dispositivoId,
       });
       if (error) throw error;

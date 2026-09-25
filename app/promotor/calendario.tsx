@@ -3,6 +3,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { formatearPesos } from '@/core/dinero';
+import { formatearRangoHoras } from '@/core/horas';
 import type { Evento } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { listarEventosPromotor } from '@/db/eventos';
@@ -275,6 +277,35 @@ export default function CalendarioPromotor() {
                         >
                           {evento.puntoNombre}
                         </Text>
+                        {evento.estado !== 'CANCELADO' && (
+                          <View style={styles.datosEvento}>
+                            {evento.horaInicio && (
+                              <View style={styles.datoEvento}>
+                                <Ionicons name="time-outline" size={14} color={COLORES.oscuro} />
+                                <Text style={styles.datoEventoTexto}>
+                                  {formatearRangoHoras(evento.horaInicio, evento.horaFin)}
+                                </Text>
+                              </View>
+                            )}
+                            {evento.metaDiaria !== null && (
+                              <View style={styles.datoEvento}>
+                                <Ionicons name="flag-outline" size={14} color={COLORES.oscuro} />
+                                <Text style={styles.datoEventoTexto}>
+                                  {evento.promotorIds.length > 1 ? 'Meta del equipo: ' : 'Tu meta: '}
+                                  <Text style={styles.datoEventoCifra}>{formatearPesos(evento.metaDiaria)}</Text>
+                                </Text>
+                              </View>
+                            )}
+                            {evento.promotorIds.length > 1 && (
+                              <View style={styles.datoEvento}>
+                                <Ionicons name="people-outline" size={14} color={COLORES.oscuro} />
+                                <Text style={styles.datoEventoTexto}>
+                                  Con {evento.promotorNombres.filter((_, i) => evento.promotorIds[i] !== usuario.id).join(', ')}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
                         {evento.estado === 'CANCELADO' && evento.motivoCancelacion && (
                           <Text style={styles.filaEventoMotivo}>Motivo: {evento.motivoCancelacion}</Text>
                         )}
@@ -451,6 +482,10 @@ const styles = StyleSheet.create({
   filaEventoEmpresa: { fontSize: 14, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, color: COLORES.textoSobreOscuro },
   filaEventoPunto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.textoSecundario },
   filaEventoMotivo: { fontSize: 12, fontFamily: TIPOGRAFIA_PROMOTOR.regular, color: COLORES.error, marginTop: 2 },
+  datosEvento: { gap: 4, marginTop: 6 },
+  datoEvento: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  datoEventoTexto: { fontSize: 13, fontFamily: TIPOGRAFIA_PROMOTOR.medio, color: COLORES.textoSobreOscuro, flexShrink: 1 },
+  datoEventoCifra: { fontFamily: TIPOGRAFIA_PROMOTOR.monoSemiNegrita, color: COLORES.oscuro },
   textoTachado: { textDecorationLine: 'line-through' },
   badgeEstado: { fontSize: 11, fontFamily: TIPOGRAFIA_PROMOTOR.negrita, textTransform: 'uppercase' },
 });

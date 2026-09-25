@@ -30,6 +30,8 @@ import { migracion0027BitacoraAuditoria } from './0027_bitacora_auditoria';
 import { migracion0028DesbloqueosPinSinFk } from './0028_desbloqueos_pin_sin_fk';
 import { migracion0029Traslados } from './0029_traslados';
 import { migracion0030NotificacionesModo } from './0030_notificaciones_modo';
+import { migracion0031DescuentosPromotor } from './0031_descuentos_promotor';
+import { migracion0032EventoHorarioMeta } from './0032_evento_horario_meta';
 
 export interface Migracion {
   version: number;
@@ -71,6 +73,8 @@ const migraciones: Migracion[] = [
   migracion0028DesbloqueosPinSinFk,
   migracion0029Traslados,
   migracion0030NotificacionesModo,
+  migracion0031DescuentosPromotor,
+  migracion0032EventoHorarioMeta,
 ];
 
 /**

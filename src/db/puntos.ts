@@ -5,6 +5,7 @@ import { mensajeDeError } from '@/core/errores';
 import type { Punto } from '@/core/tipos';
 import { getSupabaseClient } from '@/sync/supabaseClient';
 
+import { descargarEmpresasNuevas } from './empresas';
 import { encolarSync } from './syncCola';
 
 interface FilaPunto {
@@ -182,4 +183,21 @@ export async function descargarPuntosNuevos(db: SQLiteDatabase): Promise<boolean
     console.log('[puntos] no se pudieron descargar puntos nuevos:', mensajeDeError(error));
     return false;
   }
+}
+
+/**
+ * Antes de guardar filas que referencian puntos (eventos, descuentos): si
+ * alguno no existe todavía en este dispositivo — un punto creado justo ahora
+ * que no alcanzó a llegar en la descarga de puntos de esta misma vuelta — se
+ * vuelven a pedir empresas y puntos una vez, para no saltarse la fila por la
+ * FK local.
+ */
+export async function asegurarPuntosLocales(db: SQLiteDatabase, puntoIds: (string | null)[]): Promise<void> {
+  const ids = [...new Set(puntoIds.filter((id): id is string => !!id))];
+  if (ids.length === 0) return;
+  const conocidos = await db.getAllAsync<{ id: string }>(
+    `SELECT id FROM puntos WHERE id IN (${ids.map(() => '?').join(', ')})`,
+    ids
+  );
+  if (conocidos.length < ids.length && (await descargarEmpresasNuevas(db))) await descargarPuntosNuevos(db);
 }

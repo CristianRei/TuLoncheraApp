@@ -14,13 +14,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { parsearPesos } from '@/core/dinero';
+import { formatearPesos } from '@/core/dinero';
 import { DemasiadasOcurrenciasError } from '@/core/eventos';
+import { formatearRangoHoras, parsearHora } from '@/core/horas';
 import type { Empresa, Evento, EstadoEvento, Frecuencia, Punto, UsuarioSesion } from '@/core/tipos';
 import { getDb } from '@/db/client';
 import { getDispositivoId } from '@/db/dispositivo';
 import { listarEmpresas } from '@/db/empresas';
 import {
+  actualizarHorarioEvento,
   cambiarEstadoEvento,
   cancelarEvento,
   crearEvento,
@@ -34,7 +36,9 @@ import {
 import { listarPuntos } from '@/db/puntos';
 import { listarPromotores } from '@/db/usuarios';
 import { aClaveFecha, construirGrilla, NOMBRES_DIA, NOMBRES_MES } from '@/ui/calendarioGrilla';
+import { COLORES } from '@/ui/colores';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
+import { SelectorDesplegable } from '@/ui/SelectorDesplegable';
 import { COLORES_ADMIN, TIPOGRAFIA_ADMIN } from '@/ui/tema';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
@@ -84,6 +88,25 @@ function formatearFechaLarga(clave: string): { diaSemana: string; fechaCorta: st
 }
 
 /** Compara claves AAAA-MM-DD como texto: mismo formato, orden lexicográfico = orden cronológico. */
+/** "1000000" → "1.000.000" mientras se escribe una meta (solo dígitos). */
+function conMiles(digitos: string): string {
+  return digitos ? formatearPesos(Number(digitos)).replace('$ ', '') : '';
+}
+
+/** Deja solo dígitos y ":" en un campo de hora, máximo "HH:MM". */
+function limpiarHora(texto: string): string {
+  return texto.replace(/[^\d:]/g, '').slice(0, 5);
+}
+
+/** Error legible del horario escrito, o `null` si está bien o todavía vacío. */
+function errorDeHorario(inicioTexto: string, finTexto: string): string | null {
+  const inicio = parsearHora(inicioTexto);
+  const fin = parsearHora(finTexto);
+  if ((inicioTexto && !inicio) || (finTexto && !fin)) return 'Escribe las horas como 8:00 o 16:30.';
+  if (inicio && fin && inicio >= fin) return 'La hora de fin debe ser después de la de inicio.';
+  return null;
+}
+
 function esFechaPasada(clave: string, hoyClave: string): boolean {
   return clave < hoyClave;
 }
@@ -107,8 +130,14 @@ export default function CalendarioAdmin() {
   const [modalCancelar, setModalCancelar] = useState(false);
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
   const [guardando, setGuardando] = useState(false);
-  const [metaDiariaTexto, setMetaDiariaTexto] = useState<Record<string, string>>({});
-  const [guardandoMetaDe, setGuardandoMetaDe] = useState<string | null>(null);
+  // Buffers del detalle: meta del día (del EVENTO, la comparte el equipo) y
+  // horario — se siembran al abrir y se guardan con su botón.
+  const [metaDiariaTexto, setMetaDiariaTexto] = useState('');
+  const [guardandoMeta, setGuardandoMeta] = useState(false);
+  const [horaInicioTexto, setHoraInicioTexto] = useState('');
+  const [horaFinTexto, setHoraFinTexto] = useState('');
+  const [guardandoHorario, setGuardandoHorario] = useState(false);
+  const [errorHorarioDetalle, setErrorHorarioDetalle] = useState<string | null>(null);
 
   const hoyClave = aClaveFecha(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
 
@@ -140,31 +169,52 @@ export default function CalendarioAdmin() {
     })();
   }, []);
 
-  // Abre el detalle y siembra el buffer de texto de "meta del día" una sola
-  // vez, al abrir — las actualizaciones posteriores del mismo evento (ej. al
+  // Abre el detalle y siembra los buffers de meta y horario una sola vez, al
+  // abrir — las actualizaciones posteriores del mismo evento (ej. al
   // (des)asignar un promotor) van directo por setDetalleEvento, sin tocar
-  // este buffer, para no perder lo que el admin ya tecleó.
+  // estos buffers, para no perder lo que el admin ya tecleó.
   function abrirDetalleEvento(evento: Evento) {
-    const inicial: Record<string, string> = {};
-    for (const promotorId of evento.promotorIds) {
-      const meta = evento.metaDiariaPorPromotor[promotorId];
-      inicial[promotorId] = meta ? String(meta) : '';
-    }
-    setMetaDiariaTexto(inicial);
+    setMetaDiariaTexto(evento.metaDiaria ? String(evento.metaDiaria) : '');
+    setHoraInicioTexto(evento.horaInicio ?? '');
+    setHoraFinTexto(evento.horaFin ?? '');
+    setErrorHorarioDetalle(null);
     setDetalleEvento(evento);
   }
 
-  async function guardarMetaDiaria(promotorId: string) {
+  async function guardarMetaDiaria() {
     if (!detalleEvento) return;
-    const texto = metaDiariaTexto[promotorId] ?? '';
-    const monto = texto.trim() === '' ? null : parsearPesos(texto);
-    setGuardandoMetaDe(promotorId);
+    const monto = metaDiariaTexto === '' ? null : Number(metaDiariaTexto);
+    if (monto === detalleEvento.metaDiaria) return;
+    setGuardandoMeta(true);
     try {
       const db = await getDb();
-      await establecerMetaDiaria(db, { eventoId: detalleEvento.id, promotorId, montoObjetivo: monto });
+      await establecerMetaDiaria(db, { eventoId: detalleEvento.id, montoObjetivo: monto });
       setDetalleEvento(await obtenerEvento(db, detalleEvento.id));
+      await recargar();
     } finally {
-      setGuardandoMetaDe(null);
+      setGuardandoMeta(false);
+    }
+  }
+
+  async function guardarHorario() {
+    if (!detalleEvento) return;
+    const inicio = parsearHora(horaInicioTexto);
+    const fin = parsearHora(horaFinTexto);
+    const error = errorDeHorario(horaInicioTexto, horaFinTexto) ?? (!inicio || !fin ? 'El horario es obligatorio.' : null);
+    setErrorHorarioDetalle(error);
+    if (error || !inicio || !fin) return;
+    setGuardandoHorario(true);
+    try {
+      const db = await getDb();
+      await actualizarHorarioEvento(db, { eventoId: detalleEvento.id, horaInicio: inicio, horaFin: fin });
+      setHoraInicioTexto(inicio);
+      setHoraFinTexto(fin);
+      setDetalleEvento(await obtenerEvento(db, detalleEvento.id));
+      await recargar();
+    } catch (errorGuardar) {
+      setErrorHorarioDetalle(errorGuardar instanceof Error ? errorGuardar.message : 'No se pudo guardar el horario.');
+    } finally {
+      setGuardandoHorario(false);
     }
   }
 
@@ -366,7 +416,7 @@ export default function CalendarioAdmin() {
                     </View>
                     {!esFechaPasada(diaSeleccionado, hoyClave) && (
                       <Pressable style={styles.botonNuevo} onPress={abrirNuevoEvento}>
-                        <Ionicons name="add" size={16} color="#FFFFFF" />
+                        <Ionicons name="add" size={16} color={COLORES_ADMIN.vino} />
                         <Text style={styles.botonNuevoTexto}>Nuevo evento</Text>
                       </Pressable>
                     )}
@@ -398,6 +448,24 @@ export default function CalendarioAdmin() {
                         </View>
                         <Text style={styles.filaEventoEmpresa}>{evento.empresaNombre}</Text>
                         <Text style={styles.filaEventoPunto}>{evento.puntoNombre}</Text>
+                        {(evento.horaInicio || evento.metaDiaria !== null) && (
+                          <View style={styles.tarjetaEventoPie}>
+                            {evento.horaInicio && (
+                              <View style={styles.tarjetaEventoPieItem}>
+                                <Ionicons name="time-outline" size={13} color={COLORES_ADMIN.textoSecundario} />
+                                <Text style={styles.filaEventoPromotores}>
+                                  {formatearRangoHoras(evento.horaInicio, evento.horaFin)}
+                                </Text>
+                              </View>
+                            )}
+                            {evento.metaDiaria !== null && (
+                              <View style={styles.tarjetaEventoPieItem}>
+                                <Ionicons name="flag-outline" size={13} color={COLORES_ADMIN.textoSecundario} />
+                                <Text style={styles.filaEventoPromotores}>Meta {formatearPesos(evento.metaDiaria)}</Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
                         <View style={styles.tarjetaEventoPie}>
                           <View style={styles.tarjetaEventoPieItem}>
                             <Ionicons name="people-outline" size={13} color={COLORES_ADMIN.textoSecundario} />
@@ -500,37 +568,77 @@ export default function CalendarioAdmin() {
                       </View>
                       <Text style={styles.filaCheckboxTexto}>{p.nombre}</Text>
                     </Pressable>
-                    {asignado && !esFechaPasada(detalleEvento.fecha, hoyClave) && (
-                      <View style={styles.filaMetaDiaria}>
-                        <Text style={styles.filaMetaDiariaEtiqueta}>Meta del día</Text>
-                        <TextInput
-                          style={styles.inputMetaDiaria}
-                          value={metaDiariaTexto[p.id] ?? ''}
-                          onChangeText={(texto) =>
-                            setMetaDiariaTexto((actual) => ({ ...actual, [p.id]: texto.replace(/\D/g, '') }))
-                          }
-                          onBlur={() => guardarMetaDiaria(p.id)}
-                          keyboardType="number-pad"
-                          placeholder="Sin meta"
-                          placeholderTextColor="#A8988F"
-                          editable={guardandoMetaDe !== p.id}
-                        />
-                        {guardandoMetaDe === p.id ? (
-                          <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
-                        ) : (
-                          <Pressable
-                            style={styles.botonGuardarMeta}
-                            onPress={() => guardarMetaDiaria(p.id)}
-                            accessibilityLabel="Guardar meta del día"
-                          >
-                            <Ionicons name="checkmark" size={16} color={COLORES_ADMIN.vino} />
-                          </Pressable>
-                        )}
-                      </View>
-                    )}
                   </View>
                 );
               })}
+
+              <Text style={styles.modalSubtitulo}>Horario</Text>
+              {detalleEvento.estado !== 'CANCELADO' && !esFechaPasada(detalleEvento.fecha, hoyClave) ? (
+                <View style={styles.filaEditable}>
+                  <TextInput
+                    style={[styles.modalInputCorto, styles.inputHora]}
+                    value={horaInicioTexto}
+                    onChangeText={(t) => setHoraInicioTexto(limpiarHora(t))}
+                    placeholder="08:00"
+                    placeholderTextColor="#A8988F"
+                    keyboardType="numbers-and-punctuation"
+                    accessibilityLabel="Hora de inicio"
+                  />
+                  <Text style={styles.modalTexto}>a</Text>
+                  <TextInput
+                    style={[styles.modalInputCorto, styles.inputHora]}
+                    value={horaFinTexto}
+                    onChangeText={(t) => setHoraFinTexto(limpiarHora(t))}
+                    placeholder="16:00"
+                    placeholderTextColor="#A8988F"
+                    keyboardType="numbers-and-punctuation"
+                    accessibilityLabel="Hora de fin"
+                  />
+                  {guardandoHorario ? (
+                    <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
+                  ) : (
+                    <Pressable style={styles.botonGuardarMeta} onPress={guardarHorario} accessibilityLabel="Guardar horario">
+                      <Ionicons name="checkmark" size={16} color={COLORES_ADMIN.vino} />
+                    </Pressable>
+                  )}
+                </View>
+              ) : (
+                <Text style={styles.modalTexto}>
+                  {formatearRangoHoras(detalleEvento.horaInicio, detalleEvento.horaFin) ?? 'Sin horario'}
+                </Text>
+              )}
+              {errorHorarioDetalle && <Text style={styles.errorTexto}>{errorHorarioDetalle}</Text>}
+
+              <Text style={styles.modalSubtitulo}>
+                {detalleEvento.promotorIds.length > 1 ? 'Meta de venta del día (del equipo)' : 'Meta de venta del día'}
+              </Text>
+              {detalleEvento.estado !== 'CANCELADO' && !esFechaPasada(detalleEvento.fecha, hoyClave) ? (
+                <View style={styles.filaEditable}>
+                  <Text style={styles.modalTexto}>$</Text>
+                  <TextInput
+                    style={[styles.modalInputCorto, styles.inputMeta]}
+                    value={conMiles(metaDiariaTexto)}
+                    onChangeText={(t) => setMetaDiariaTexto(t.replace(/\D/g, ''))}
+                    onBlur={guardarMetaDiaria}
+                    keyboardType="number-pad"
+                    placeholder="Sin meta"
+                    placeholderTextColor="#A8988F"
+                    editable={!guardandoMeta}
+                    accessibilityLabel="Meta de venta del día"
+                  />
+                  {guardandoMeta ? (
+                    <ActivityIndicator size="small" color={COLORES_ADMIN.vino} />
+                  ) : (
+                    <Pressable style={styles.botonGuardarMeta} onPress={guardarMetaDiaria} accessibilityLabel="Guardar meta del día">
+                      <Ionicons name="checkmark" size={16} color={COLORES_ADMIN.vino} />
+                    </Pressable>
+                  )}
+                </View>
+              ) : (
+                <Text style={styles.modalTexto}>
+                  {detalleEvento.metaDiaria !== null ? formatearPesos(detalleEvento.metaDiaria) : 'Sin meta'}
+                </Text>
+              )}
 
               {detalleEvento.estado !== 'CANCELADO' && !esFechaPasada(detalleEvento.fecha, hoyClave) && (
                 <View style={styles.modalEstadosFila}>
@@ -653,6 +761,13 @@ export default function CalendarioAdmin() {
   );
 }
 
+/**
+ * Nuevo evento: empresa, punto y promotores en menús desplegables (con
+ * buscador cuando son muchos), horario obligatorio y la meta de venta del
+ * día — así el promotor sabe dónde le toca, a qué hora y cuál es su meta.
+ * La meta es del EVENTO: si hay varios promotores, la comparten (se suma lo
+ * que vendan entre todos, ver src/db/metasDiarias.ts).
+ */
 function FormularioEvento({
   fecha,
   empresas,
@@ -668,10 +783,13 @@ function FormularioEvento({
   onCerrar: () => void;
   onCreado: () => void;
 }) {
-  const [empresaId, setEmpresaId] = useState(empresas[0]?.id ?? '');
+  const [empresaId, setEmpresaId] = useState<string | null>(null);
   const [puntos, setPuntos] = useState<Punto[]>([]);
   const [puntoId, setPuntoId] = useState<string | null>(null);
   const [promotorIds, setPromotorIds] = useState<string[]>([]);
+  const [horaInicioTexto, setHoraInicioTexto] = useState('');
+  const [horaFinTexto, setHoraFinTexto] = useState('');
+  const [metaTexto, setMetaTexto] = useState('');
   const [repetir, setRepetir] = useState(false);
   const [frecuencia, setFrecuencia] = useState<Frecuencia>('DIAS');
   const [intervalo, setIntervalo] = useState('15');
@@ -679,21 +797,29 @@ function FormularioEvento({
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
+    if (!empresaId) return;
     (async () => {
-      if (!empresaId) return;
       const db = await getDb();
       const lista = await listarPuntos(db, { empresaId });
       setPuntos(lista);
-      setPuntoId(lista[0]?.id ?? null);
+      // Con un solo punto no hay nada que elegir.
+      setPuntoId(lista.length === 1 ? lista[0].id : null);
     })();
   }, [empresaId]);
 
-  function alternarPromotor(id: string) {
-    setPromotorIds((actual) => (actual.includes(id) ? actual.filter((p) => p !== id) : [...actual, id]));
-  }
+  const horaInicio = parsearHora(horaInicioTexto);
+  const horaFin = parsearHora(horaFinTexto);
+  const errorHorario = errorDeHorario(horaInicioTexto, horaFinTexto);
+  const faltantes = [
+    !empresaId && 'empresa',
+    !puntoId && 'punto',
+    (!horaInicio || !horaFin) && 'horario',
+  ].filter((f): f is string => !!f);
+  const puedeCrear = faltantes.length === 0 && !errorHorario && !guardando;
 
   async function guardar() {
-    if (!puntoId) return;
+    if (!puedeCrear || !empresaId || !puntoId || !horaInicio || !horaFin) return;
+    const detalles = { horaInicio, horaFin, metaDiaria: metaTexto ? Number(metaTexto) : null };
     setGuardando(true);
     try {
       const db = await getDb();
@@ -715,11 +841,12 @@ function FormularioEvento({
             fechaDesde: fecha,
             fechaHasta,
             creadoPor: adminId,
+            ...detalles,
           },
           dispositivoId
         );
       } else {
-        await crearEvento(db, { empresaId, puntoId, fecha, promotorIds, creadoPor: adminId }, dispositivoId);
+        await crearEvento(db, { empresaId, puntoId, fecha, promotorIds, creadoPor: adminId, ...detalles }, dispositivoId);
       }
       onCreado();
     } catch (error) {
@@ -737,55 +864,89 @@ function FormularioEvento({
     <Modal visible animationType="slide" transparent>
       <View style={styles.fondoModal}>
         <View style={styles.tarjetaModal}>
-          <ScrollView>
+          <ScrollView keyboardShouldPersistTaps="handled">
             <Text style={styles.modalTitulo}>Nuevo evento · {fecha}</Text>
 
             <Text style={styles.modalSubtitulo}>Empresa</Text>
-            {empresas.map((e) => (
-              <Pressable
-                key={e.id}
-                style={styles.filaCheckbox}
-                onPress={() => setEmpresaId(e.id)}
-              >
-                <View style={[styles.radio, empresaId === e.id && styles.radioMarcado]} />
-                <Text style={styles.filaCheckboxTexto}>{e.nombre}</Text>
-              </Pressable>
-            ))}
+            <SelectorDesplegable
+              opciones={empresas.map((e) => ({ valor: e.id, etiqueta: e.nombre }))}
+              valor={empresaId}
+              onCambiar={setEmpresaId}
+              placeholder="Elige una empresa"
+              vacio="Todavía no hay empresas — créalas en Empresas y puntos."
+            />
 
             <Text style={styles.modalSubtitulo}>Punto</Text>
-            {puntos.length === 0 ? (
-              <Text style={styles.vacio}>Esta empresa no tiene puntos todavía.</Text>
-            ) : (
-              puntos.map((p) => (
-                <Pressable key={p.id} style={styles.filaCheckbox} onPress={() => setPuntoId(p.id)}>
-                  <View style={[styles.radio, puntoId === p.id && styles.radioMarcado]} />
-                  <Text style={styles.filaCheckboxTexto}>{p.nombre}</Text>
-                </Pressable>
-              ))
-            )}
+            <SelectorDesplegable
+              opciones={puntos.map((p) => ({ valor: p.id, etiqueta: p.nombre }))}
+              valor={puntoId}
+              onCambiar={setPuntoId}
+              placeholder={empresaId ? 'Elige un punto' : 'Primero elige la empresa'}
+              vacio={empresaId ? 'Esta empresa no tiene puntos todavía.' : 'Primero elige la empresa'}
+            />
 
             <Text style={styles.modalSubtitulo}>Promotores</Text>
-            {promotores.length === 0 ? (
-              <Text style={styles.vacio}>No hay promotores activos.</Text>
-            ) : (
-              promotores.map((p) => {
-                const marcado = promotorIds.includes(p.id);
-                return (
-                  <Pressable key={p.id} style={styles.filaCheckbox} onPress={() => alternarPromotor(p.id)}>
-                    <View style={[styles.checkbox, marcado && styles.checkboxMarcado]}>
-                      {marcado && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
-                    </View>
-                    <Text style={styles.filaCheckboxTexto}>{p.nombre}</Text>
-                  </Pressable>
-                );
-              })
+            <SelectorDesplegable
+              multiple
+              opciones={promotores.map((p) => ({ valor: p.id, etiqueta: p.nombre }))}
+              valores={promotorIds}
+              onCambiar={setPromotorIds}
+              placeholder="Elige uno o varios promotores"
+              vacio="No hay promotores activos."
+            />
+
+            <Text style={styles.modalSubtitulo}>Horario</Text>
+            <View style={styles.filaEditable}>
+              <TextInput
+                style={[styles.modalInputCorto, styles.inputHora]}
+                value={horaInicioTexto}
+                onChangeText={(t) => setHoraInicioTexto(limpiarHora(t))}
+                placeholder="08:00"
+                placeholderTextColor="#A8988F"
+                keyboardType="numbers-and-punctuation"
+                accessibilityLabel="Hora de inicio"
+              />
+              <Text style={styles.modalTexto}>a</Text>
+              <TextInput
+                style={[styles.modalInputCorto, styles.inputHora]}
+                value={horaFinTexto}
+                onChangeText={(t) => setHoraFinTexto(limpiarHora(t))}
+                placeholder="16:00"
+                placeholderTextColor="#A8988F"
+                keyboardType="numbers-and-punctuation"
+                accessibilityLabel="Hora de fin"
+              />
+            </View>
+            {errorHorario ? (
+              <Text style={styles.errorTexto}>{errorHorario}</Text>
+            ) : horaInicio && horaFin ? (
+              <Text style={styles.ayudaTexto}>{formatearRangoHoras(horaInicio, horaFin)}</Text>
+            ) : null}
+
+            <Text style={styles.modalSubtitulo}>Meta de venta del día</Text>
+            <View style={styles.filaEditable}>
+              <Text style={styles.modalTexto}>$</Text>
+              <TextInput
+                style={[styles.modalInputCorto, styles.inputMeta]}
+                value={conMiles(metaTexto)}
+                onChangeText={(t) => setMetaTexto(t.replace(/\D/g, ''))}
+                keyboardType="number-pad"
+                placeholder="Ej. 1.000.000 (opcional)"
+                placeholderTextColor="#A8988F"
+                accessibilityLabel="Meta de venta del día"
+              />
+            </View>
+            {promotorIds.length > 1 && (
+              <Text style={styles.ayudaTexto}>
+                Es la meta del equipo: se suma lo que vendan los {promotorIds.length} promotores.
+              </Text>
             )}
 
             <Pressable style={styles.filaCheckbox} onPress={() => setRepetir(!repetir)}>
               <View style={[styles.checkbox, repetir && styles.checkboxMarcado]}>
                 {repetir && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
               </View>
-              <Text style={styles.filaCheckboxTexto}>Repetir este evento</Text>
+              <Text style={styles.filaCheckboxTexto}>Repetir este evento (mismo horario y meta)</Text>
             </Pressable>
 
             {repetir && (
@@ -823,17 +984,20 @@ function FormularioEvento({
               </View>
             )}
 
+            {faltantes.length > 0 && (
+              <Text style={styles.ayudaTexto}>Falta: {faltantes.join(', ')}.</Text>
+            )}
             <View style={styles.modalAcciones}>
               <Pressable onPress={onCerrar} disabled={guardando}>
                 <Text style={styles.modalCancelar}>Cancelar</Text>
               </Pressable>
               <Pressable
-                style={[styles.botonNuevo, (!puntoId || guardando) && styles.botonDeshabilitado]}
-                disabled={!puntoId || guardando}
+                style={[styles.botonNuevo, !puedeCrear && styles.botonDeshabilitado]}
+                disabled={!puedeCrear}
                 onPress={guardar}
               >
                 {guardando ? (
-                  <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color={COLORES_ADMIN.vino} size="small" />
                 ) : (
                   <Text style={styles.botonNuevoTexto}>Crear evento</Text>
                 )}
@@ -1034,16 +1198,19 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  // Dorado de la marca (CLAUDE.md sección 13) con texto vinotinto: blanco
+  // sobre dorado casi no se lee.
   botonNuevo: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
-    backgroundColor: COLORES_ADMIN.vino,
+    backgroundColor: COLORES.primario,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
-  botonNuevoTexto: { color: '#FFFFFF', fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.semiNegrita },
+  botonNuevoTexto: { color: COLORES_ADMIN.vino, fontSize: 12, fontFamily: TIPOGRAFIA_ADMIN.negrita },
   tarjetaEvento: {
     backgroundColor: COLORES_ADMIN.superficieBaja,
     borderRadius: 10,
@@ -1130,28 +1297,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxMarcado: { backgroundColor: COLORES_ADMIN.vino, borderColor: COLORES_ADMIN.vino },
-  filaMetaDiaria: {
+  filaEditable: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingLeft: 26,
-    paddingBottom: 8,
   },
-  filaMetaDiariaEtiqueta: {
-    fontSize: 11,
+  inputHora: {
+    width: 84,
+    textAlign: 'center',
+  },
+  inputMeta: {
+    flex: 1,
+  },
+  errorTexto: {
+    fontSize: 12,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+    color: COLORES_ADMIN.error,
+  },
+  ayudaTexto: {
+    fontSize: 12,
     fontFamily: TIPOGRAFIA_ADMIN.regular,
     color: COLORES_ADMIN.textoSecundario,
-  },
-  inputMetaDiaria: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: COLORES_ADMIN.bordeSuave,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    fontSize: 12,
-    fontFamily: TIPOGRAFIA_ADMIN.monoRegular,
-    maxWidth: 120,
   },
   botonGuardarMeta: {
     width: 26,

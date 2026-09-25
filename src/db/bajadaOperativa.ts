@@ -98,61 +98,91 @@ async function aplicarVentaRemota(
     itemsLocales.push({ productoId, item });
   }
 
-  // Los puntos los crea admin, así que en su dispositivo existen con el mismo
-  // id; si aun así no está (un punto que nunca subió), la venta se guarda sin
-  // punto en vez de romper la llave foránea.
+  // Los puntos los crea admin, así que existen con el mismo id en su
+  // dispositivo y en el de los promotores; si aun así no está (un punto que
+  // nunca subió), la venta se guarda sin punto en vez de romper la llave
+  // foránea.
   const punto = venta.punto_id
     ? await db.getFirstAsync<{ id: string }>('SELECT id FROM puntos WHERE id = ?', [venta.punto_id])
     : null;
 
   const previa = await db.getFirstAsync<{ anulada: number }>('SELECT anulada FROM ventas WHERE id = ?', [venta.id]);
 
+  const seAnula = !!previa && previa.anulada === 0 && venta.anulada;
+  let itemsNuevos = 0;
   await db.withTransactionAsync(async () => {
-    // Una anulación nunca se deshace: si aquí ya está anulada (admin la
-    // anuló en este dispositivo y esa subida todavía está pendiente), se
-    // conserva aunque Supabase aún diga que no.
-    await db.runAsync(
-      `INSERT INTO ventas (id, numero_recibo, evento_id, promotor_id, punto_id, ts_cliente, metodo_pago, total, dispositivo_id, anulada, motivo_anulacion)
-       VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET
-         anulada = MAX(ventas.anulada, excluded.anulada),
-         motivo_anulacion = COALESCE(ventas.motivo_anulacion, excluded.motivo_anulacion)`,
-      [
-        venta.id,
-        venta.numero_recibo,
-        promotorId,
-        punto?.id ?? null,
-        venta.ts_cliente,
-        venta.metodo_pago,
-        venta.total,
-        venta.dispositivo_id,
-        venta.anulada ? 1 : 0,
-        venta.motivo_anulacion,
-      ]
-    );
-    for (const { productoId, item } of itemsLocales) {
+    if (!previa) {
       await db.runAsync(
+        `INSERT INTO ventas (id, numero_recibo, evento_id, promotor_id, punto_id, ts_cliente, metodo_pago, total, dispositivo_id, anulada, motivo_anulacion)
+         VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          venta.id,
+          venta.numero_recibo,
+          promotorId,
+          punto?.id ?? null,
+          venta.ts_cliente,
+          venta.metodo_pago,
+          venta.total,
+          venta.dispositivo_id,
+          venta.anulada ? 1 : 0,
+          venta.motivo_anulacion,
+        ]
+      );
+    } else if (seAnula) {
+      // Una anulación nunca se deshace: si aquí ya está anulada (admin la
+      // anuló en este dispositivo y esa subida todavía está pendiente), se
+      // conserva aunque Supabase aún diga que no. Una venta que ya está (ej.
+      // la propia, que vuelve al bajar las del equipo) no se reinserta: el
+      // índice único de `numero_recibo` rechazaría el intento.
+      await db.runAsync(
+        'UPDATE ventas SET anulada = 1, motivo_anulacion = COALESCE(motivo_anulacion, ?) WHERE id = ?',
+        [venta.motivo_anulacion, venta.id]
+      );
+    }
+    // Las líneas pueden llegar una vuelta después que su cabecera.
+    for (const { productoId, item } of itemsLocales) {
+      const resultado = await db.runAsync(
         `INSERT OR IGNORE INTO venta_items (venta_id, producto_id, cantidad, precio_unitario, ts_cliente, dispositivo_id)
          VALUES (?, ?, ?, ?, ?, ?)`,
         [venta.id, productoId, item.cantidad, item.precio_unitario, item.ts_cliente, item.dispositivo_id]
       );
+      itemsNuevos += resultado.changes;
     }
   });
 
-  return !previa || (previa.anulada === 0 && venta.anulada);
+  return !previa || seAnula || itemsNuevos > 0;
 }
 
-/** Trae de Supabase las ventas nuevas o modificadas (anuladas) — para que el admin vea lo que venden los promotores. */
-export async function descargarVentasNuevas(db: SQLiteDatabase): Promise<number> {
+/**
+ * Qué ventas bajar: TODAS (admin, para ver lo que venden los promotores), o
+ * las de HOY en el punto del evento de un promotor (EQUIPO) — así cada
+ * promotor ve las ventas de sus compañeros de evento y el progreso de la
+ * meta compartida (src/db/metasDiarias.ts). Por punto y no por persona: el
+ * punto tiene el mismo id en todos los dispositivos (lo crea el admin),
+ * mientras que los usuarios de prueba de `__DEV__` no.
+ */
+export type AmbitoVentas = { tipo: 'TODAS' } | { tipo: 'EQUIPO'; puntoId: string; fecha: string };
+
+/** Trae de Supabase las ventas nuevas o modificadas (anuladas) del ámbito pedido. */
+export async function descargarVentasNuevas(
+  db: SQLiteDatabase,
+  ambito: AmbitoVentas = { tipo: 'TODAS' }
+): Promise<number> {
   let cambios = 0;
+  const clave = ambito.tipo === 'TODAS' ? 'ventas' : `ventas:PUNTO:${ambito.puntoId}:${ambito.fecha}`;
   try {
     const supabase = await getSupabaseClient();
     const dispositivoId = await getDispositivoId(db);
-    let cursorGuardado = await leerCursor(db, 'ventas');
+    let cursorGuardado = await leerCursor(db, clave);
     let desde = conSolape(cursorGuardado);
 
     for (;;) {
       let consulta = supabase.from('ventas').select('*');
+      if (ambito.tipo === 'EQUIPO') {
+        // Desde la medianoche de ese día en Colombia (UTC-5 fijo).
+        const inicioDia = new Date(`${ambito.fecha}T00:00:00-05:00`).toISOString();
+        consulta = consulta.eq('punto_id', ambito.puntoId).gte('ts_cliente', inicioDia);
+      }
       if (desde) consulta = consulta.gt('subido_ts', desde);
       const { data: ventas, error } = await consulta
         .order('subido_ts', { ascending: true })
@@ -186,7 +216,7 @@ export async function descargarVentasNuevas(db: SQLiteDatabase): Promise<number>
         }
         cursorGuardado = mayor(cursorGuardado, venta.subido_ts);
       }
-      if (cursorGuardado) await guardarCursor(db, 'ventas', cursorGuardado);
+      if (cursorGuardado) await guardarCursor(db, clave, cursorGuardado);
       desde = ventas[ventas.length - 1].subido_ts;
       if (ventas.length < TAMANO_PAGINA) break;
     }

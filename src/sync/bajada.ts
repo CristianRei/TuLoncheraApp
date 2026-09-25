@@ -8,8 +8,9 @@ import {
   descargarVentasNuevas,
 } from '@/db/bajadaOperativa';
 import { descargarCategoriasNuevas } from '@/db/categorias';
+import { descargarDescuentosNuevos } from '@/db/descuentos';
 import { descargarEmpresasNuevas } from '@/db/empresas';
-import { descargarEventosNuevos } from '@/db/eventos';
+import { descargarEventosNuevos, obtenerPuntoVigentePromotor } from '@/db/eventos';
 import { descargarProductosNuevos } from '@/db/productos';
 import { descargarPuntosNuevos } from '@/db/puntos';
 import { descargarUsuariosNuevos } from '@/db/usuarios';
@@ -29,8 +30,9 @@ import { notificarDatosActualizados } from './eventosDatos';
  * (`null`, ej. sin red) los productos se omiten: sin ese mapa les borrarían
  * la categoría. Igual con empresas antes que puntos (`puntos.empresa_id` es
  * FK): si las empresas fallan, los puntos se omiten; y los eventos del
- * calendario van al final (referencian personal, empresa y punto). Devuelve
- * cuántos eventos cambiaron, para que el calendario abierto se refresque.
+ * calendario y los descuentos van al final (referencian personal, producto,
+ * empresa y punto). Devuelve cuántos eventos y descuentos cambiaron, para que
+ * el calendario y los precios abiertos se refresquen.
  *
  * Nunca se llama desde el dispositivo de admin: esa base local ya es la
  * fuente de verdad de todas estas tablas (él es quien las crea), y
@@ -43,7 +45,9 @@ export async function descargarDatosDeAdmin(db: SQLiteDatabase): Promise<number>
   if (categorias) await descargarProductosNuevos(db, categorias);
   if (!(await descargarEmpresasNuevas(db))) return 0;
   if (!(await descargarPuntosNuevos(db))) return 0;
-  return descargarEventosNuevos(db);
+  const eventos = await descargarEventosNuevos(db);
+  const descuentos = await descargarDescuentosNuevos(db);
+  return eventos + descuentos;
 }
 
 async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesion): Promise<number> {
@@ -64,6 +68,13 @@ async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesio
     cambios += await descargarMovimientosNuevos(db, { tipo: 'BODEGA' });
   } else if (sesion.rol === 'PROMOTOR') {
     cambios += await descargarMovimientosNuevos(db, { tipo: 'PROMOTOR', usuarioId: sesion.id });
+    // Si hoy comparte evento con otros promotores, baja las ventas de todo el
+    // equipo en ese punto: la meta del día es compartida (src/db/metasDiarias.ts)
+    // y cada uno ve lo que venden sus compañeros en "Ventas del turno".
+    const evento = await obtenerPuntoVigentePromotor(db, sesion.id);
+    if (evento && evento.promotorIds.length > 1) {
+      cambios += await descargarVentasNuevas(db, { tipo: 'EQUIPO', puntoId: evento.puntoId, fecha: evento.fecha });
+    }
   }
   return cambios;
 }
