@@ -230,8 +230,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filaSaldo: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    ...TEXTO_ADMIN.datoDestacado,
     color: COLORES_ADMIN.vino,
   },
 });

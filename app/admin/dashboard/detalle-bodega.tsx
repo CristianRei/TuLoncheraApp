@@ -325,7 +325,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   filaMovimientoCantidad: {
-    fontSize: 14,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    ...TEXTO_ADMIN.datoDestacado,
   },
 });

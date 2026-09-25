@@ -2167,8 +2167,7 @@ const styles = StyleSheet.create({
     color: COLORES_ADMIN.vino,
   },
   categoriaMonto: {
-    fontSize: 15,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    ...TEXTO_ADMIN.datoDestacado,
     color: COLORES_ADMIN.vino,
   },
   divisor: {

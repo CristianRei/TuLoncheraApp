@@ -222,8 +222,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filaValor: {
-    fontSize: 16,
-    fontFamily: TIPOGRAFIA_ADMIN.monoSemiNegrita,
+    ...TEXTO_ADMIN.datoDestacado,
     color: COLORES_ADMIN.vino,
   },
   badgeVigente: {
