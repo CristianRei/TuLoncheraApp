@@ -1560,6 +1560,10 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [ ] **Correr `supabase/migraciones/0015_descuentos.sql`** (idempotente,
       después de 0012). Sin esto, los descuentos quedan pendientes en la
       cola y el celular del promotor cobra sin ellos.
+- [ ] **Correr `supabase/migraciones/0017_evidencia_sin_sobrescritura.sql`**
+      (idempotente, cualquier orden). Quita el UPDATE de los buckets
+      `selfies-turnos` y `comprobantes-venta`: la evidencia ya no se puede
+      reemplazar. La app ya sube sin `upsert` (`src/sync/motor.ts`).
 - [ ] **Mensajes/notificaciones push no llegaban** (reportado 2026-09-23,
       admin en el computador → promotor en el celular) — **arreglado en
       código el 2026-09-23, falta aplicar 0013 y probarlo**. Dos causas:

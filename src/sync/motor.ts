@@ -704,9 +704,16 @@ async function subirFoto(
   const archivo = new File(uriLocal);
   const bytes = await archivo.arrayBuffer();
 
+  // Sin upsert: una selfie o comprobante ya subido es evidencia y nunca se
+  // sobrescribe (el bucket no admite UPDATE, migración 0017). En un reintento
+  // de una subida que sí llegó, "ya existe" es éxito.
   const { error } = await supabase.storage.from(bucket).upload(path, bytes, {
     contentType: 'image/jpeg',
-    upsert: true,
+    upsert: false,
   });
-  if (error) throw error;
+  if (error && !esArchivoYaSubido(error)) throw error;
+}
+
+function esArchivoYaSubido(error: { message?: string; statusCode?: string }): boolean {
+  return error.statusCode === '409' || /already exists|duplicate/i.test(error.message ?? '');
 }

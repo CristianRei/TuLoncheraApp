@@ -419,5 +419,24 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   });
 }
 
+console.log('\n== 0017 (selfies/comprobantes sin sobrescritura) sobre las políticas de Storage de 0002 ==');
+{
+  const st = new PGlite();
+  // Lo mínimo del esquema storage de Supabase para que 0002 aplique.
+  await st.exec(`create role authenticated nologin; create schema storage; create table storage.objects (id uuid, bucket_id text, name text); alter table storage.objects enable row level security;`);
+  await paso('0002 aplica (políticas de Storage)', async () => { await st.exec(leer('0002_storage_policies.sql')); });
+  await paso('0017 aplica sin error y es idempotente', async () => {
+    await st.exec(leer('0017_evidencia_sin_sobrescritura.sql'));
+    await st.exec(leer('0017_evidencia_sin_sobrescritura.sql'));
+  });
+  await paso('ningún bucket de evidencia admite UPDATE, pero siguen INSERT y SELECT', async () => {
+    const r = await st.query(`select policyname, cmd from pg_policies where schemaname = 'storage' and tablename = 'objects'`);
+    const cmds = r.rows.map((x) => x.cmd);
+    assert.ok(!cmds.includes('UPDATE'), `quedó una política UPDATE: ${JSON.stringify(r.rows)}`);
+    assert.equal(cmds.filter((c) => c === 'INSERT').length, 2);
+    assert.equal(cmds.filter((c) => c === 'SELECT').length, 2);
+  });
+}
+
 console.log(fallos === 0 ? '\nSQL OK' : `\n${fallos} FALLA(S) EN EL SQL`);
 process.exit(fallos === 0 ? 0 : 1);
