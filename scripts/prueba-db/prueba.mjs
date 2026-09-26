@@ -760,6 +760,43 @@ console.log('\n== H. Tres dispositivos: admin (computador), bodega y promotor (c
     ]);
     assert.deepEqual([local?.nombre_completo, local?.telefono], ['María López', '3009998877']);
   });
+  await paso('bug real 2026-09-26: el "creado_por" de un cliente con id de OTRO dispositivo no rompe la FK local ni se pierde en silencio', async () => {
+    // Reproduce exactamente lo reportado: el Cristian del celular del
+    // promotor tiene un id local (dPro-side) distinto del que quedó
+    // guardado en `usuarios` del dispositivo de admin (ids de personal
+    // pueden diferir entre dispositivos — mismo motivo que en ventas).
+    const idCristianEnSuCelular = randomUUID();
+    const clienteId = randomUUID();
+    await nube.from('clientes').upsert({
+      id: clienteId,
+      nombre_completo: 'N',
+      telefono: null,
+      direccion: null,
+      ciudad: null,
+      empresa: null,
+      nota: null,
+      creado_por: idCristianEnSuCelular, // NO coincide con ningún id en dbAdmin.usuarios
+      creado_por_nombre: 'Cristian',
+      ts_cliente: new Date().toISOString(),
+      dispositivo_id: dPro,
+    });
+    // Hay un "Cristian" con OTRO id en dbAdmin (llegó por otra vía, ej. seed).
+    await dbAdmin.runAsync(
+      `INSERT OR IGNORE INTO usuarios (id, nombre, rol, activo, ts_cliente, dispositivo_id) VALUES (?, 'Cristian', 'PROMOTOR', 1, ?, ?)`,
+      [randomUUID(), new Date().toISOString(), dAdm]
+    );
+    await conNube(dbAdmin, () => sincronizarDatosRemotos(dbAdmin, sesionAdmin));
+    const local = await dbAdmin.getFirstAsync('SELECT nombre_completo, creado_por FROM clientes WHERE id = ?', [
+      clienteId,
+    ]);
+    assert.ok(local, 'el cliente se perdió: la FK local rompió el INSERT en silencio');
+    assert.equal(local.nombre_completo, 'N');
+    // El creado_por debe apuntar a un usuario que SÍ existe localmente (se
+    // resolvió por nombre, o se creó como fantasma) — nunca el id remoto crudo.
+    const creador = await dbAdmin.getFirstAsync('SELECT id FROM usuarios WHERE id = ?', [local.creado_por]);
+    assert.ok(creador, 'creado_por no apunta a ningún usuario local: violaría la FK');
+    assert.deepEqual(await dbAdmin.getAllAsync('PRAGMA foreign_key_check'), []);
+  });
   await paso('una línea ENTREGADA no retrocede aunque otro dispositivo suba su copia vieja (trigger de Supabase)', async () => {
     const lineaRemota = [...nube.tablas.get('cargue_lineas').values()][0];
     await nube.from('cargue_lineas').upsert({ ...lineaRemota, estado: 'PENDIENTE', cantidad_entregada: 0 });

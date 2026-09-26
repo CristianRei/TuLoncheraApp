@@ -7,6 +7,8 @@ import { encolarSync } from '@/db/syncCola';
 import { getSupabaseClient } from '@/sync/supabaseClient';
 
 import { registrarAccionAuditoria } from './auditoria';
+import { getDispositivoId } from './dispositivo';
+import { resolverUsuarioLocalId } from './mapeoRemoto';
 
 interface FilaCliente {
   id: string;
@@ -120,6 +122,7 @@ interface FilaClienteRemoto {
   empresa: string | null;
   nota: string | null;
   creado_por: string;
+  creado_por_nombre: string;
   ts_cliente: string;
   dispositivo_id: string;
 }
@@ -127,17 +130,27 @@ interface FilaClienteRemoto {
 /**
  * Descarga los clientes que los promotores registraron en campo — solo el
  * dispositivo de admin la llama (`sync/bajada.ts`): un promotor/bodega ya es
- * la fuente de la fila que él mismo crea. Igual que empresas/puntos, upsert
- * directo por id: el celular es quien genera el UUID (R3) y no hay carga
- * inicial que produzca ids distintos por dispositivo que reconciliar.
+ * la fuente de la fila que él mismo crea. Upsert directo por id: el celular
+ * es quien genera el UUID del CLIENTE (R3), sin ids duplicados que
+ * reconciliar ahí.
+ *
+ * `creado_por` sí necesita traducirse: es el id de la PERSONA en el celular
+ * que creó el cliente, y ese id puede ser distinto en el dispositivo de
+ * admin (mismo problema que ventas/movimientos, ver `resolverUsuarioLocalId`
+ * en mapeoRemoto.ts) — la FK local `clientes.creado_por → usuarios(id)`
+ * hacía fallar el INSERT en silencio (capturado por el catch por fila) si no
+ * se traducía, y el cliente nunca llegaba a verse en admin (bug real,
+ * 2026-09-26). Se asume rol PROMOTOR para la búsqueda por nombre — en la
+ * práctica es quien siempre crea clientes en campo.
  */
 export async function descargarClientesNuevos(db: SQLiteDatabase): Promise<number> {
   let cambios = 0;
   try {
     const supabase = await getSupabaseClient();
+    const dispositivoId = await getDispositivoId(db);
     const { data, error } = await supabase
       .from('clientes')
-      .select('id, nombre_completo, telefono, direccion, ciudad, empresa, nota, creado_por, ts_cliente, dispositivo_id')
+      .select('id, nombre_completo, telefono, direccion, ciudad, empresa, nota, creado_por, creado_por_nombre, ts_cliente, dispositivo_id')
       .returns<FilaClienteRemoto[]>();
     if (error) throw error;
 
@@ -146,6 +159,11 @@ export async function descargarClientesNuevos(db: SQLiteDatabase): Promise<numbe
         const previo = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) as n FROM clientes WHERE id = ?', [
           fila.id,
         ]);
+        const creadoPorId = await resolverUsuarioLocalId(
+          db,
+          { id: fila.creado_por, nombre: fila.creado_por_nombre, rol: 'PROMOTOR' },
+          dispositivoId
+        );
         await db.runAsync(
           `INSERT INTO clientes (id, nombre_completo, telefono, direccion, ciudad, empresa, nota, creado_por, ts_cliente, dispositivo_id)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -164,7 +182,7 @@ export async function descargarClientesNuevos(db: SQLiteDatabase): Promise<numbe
             fila.ciudad,
             fila.empresa,
             fila.nota,
-            fila.creado_por,
+            creadoPorId,
             fila.ts_cliente,
             fila.dispositivo_id,
           ]
