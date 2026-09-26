@@ -4,6 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import { fechaHoyBogota } from '@/core/analitica';
 import { mensajeDeError } from '@/core/errores';
 import { calcularOcurrencias } from '@/core/eventos';
+import { elegirHorarioVigente, formatearRangoHoras, horaActualBogota, horariosSeCruzan } from '@/core/horas';
 import type { Evento, EstadoEvento, Frecuencia, Pesos } from '@/core/tipos';
 import { getSupabaseClient } from '@/sync/supabaseClient';
 
@@ -13,6 +14,7 @@ import { resolverUsuarioLocalId } from './mapeoRemoto';
 import { asegurarPuntosLocales } from './puntos';
 import { encolarSync } from './syncCola';
 import { guardarCursor, leerCursor } from './syncEstado';
+import { listarPromotores } from './usuarios';
 
 interface FilaEvento {
   id: string;
@@ -129,6 +131,52 @@ function verificarFechaNoPasada(fecha: string): void {
   if (fecha < fechaHoyBogota()) throw new EventoEnFechaPasadaError();
 }
 
+/**
+ * Un promotor está en UN evento a la vez: no puede quedar en dos eventos del
+ * mismo día cuyos horarios se crucen (sí en Falabella de 8 a 12 y en Éxito de
+ * 14 a 18). Si su evento se cancela o lo cambian, se mueve o se retira
+ * (`moverPromotorDeEvento` / `retirarPromotorDeEvento`).
+ */
+export class PromotorOcupadoError extends Error {
+  constructor(promotorNombre: string, evento: Evento) {
+    const horario = formatearRangoHoras(evento.horaInicio, evento.horaFin) ?? 'todo el día';
+    super(
+      `${promotorNombre} ya está en ${evento.empresaNombre} · ${evento.puntoNombre} el ${evento.fecha} ` +
+        `(${horario}) y el horario se cruza. Muévelo o retíralo de ese evento primero.`
+    );
+    this.name = 'PromotorOcupadoError';
+  }
+}
+
+interface HorarioBuscado {
+  promotorIds: string[];
+  fecha: string;
+  horaInicio?: string | null;
+  horaFin?: string | null;
+  /** Eventos que no cuentan (el mismo que se edita, o del que se mueve al promotor). */
+  excluirEventoIds?: string[];
+}
+
+/** El primer cruce de horario de alguno de `promotorIds` entre `eventos` (ya cargados), o `null`. */
+function buscarCruce(eventos: Evento[], datos: HorarioBuscado): { promotorNombre: string; evento: Evento } | null {
+  const horario = { horaInicio: datos.horaInicio ?? null, horaFin: datos.horaFin ?? null };
+  for (const evento of eventos) {
+    if (evento.fecha !== datos.fecha || evento.estado === 'CANCELADO') continue;
+    if (datos.excluirEventoIds?.includes(evento.id)) continue;
+    if (!horariosSeCruzan(evento, horario)) continue;
+    const indice = evento.promotorIds.findIndex((id) => datos.promotorIds.includes(id));
+    if (indice >= 0) return { promotorNombre: evento.promotorNombres[indice], evento };
+  }
+  return null;
+}
+
+async function verificarDisponibilidad(db: SQLiteDatabase, datos: HorarioBuscado): Promise<void> {
+  if (datos.promotorIds.length === 0) return;
+  const delDia = await listarEventosPorRango(db, { desde: datos.fecha, hasta: datos.fecha });
+  const cruce = buscarCruce(delDia, datos);
+  if (cruce) throw new PromotorOcupadoError(cruce.promotorNombre, cruce.evento);
+}
+
 async function insertarEvento(
   db: SQLiteDatabase,
   datos: {
@@ -206,6 +254,7 @@ export async function crearEvento(
   opciones: { sincronizar?: boolean } = {}
 ): Promise<Evento> {
   verificarFechaNoPasada(datos.fecha);
+  await verificarDisponibilidad(db, datos);
   let id = '';
   await db.withTransactionAsync(async () => {
     id = await insertarEvento(db, datos, dispositivoId, opciones.sincronizar ?? true);
@@ -248,6 +297,12 @@ export async function crearSerieRecurrente(
 ): Promise<Evento[]> {
   verificarFechaNoPasada(datos.fechaDesde);
   const ocurrencias = calcularOcurrencias(datos.frecuencia, datos.intervalo, datos.fechaDesde, datos.fechaHasta);
+  // Una sola consulta para todo el rango; si alguna fecha se cruza, no se crea ninguna.
+  const existentes = await listarEventosPorRango(db, { desde: datos.fechaDesde, hasta: datos.fechaHasta });
+  for (const fecha of ocurrencias) {
+    const cruce = buscarCruce(existentes, { ...datos, fecha });
+    if (cruce) throw new PromotorOcupadoError(cruce.promotorNombre, cruce.evento);
+  }
   const serieId = Crypto.randomUUID();
   const ahora = new Date().toISOString();
   const idsCreados: string[] = [];
@@ -362,6 +417,12 @@ export async function reasignarEvento(
   const actual = await obtenerEvento(db, datos.eventoId);
   if (!actual) throw new Error('Este evento ya no existe.');
   verificarFechaNoPasada(actual.fecha);
+  // Solo se revisan los que entran: quitar a alguien nunca se bloquea.
+  await verificarDisponibilidad(db, {
+    ...actual,
+    promotorIds: datos.promotorIds.filter((id) => !actual.promotorIds.includes(id)),
+    excluirEventoIds: [actual.id],
+  });
 
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM evento_promotores WHERE evento_id = ?', [datos.eventoId]);
@@ -424,29 +485,209 @@ export async function cambiarEstadoEvento(
   });
 }
 
+function verificarEventoEditable(evento: Evento): void {
+  verificarFechaNoPasada(evento.fecha);
+  if (evento.estado === 'CANCELADO') throw new Error('Este evento está cancelado.');
+}
+
 /**
- * El punto vigente de un promotor: el evento de HOY (Bogotá) en el que está
- * asignado, sin cancelar. Ya no depende de un estado manual (`EN_CURSO`)
- * como antes de la migración 0014 — se resuelve por fecha real, el mismo
- * criterio que el calendario que ve el promotor.
+ * Agrega un promotor a un evento que ya existe — ej. su evento se canceló a
+ * última hora y pasa a acompañar a otro promotor. Respeta la regla de un
+ * evento a la vez (`PromotorOcupadoError`).
+ */
+export async function asignarPromotorAEvento(
+  db: SQLiteDatabase,
+  datos: { eventoId: string; promotorId: string },
+  dispositivoId: string,
+  adminId: string
+): Promise<Evento> {
+  const evento = await obtenerEvento(db, datos.eventoId);
+  if (!evento) throw new Error('Este evento ya no existe.');
+  verificarEventoEditable(evento);
+  if (evento.promotorIds.includes(datos.promotorId)) return evento;
+  await verificarDisponibilidad(db, { ...evento, promotorIds: [datos.promotorId], excluirEventoIds: [evento.id] });
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('INSERT INTO evento_promotores (evento_id, promotor_id) VALUES (?, ?)', [
+      evento.id,
+      datos.promotorId,
+    ]);
+    await encolarEvento(db, evento.id);
+    await registrarAccionAuditoria(
+      db,
+      {
+        usuarioId: adminId,
+        entidad: 'EVENTO',
+        entidadId: evento.id,
+        accion: 'ACTUALIZAR',
+        detalles: { cambio: 'ASIGNAR_PROMOTOR', promotorId: datos.promotorId, fecha: evento.fecha },
+      },
+      dispositivoId
+    );
+  });
+  return (await obtenerEvento(db, evento.id)) ?? evento;
+}
+
+/**
+ * Retira a un promotor de un evento, con motivo obligatorio (queda en la
+ * bitácora). Si era su único evento de hoy, desde ese momento NO puede vender
+ * (`registrarVenta` exige evento): así el admin le quita la venta a alguien en
+ * cualquier momento. Su celular se entera al sincronizar (Realtime, con red).
+ */
+export async function retirarPromotorDeEvento(
+  db: SQLiteDatabase,
+  datos: { eventoId: string; promotorId: string; motivo: string },
+  dispositivoId: string,
+  adminId: string
+): Promise<void> {
+  const motivo = datos.motivo.trim();
+  if (!motivo) throw new Error('El motivo es obligatorio.');
+  const evento = await obtenerEvento(db, datos.eventoId);
+  if (!evento) throw new Error('Este evento ya no existe.');
+  verificarEventoEditable(evento);
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM evento_promotores WHERE evento_id = ? AND promotor_id = ?', [
+      evento.id,
+      datos.promotorId,
+    ]);
+    await encolarEvento(db, evento.id);
+    await registrarAccionAuditoria(
+      db,
+      {
+        usuarioId: adminId,
+        entidad: 'EVENTO',
+        entidadId: evento.id,
+        accion: 'ACTUALIZAR',
+        detalles: { cambio: 'RETIRAR_PROMOTOR', promotorId: datos.promotorId, motivo, fecha: evento.fecha },
+      },
+      dispositivoId
+    );
+  });
+}
+
+/**
+ * Pasa a un promotor de un evento a otro que ya existe (con o sin otros
+ * promotores), en una sola operación. Si el evento de origen está CANCELADO
+ * se deja como estaba (es historia: quién iba a estar ahí); si no, sale de
+ * él. Las ventas que ya hizo siguen en el punto donde las hizo.
+ */
+export async function moverPromotorDeEvento(
+  db: SQLiteDatabase,
+  datos: { promotorId: string; desdeEventoId: string; haciaEventoId: string },
+  dispositivoId: string,
+  adminId: string
+): Promise<void> {
+  if (datos.desdeEventoId === datos.haciaEventoId) return;
+  const [desde, hacia] = await Promise.all([
+    obtenerEvento(db, datos.desdeEventoId),
+    obtenerEvento(db, datos.haciaEventoId),
+  ]);
+  if (!desde || !hacia) throw new Error('Este evento ya no existe.');
+  verificarEventoEditable(hacia);
+  await verificarDisponibilidad(db, {
+    ...hacia,
+    promotorIds: [datos.promotorId],
+    excluirEventoIds: [desde.id, hacia.id],
+  });
+
+  await db.withTransactionAsync(async () => {
+    if (desde.estado !== 'CANCELADO') {
+      await db.runAsync('DELETE FROM evento_promotores WHERE evento_id = ? AND promotor_id = ?', [
+        desde.id,
+        datos.promotorId,
+      ]);
+      await encolarEvento(db, desde.id);
+    }
+    await db.runAsync('INSERT OR IGNORE INTO evento_promotores (evento_id, promotor_id) VALUES (?, ?)', [
+      hacia.id,
+      datos.promotorId,
+    ]);
+    await encolarEvento(db, hacia.id);
+    await registrarAccionAuditoria(
+      db,
+      {
+        usuarioId: adminId,
+        entidad: 'EVENTO',
+        entidadId: hacia.id,
+        accion: 'ACTUALIZAR',
+        detalles: {
+          cambio: 'MOVER_PROMOTOR',
+          promotorId: datos.promotorId,
+          desde: `${desde.empresaNombre} · ${desde.puntoNombre}`,
+          hacia: `${hacia.empresaNombre} · ${hacia.puntoNombre}`,
+          fecha: hacia.fecha,
+        },
+      },
+      dispositivoId
+    );
+  });
+}
+
+/** Un promotor y sus eventos de un día — "Promotores del día" en el calendario del admin. */
+export interface PromotorDelDia {
+  promotorId: string;
+  promotorNombre: string;
+  /** Sus eventos no cancelados de ese día, por hora de inicio. Vacío = ese día no puede vender. */
+  eventos: Evento[];
+  /** Quedó en dos eventos que se cruzan (datos de antes de la regla, o cambios desde dos dispositivos). */
+  horariosCruzados: boolean;
+}
+
+/** Todos los promotores activos (y cualquiera asignado ese día) con sus eventos de `fecha`. */
+export async function listarPromotoresDelDia(db: SQLiteDatabase, fecha: string): Promise<PromotorDelDia[]> {
+  const [promotores, delDia] = await Promise.all([
+    listarPromotores(db),
+    listarEventosPorRango(db, { desde: fecha, hasta: fecha }),
+  ]);
+  const activos = delDia
+    .filter((e) => e.estado !== 'CANCELADO')
+    .sort((a, b) => (a.horaInicio ?? '').localeCompare(b.horaInicio ?? ''));
+
+  const nombres = new Map(promotores.map((p) => [p.id, p.nombre]));
+  for (const evento of activos) {
+    evento.promotorIds.forEach((id, i) => {
+      if (!nombres.has(id)) nombres.set(id, evento.promotorNombres[i]);
+    });
+  }
+
+  return [...nombres.entries()]
+    .map(([promotorId, promotorNombre]) => {
+      const eventos = activos.filter((e) => e.promotorIds.includes(promotorId));
+      const horariosCruzados = eventos.some((a, i) => eventos.slice(i + 1).some((b) => horariosSeCruzan(a, b)));
+      return { promotorId, promotorNombre, eventos, horariosCruzados };
+    })
+    .sort((a, b) => a.promotorNombre.localeCompare(b.promotorNombre, 'es'));
+}
+
+/**
+ * El evento vigente de un promotor: de sus eventos de HOY (Bogotá) sin
+ * cancelar, el que está en curso a esta hora; si ninguno, el último que ya
+ * empezó; si ninguno ha empezado, el primero (`elegirHorarioVigente`). Ahí
+ * queda cada venta: lo vendido en Falabella de 8 a 12 es de Falabella, y lo
+ * vendido después en Éxito, de Éxito. `null` = hoy no tiene evento y no
+ * puede vender (`registrarVenta`).
  */
 export async function obtenerPuntoVigentePromotor(
   db: SQLiteDatabase,
-  promotorId: string
+  promotorId: string,
+  ahora: Date = new Date()
 ): Promise<Evento | null> {
-  const hoy = fechaHoyBogota();
-  const fila = await db.getFirstAsync<FilaEvento>(
+  const filas = await db.getAllAsync<FilaEvento>(
     `SELECT ${COLUMNAS_EVENTO}
      FROM eventos ev
      JOIN empresas e ON e.id = ev.empresa_id
      JOIN puntos p ON p.id = ev.punto_id
      WHERE ev.fecha = ? AND ev.estado != 'CANCELADO'
        AND ev.id IN (SELECT evento_id FROM evento_promotores WHERE promotor_id = ?)
-     ORDER BY ev.ts_cliente DESC
-     LIMIT 1`,
-    [hoy, promotorId]
+     ORDER BY ev.ts_cliente ASC`,
+    [fechaHoyBogota(ahora), promotorId]
   );
-  return fila ? aEvento(db, fila) : null;
+  const vigente = elegirHorarioVigente(
+    filas.map((fila) => ({ fila, horaInicio: fila.hora_inicio, horaFin: fila.hora_fin })),
+    horaActualBogota(ahora)
+  );
+  return vigente ? aEvento(db, vigente.fila) : null;
 }
 
 /**
@@ -474,6 +715,13 @@ export async function actualizarHorarioEvento(
   if (!actual) throw new Error('Este evento ya no existe.');
   verificarFechaNoPasada(actual.fecha);
   if (datos.horaInicio >= datos.horaFin) throw new Error('La hora de fin debe ser después de la de inicio.');
+  await verificarDisponibilidad(db, {
+    promotorIds: actual.promotorIds,
+    fecha: actual.fecha,
+    horaInicio: datos.horaInicio,
+    horaFin: datos.horaFin,
+    excluirEventoIds: [actual.id],
+  });
   await db.withTransactionAsync(async () => {
     await db.runAsync('UPDATE eventos SET hora_inicio = ?, hora_fin = ? WHERE id = ?', [
       datos.horaInicio,

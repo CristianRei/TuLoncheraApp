@@ -27,3 +27,46 @@ export function formatearRangoHoras(inicio: string | null, fin: string | null): 
   if (!inicio || !fin) return null;
   return `${formatearHora(inicio)} – ${formatearHora(fin)}`;
 }
+
+/** La hora actual en Colombia ("HH:MM"), UTC-5 fijo — Colombia no tiene horario de verano. */
+export function horaActualBogota(ahora: Date = new Date()): string {
+  const bogota = new Date(ahora.getTime() - 5 * 60 * 60 * 1000);
+  return `${String(bogota.getUTCHours()).padStart(2, '0')}:${String(bogota.getUTCMinutes()).padStart(2, '0')}`;
+}
+
+/** Horario de un evento del mismo día. Sin horario (eventos viejos) = todo el día. */
+export interface Horario {
+  horaInicio: string | null;
+  horaFin: string | null;
+}
+
+function limites(horario: Horario): [string, string] {
+  return horario.horaInicio && horario.horaFin ? [horario.horaInicio, horario.horaFin] : ['00:00', '24:00'];
+}
+
+/**
+ * Si dos horarios del mismo día se cruzan. El fin no cuenta como parte del
+ * horario: 8–12 y 12–16 NO se cruzan (un promotor puede terminar en un
+ * evento a las 12 y empezar en otro a las 12). Sin horario = todo el día, así
+ * que se cruza con cualquiera.
+ */
+export function horariosSeCruzan(a: Horario, b: Horario): boolean {
+  const [inicioA, finA] = limites(a);
+  const [inicioB, finB] = limites(b);
+  return inicioA < finB && inicioB < finA;
+}
+
+/**
+ * De los eventos de HOY de un promotor, en cuál está a esta `hora` — ahí
+ * queda registrada cada venta (su punto). El que está en curso; si ninguno,
+ * el último que ya empezó (una venta a las 12:30 cuando su evento terminó a
+ * las 12 sigue siendo de ese evento, no del siguiente de las 14); si ninguno
+ * ha empezado, el primero del día.
+ */
+export function elegirHorarioVigente<T extends Horario>(horarios: T[], hora: string): T | null {
+  if (horarios.length === 0) return null;
+  const ordenados = [...horarios].sort((a, b) => limites(a)[0].localeCompare(limites(b)[0]));
+  const yaEmpezaron = ordenados.filter((h) => limites(h)[0] <= hora);
+  const enCurso = yaEmpezaron.filter((h) => hora < limites(h)[1]);
+  return enCurso.at(-1) ?? yaEmpezaron.at(-1) ?? ordenados[0];
+}

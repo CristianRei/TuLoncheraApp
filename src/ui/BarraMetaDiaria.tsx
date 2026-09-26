@@ -16,7 +16,7 @@ type Rgb = [number, number, number];
  * escala pinta la barra mientras se llena (Animated) y el texto del
  * porcentaje, así nunca quedan de colores distintos.
  */
-const PARADAS: { en: number; rgb: Rgb }[] = [
+export const PARADAS: { en: number; rgb: Rgb }[] = [
   { en: 0, rgb: [211, 47, 47] },
   { en: 0.4, rgb: [245, 124, 0] },
   { en: 0.7, rgb: [249, 168, 37] },
@@ -24,9 +24,10 @@ const PARADAS: { en: number; rgb: Rgb }[] = [
   { en: 1, rgb: [46, 125, 50] },
 ];
 
-const aRgb = ([r, g, b]: Rgb, alfa = 1) => `rgba(${r}, ${g}, ${b}, ${alfa})`;
+export const aRgb = ([r, g, b]: Rgb, alfa = 1) => `rgba(${r}, ${g}, ${b}, ${alfa})`;
 
-function rgbEnFraccion(fraccion: number): Rgb {
+/** El color de la escala para un avance de 0 a 1 (también lo usa `BarraAvanceMeta`, en admin). */
+export function rgbEnFraccion(fraccion: number): Rgb {
   const f = Math.min(1, Math.max(0, fraccion));
   for (let i = 1; i < PARADAS.length; i++) {
     const [a, b] = [PARADAS[i - 1], PARADAS[i]];

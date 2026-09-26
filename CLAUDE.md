@@ -46,7 +46,7 @@ Términos del negocio. Úsalos tal cual en código, tablas, variables y UI.
 
 | Término | Significado |
 |---|---|
-| **Evento** | Jornada de venta en una empresa cliente. Tiene fecha, empresa, promotor y conductor. |
+| **Evento** | Jornada de venta en una empresa cliente. Tiene fecha, horario, empresa, promotor y conductor. Un promotor está en UN evento a la vez (no en dos cuyos horarios se crucen) y **sin evento de hoy no puede vender**. |
 | **Cargue** | Inventario que un promotor lleva a un evento. |
 | **Recarga** | Reposición de producto al inventario de un promotor, hecha en bodega. |
 | **Saldo** | Producto que le queda a un promotor. **El saldo NO regresa a bodega**; sigue asignado al promotor. |
@@ -228,7 +228,7 @@ tulonchera/
     admin/
       _layout.tsx                 ← en pantalla ancha monta BarraSuperiorAdmin + SidebarAdmin fijo; en celular no monta nada (cada pantalla sigue con su propio encabezado)
       index.tsx                  ← menú de módulos (orden sigue el flujo operativo del día; "Mensajes" siempre al final)
-      calendario/                 ← admin planea eventos: empresa + punto + fecha + promotor(es) + meta de venta diaria por promotor
+      calendario/                 ← admin planea eventos: empresa + punto + fecha + horario + promotor(es) + meta de venta diaria del evento; abajo, "Promotores del día" (tablero por promotor: meta, facturado, arqueo, conteo; mover / asignar / retirar); facturas.tsx = facturas del día de un promotor con foto de las transferencias
       cargue/                      ← admin planea cargue (sin tocar inventario); [id] para reducir/quitar líneas
       turnos/                       ← selfie/hora/ubicación de check-in de cada promotor
       ventas/                        ← listado (Activas/Anuladas + filtro Todos los días/Hoy/fecha específica) + detalle de ventas
@@ -282,6 +282,7 @@ tulonchera/
       eventos.ts                           ← calendario de eventos + punto vigente del promotor (por fecha) + meta diaria por (evento, promotor); suben al cambiar y Promotor/Bodega los descargan (`descargarEventosNuevos`)
       mensajes.ts                           ← enviarMensajes/descargarMensajesNuevos/listarMensajesRecibidos/marcarMensajeLeido — mensajes push, ver sección 10 "Mensajes"
       metas.ts                               ← metas de venta MENSUALES por promotor/punto + progreso real
+      tableroPromotores.ts                    ← cifras del día por promotor (facturado por medio de pago), resumen de un evento, y arqueo/conteo de cada uno leídos de Supabase (best-effort)
       metasDiarias.ts                         ← progreso de la meta DIARIA por promotor con evento asignado (distinta escala que metas.ts)
       personal.ts                              ← alta/edición/cambio de rol/baja (activo=0)/eliminación real (protegida por FK) de personal (los 4 roles)
       turnos.ts                                 ← check-in/check-out, evento del día del promotor
@@ -308,6 +309,9 @@ tulonchera/
       useSincronizacionEnVivo.ts           ← hook de layout: descarga al entrar, al recibir un aviso Realtime, y cada 45 s de respaldo
       useVersionDatos.ts                    ← `useRecargarConDatosNuevos(fn)`: una pantalla se recarga sola cuando llegan datos nuevos de Supabase
       ModalConfirmacion.tsx               ← reemplaza Alert.alert para confirmaciones de 2 botones (Alert.alert no tiene UI en React Native Web)
+      PromotoresDelDia.tsx                 ← "Promotores del día" del calendario admin: tarjeta por promotor (evento, barra de meta, facturado por medio de pago, arqueo, conteo, botón a sus facturas), mover / asignar / retirar (con motivo)
+      ResumenEventoModal.tsx               ← resumen de un evento desde "Promotores del día": meta, vendido en su punto por medio de pago y por integrante, editar o cancelar
+      BarraAvanceMeta.tsx                  ← barra de la meta del día para admin (misma escala rojo→verde que BarraMetaDiaria)
       SelectorDesplegable.tsx              ← menú desplegable de admin (uno o varios, con buscador si hay muchas opciones); se despliega en el mismo lugar, no en otro Modal
       BarraMetaDiaria.tsx                  ← barra animada de cumplimiento de la meta DIARIA, de rojo a verde según el avance (Ventas del turno del promotor)
       CalendarioRango.tsx                  ← calendario de mes, reusado para "Rango personalizado" (dashboard), fecha específica (Ventas) y un solo día
@@ -432,6 +436,12 @@ eventos           (id, empresa_id, punto_id, fecha, estado[PLANEADO|EN_CURSO|
                     día (si es de $1.000.000 y entre dos venden $500.000, los
                     dos van en 50 %; decisión del negocio, 2026-09-24).
                     Independiente de la meta MENSUAL (tabla `metas`).
+                    Un promotor está en UN evento a la vez: no en dos del
+                    mismo día cuyos horarios se crucen (Falabella de 8 a 12 y
+                    Éxito de 14 a 18 sí; sin horario = todo el día) —
+                    `PromotorOcupadoError`, revisado al crear, en series, al
+                    agregar promotores y al cambiar el horario. Sin evento de
+                    hoy no se vende (`SinEventoHoyError`, 2026-09-25).
 evento_promotores (evento_id, promotor_id, meta_diaria[MUERTA])  ← N-a-N, en uso
                   desde la 0014. Reemplaza la columna promotor_id directa — un
                   evento puede tener varios promotores (lo usual es uno solo).
@@ -984,10 +994,45 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   el horario y la meta. El recuadro del evento de hoy en la pantalla de
   venta del promotor muestra también el horario.
   Cancelación en caliente con motivo obligatorio, nunca se borra un evento.
-  El "punto vigente" del promotor (usado al vender y al resolver
-  descuentos) se resuelve por fecha real —
-  `obtenerPuntoVigentePromotor` busca el evento de hoy — ya no depende de
-  un estado manual `EN_CURSO`. **Sincroniza** (desde 2026-09-23,
+  **Un evento a la vez y "Promotores del día"** (2026-09-25,
+  `src/ui/PromotoresDelDia.tsx`, debajo del calendario): un promotor no
+  puede quedar en dos eventos cuyos horarios se crucen (`PromotorOcupadoError`,
+  mensaje en línea en el formulario — no `Alert`, que no se ve en web); sí en
+  dos del mismo día que no se cruzan. La sección muestra, para el día
+  elegido, en qué evento está cada promotor, quién no tiene ("Sin evento ·
+  no puede vender") y los cruces que vengan de antes ("Horarios cruzados").
+  Acciones: **Mover** a otro evento que ya existe (ej. su evento se canceló
+  a última hora y pasa a acompañar a otro promotor; si el de origen está
+  CANCELADO, se deja como estaba — es historia), **Asignar** a uno y
+  **Retirar** con motivo obligatorio — las tres quedan en la bitácora
+  (EVENTO · ACTUALIZAR, `detalles.cambio`). **Sin evento de hoy no se
+  vende** (`registrarVenta` → `SinEventoHoyError`; la pantalla de venta
+  muestra "No tienes un evento asignado hoy" y se actualiza sola): así el
+  admin le quita la venta a alguien en cualquier momento — retirándolo o
+  cancelando su evento —, y cada venta queda en la empresa y el punto donde
+  se hizo. Sin conexión, el promotor sigue vendiendo hasta que su celular
+  reciba el cambio (R5). El "punto vigente" del promotor (usado al vender y
+  al resolver descuentos) es, de sus eventos de hoy, el que está en curso
+  a esta hora; si ninguno, el último que ya empezó (una venta a las 12:30
+  tras Falabella de 8 a 12 sigue siendo de Falabella); si ninguno ha
+  empezado, el primero (`elegirHorarioVigente`, `src/core/horas`) — ya no
+  depende de un estado manual `EN_CURSO`. **Tablero** (2026-09-25): cada
+  promotor es una tarjeta con la barra de la meta de su evento (misma escala
+  de rojo a verde que ve el promotor, `src/ui/BarraAvanceMeta.tsx`), lo que
+  lleva facturado ese día (una **factura es cualquier venta**; total, número,
+  efectivo, transferencia, libranza — `src/db/tableroPromotores.ts`, de la
+  base local, que ya recibe las ventas con Realtime), su arqueo de caja
+  (contó / cuadra o la diferencia) y si hizo el conteo de cierre — estos dos
+  se leen de Supabase (solo suben, no bajan al admin): sin conexión dice "sin
+  conexión", nunca un dato inventado —, y un botón a **sus facturas del día**
+  (`app/admin/calendario/facturas.tsx`: valor, hora, recibo, productos, filtro
+  por medio de pago y la **foto del comprobante** de las transferencias, en
+  grande al tocarla; la de otro dispositivo sale de Supabase). Tocar el
+  evento abre su resumen (`src/ui/ResumenEventoModal.tsx`): meta, lo vendido
+  en su punto por medio de pago y por integrante (también quien ya no está),
+  "Editar evento" (el detalle de siempre) y "Cancelar evento" (motivo; nadie
+  del equipo sigue vendiendo en él). Se actualiza sola al llegar ventas,
+  arqueos o conteos. **Sincroniza** (desde 2026-09-23,
   `supabase/migraciones/0014_eventos.sql`): cada cambio del admin (crear,
   serie, reasignar, cancelar, estado, meta diaria) encola el evento COMPLETO
   en la misma transacción; en Supabase los promotores viajan dentro del
@@ -1023,7 +1068,9 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   encuentre una fila. Botón "Cierre de jornada" en el menú del promotor
   abre esa pantalla (ver bullet de Arqueo de caja abajo) — ahí, no en un
   Alert, vive el cierre real del turno. El turno se cruza informativamente
-  con el evento del calendario del día (chip visible, nunca bloquea). El
+  con el evento del calendario del día (chip visible; no bloquea abrir
+  turno, pero sin evento de hoy no se puede VENDER — ver "Calendario de
+  eventos"). El
   panel de admin (`app/admin/turnos/`) filtra por Período (Hoy/7 días/30
   días/Personalizado, mismo estándar de Dashboard/Bitácora), Estado (En
   curso/Finalizados) y Promotor, combinables — y muestra un aviso si
@@ -1118,7 +1165,9 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   "todos". En el seed de demo no suben (`sincronizar: false`).
 - **Venta del promotor** (`app/promotor/index.tsx`): grilla de su propio
   inventario con buscador, escáner de código de barras, ticket (carrito) y
-  cobro con los 3 medios de pago. Topa la cantidad vendible al saldo
+  cobro con los 3 medios de pago — solo con turno abierto Y un evento de hoy
+  (sin evento, en lugar de la grilla: "No tienes un evento asignado hoy").
+  Topa la cantidad vendible al saldo
   calculado tanto al tocar la grilla como al escanear. **El descuento se ve
   desde que el producto entra al ticket** (`resolverPreciosConDescuento`,
   por producto, por su punto de hoy o asignado a él): la grilla muestra el
@@ -1212,8 +1261,10 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   de la meta DIARIA (`src/ui/BarraMetaDiaria.tsx`): se llena con animación y
   cambia de rojo a verde (pasando por naranja y ámbar) según el porcentaje,
   con "Te faltan $X" o "¡Meta cumplida!". Mide TODAS las ventas del día en
-  Bogotá de TODO el equipo del evento (misma cifra que "Cierre de jornada",
-  `obtenerProgresoMetaDelPromotor`), no solo las del turno — por eso puede no
+  Bogotá EN EL PUNTO del evento, de todo el equipo (misma cifra que "Cierre
+  de jornada", `obtenerProgresoMetaDelPromotor`; por punto y no por persona:
+  si mueven a alguien de evento, lo que vendió en cada lado se queda en cada
+  lado), no solo las del turno — por eso puede no
   coincidir con el "Total vendido" del turno. Sin meta asignada hoy, solo un
   aviso discreto. Si el evento de hoy tiene varios promotores, la pantalla
   tiene dos pestañas: "Mis ventas" y "Todo el equipo" (las ventas de hoy de

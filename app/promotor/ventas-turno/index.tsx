@@ -78,7 +78,7 @@ export default function VentasTurno() {
     setMeta(progreso);
     if (evento && evento.promotorIds.length > 1) {
       setEquipo({ ids: evento.promotorIds, nombres: evento.promotorNombres });
-      setVentasEquipo(await listarVentasEquipoHoy(db, evento.promotorIds, calcularRangoDiaBogota(evento.fecha)));
+      setVentasEquipo(await listarVentasEquipoHoy(db, evento.puntoId, calcularRangoDiaBogota(evento.fecha)));
     } else {
       setEquipo(null);
       setVentasEquipo([]);
@@ -105,9 +105,16 @@ export default function VentasTurno() {
   const lista = viendoEquipo ? ventasEquipo : ventas;
   const activas = lista.filter((v) => !v.anulada);
   const totalLista = activas.reduce((suma, v) => suma + v.total, 0);
+  // El equipo de ahora más quien haya vendido aquí hoy y ya no esté (lo
+  // movieron a otro evento): así la suma por persona da el total del punto.
   const totalPorPromotor = equipo
-    ? equipo.ids.map((id, i) => ({
-        nombre: equipo.nombres[i],
+    ? [
+        ...equipo.ids.map((id, i) => ({ id, nombre: equipo.nombres[i] })),
+        ...[...new Map(ventasEquipo.map((v) => [v.promotorId, v.promotorNombre])).entries()]
+          .filter(([id]) => !equipo.ids.includes(id))
+          .map(([id, nombre]) => ({ id, nombre })),
+      ].map(({ id, nombre }) => ({
+        nombre,
         total: ventasEquipo.filter((v) => v.promotorId === id && !v.anulada).reduce((suma, v) => suma + v.total, 0),
       }))
     : [];

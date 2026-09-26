@@ -86,6 +86,18 @@ export class VentaYaAnuladaError extends Error {
   }
 }
 
+/**
+ * Sin evento de hoy no se vende (decisión del negocio, 2026-09-25): así el
+ * admin le quita la venta a un promotor retirándolo del evento o cancelando
+ * el evento, y cada venta queda siempre en la empresa y el punto donde se hizo.
+ */
+export class SinEventoHoyError extends Error {
+  constructor() {
+    super('No tienes un evento asignado hoy. Pídele al administrador que te asigne uno para poder vender.');
+    this.name = 'SinEventoHoyError';
+  }
+}
+
 export class SinTurnoAbiertoError extends Error {
   constructor() {
     super('No tienes un turno abierto hoy. Inicia turno antes de vender.');
@@ -107,10 +119,11 @@ async function generarNumeroRecibo(db: SQLiteDatabase, dispositivoId: string): P
  * Registra una venta: cabecera + líneas + un movimiento VENTA por producto
  * (sale del saldo del promotor), todo en una sola transacción.
  *
- * El punto vigente del promotor (ver src/db/eventos.ts) se resuelve una
- * sola vez y queda grabado en `ventas.punto_id` — no basta con el evento
- * EN_CURSO actual, porque si el admin reasigna al promotor después, una
- * consulta futura perdería en qué punto ocurrió esta venta (ver ADR 0005).
+ * Exige turno abierto hoy y un evento de hoy (`SinEventoHoyError`). El
+ * evento vigente del promotor A ESTA HORA (`obtenerPuntoVigentePromotor`,
+ * src/db/eventos.ts) se resuelve una sola vez y su punto queda grabado en
+ * `ventas.punto_id` — si después lo mueven de evento, lo ya vendido sigue en
+ * el punto donde se vendió (ver ADR 0005).
  *
  * El descuento NO se aplica aquí: cada línea llega con el precio que el
  * promotor ya vio en su ticket y le cobró al cliente (resuelto al agregar el
@@ -128,10 +141,12 @@ export async function registrarVenta(
   const turnoAbierto = await obtenerTurnoAbiertoHoy(db, datos.promotorId);
   if (!turnoAbierto) throw new SinTurnoAbiertoError();
 
+  const puntoVigente = await obtenerPuntoVigentePromotor(db, datos.promotorId);
+  if (!puntoVigente) throw new SinEventoHoyError();
+
   const id = datos.id ?? Crypto.randomUUID();
   const ahora = new Date().toISOString();
-  const puntoVigente = await obtenerPuntoVigentePromotor(db, datos.promotorId);
-  const puntoId = puntoVigente?.puntoId ?? null;
+  const puntoId = puntoVigente.puntoId;
 
   const total = datos.items.reduce((suma, item) => suma + item.cantidad * item.precioUnitario, 0);
 
@@ -240,26 +255,75 @@ export async function listarVentasTurno(
 }
 
 /**
- * Ventas de HOY de todos los promotores de un evento (incluido quien
- * consulta) — el equipo comparte la meta del día. En el celular de un
- * promotor, las de sus compañeros llegan de Supabase (`descargarVentasNuevas`
- * con ámbito EQUIPO). Más reciente primero; incluye anuladas (se muestran
- * marcadas, igual que en "Mis ventas").
+ * Ventas de HOY en el punto del evento (de todo el equipo, incluido quien
+ * consulta) — el equipo comparte la meta del día, que se mide igual
+ * (src/db/metasDiarias.ts). Por punto y no por persona: si a alguien lo
+ * movieron de evento, lo que vendió aquí sigue siendo de aquí, y lo que vendió
+ * en otro punto no se cuela. En el celular de un promotor, las de sus
+ * compañeros llegan de Supabase (`descargarVentasNuevas` con ámbito EQUIPO).
+ * Más reciente primero; incluye anuladas (se muestran marcadas, igual que en
+ * "Mis ventas").
  */
 export async function listarVentasEquipoHoy(
   db: SQLiteDatabase,
-  promotorIds: string[],
+  puntoId: string,
   rango: { desde: string; hasta: string }
 ): Promise<Venta[]> {
-  if (promotorIds.length === 0) return [];
   const filas = await db.getAllAsync<FilaVenta>(
     `SELECT ${COLUMNAS_VENTA}
      ${JOIN_VENTA}
-     WHERE v.promotor_id IN (${promotorIds.map(() => '?').join(', ')}) AND v.ts_cliente BETWEEN ? AND ?
+     WHERE v.punto_id = ? AND v.ts_cliente BETWEEN ? AND ?
      ORDER BY v.ts_cliente DESC`,
-    [...promotorIds, rango.desde, rango.hasta]
+    [puntoId, rango.desde, rango.hasta]
   );
   return filas.map(aVenta);
+}
+
+/**
+ * Todas las facturas (ventas, de cualquier método de pago) de un promotor en
+ * un rango — la hora más reciente primero, incluidas las anuladas — con sus
+ * productos. Para que el admin compare lo cobrado contra lo vendido
+ * (app/admin/calendario/facturas.tsx); la foto de las transferencias hechas
+ * en otro dispositivo se completa desde Supabase (`obtenerComprobanteRemoto`).
+ */
+export async function listarFacturasPromotor(
+  db: SQLiteDatabase,
+  promotorId: string,
+  rango: { desde: string; hasta: string }
+): Promise<{ venta: Venta; items: VentaItem[] }[]> {
+  const filas = await db.getAllAsync<FilaVenta>(
+    `SELECT ${COLUMNAS_VENTA}
+     ${JOIN_VENTA}
+     WHERE v.promotor_id = ? AND v.ts_cliente BETWEEN ? AND ?
+     ORDER BY v.ts_cliente DESC`,
+    [promotorId, rango.desde, rango.hasta]
+  );
+  if (filas.length === 0) return [];
+  const lineas = await db.getAllAsync<{
+    venta_id: string;
+    producto_id: string;
+    producto_nombre: string;
+    cantidad: number;
+    precio_unitario: number;
+  }>(
+    `SELECT vi.venta_id, vi.producto_id, p.nombre as producto_nombre, vi.cantidad, vi.precio_unitario
+     FROM venta_items vi
+     JOIN productos p ON p.id = vi.producto_id
+     WHERE vi.venta_id IN (${filas.map(() => '?').join(', ')})
+     ORDER BY p.nombre`,
+    filas.map((f) => f.id)
+  );
+  return filas.map((fila) => ({
+    venta: aVenta(fila),
+    items: lineas
+      .filter((l) => l.venta_id === fila.id)
+      .map((l) => ({
+        productoId: l.producto_id,
+        productoNombre: l.producto_nombre,
+        cantidad: l.cantidad,
+        precioUnitario: l.precio_unitario,
+      })),
+  }));
 }
 
 export async function obtenerVenta(
