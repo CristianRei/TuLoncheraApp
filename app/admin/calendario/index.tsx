@@ -520,7 +520,7 @@ export default function CalendarioAdmin() {
       )}
 
       {detalleEvento && (
-        <Modal visible animationType="fade" transparent>
+        <Modal visible={!modalCancelar} animationType="fade" transparent>
           <View style={styles.fondoModal}>
             <View style={styles.tarjetaModal}>
               <Text style={styles.modalTitulo}>
