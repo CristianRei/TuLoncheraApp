@@ -797,6 +797,34 @@ console.log('\n== H. Tres dispositivos: admin (computador), bodega y promotor (c
     assert.ok(creador, 'creado_por no apunta a ningún usuario local: violaría la FK');
     assert.deepEqual(await dbAdmin.getAllAsync('PRAGMA foreign_key_check'), []);
   });
+  await paso('sincronización bidireccional (pedido del usuario 2026-09-26): un cliente creado en admin llega al celular del promotor', async () => {
+    const { crearCliente } = await imp('db/clientes.ts');
+    establecerAdminDeSesion(adminId);
+    const cliente = await conNube(dbAdmin, async () => {
+      const c = await crearCliente(dbAdmin, { nombreCompleto: 'Creado en admin' }, adminId, dAdm);
+      await drenarColaSync();
+      return c;
+    });
+    await conNube(dbProm, () => sincronizarDatosRemotos(dbProm, sesion(pedro)));
+    const local = await dbProm.getFirstAsync('SELECT nombre_completo FROM clientes WHERE id = ?', [cliente.id]);
+    assert.equal(local?.nombre_completo, 'Creado en admin');
+  });
+  await paso('eliminar un cliente en admin lo borra también en el celular del promotor', async () => {
+    const { eliminarCliente } = await imp('db/clientes.ts');
+    const objetivo = await dbAdmin.getFirstAsync(`SELECT id FROM clientes WHERE nombre_completo = 'Creado en admin'`);
+    await conNube(dbAdmin, () => eliminarCliente(dbAdmin, objetivo.id, dAdm, adminId));
+    assert.equal((await dbProm.getFirstAsync('SELECT count(*) n FROM clientes WHERE id = ?', [objetivo.id])).n, 1, 'todavía no se sincronizó, sigue local');
+    await conNube(dbProm, () => sincronizarDatosRemotos(dbProm, sesion(pedro)));
+    assert.equal((await dbProm.getFirstAsync('SELECT count(*) n FROM clientes WHERE id = ?', [objetivo.id])).n, 0, 'no se borró al bajar');
+  });
+  await paso('un cliente recién creado en ESTE dispositivo, sin subir todavía, no se borra por no aparecer aún en Supabase', async () => {
+    const { crearCliente } = await imp('db/clientes.ts');
+    // Se crea pero NO se drena la cola — como si estuviera sin red.
+    const nuevo = await crearCliente(dbProm, { nombreCompleto: 'Recién creado, sin subir' }, pedro.id, dPro);
+    await conNube(dbProm, () => sincronizarDatosRemotos(dbProm, sesion(pedro)));
+    assert.equal((await dbProm.getFirstAsync('SELECT count(*) n FROM clientes WHERE id = ?', [nuevo.id])).n, 1, 'se borró un alta propia todavía pendiente de subir');
+    await conNube(dbProm, () => drenarColaSync()); // limpieza para no dejar pendientes de otra prueba
+  });
   await paso('una línea ENTREGADA no retrocede aunque otro dispositivo suba su copia vieja (trigger de Supabase)', async () => {
     const lineaRemota = [...nube.tablas.get('cargue_lineas').values()][0];
     await nube.from('cargue_lineas').upsert({ ...lineaRemota, estado: 'PENDIENTE', cantidad_entregada: 0 });

@@ -12,6 +12,7 @@ import { SearchBar } from '@/ui/SearchBar';
 import { COLORES, TIPOGRAFIA_PROMOTOR, TEXTO_PROMOTOR } from '@/ui/colores';
 import { RADII_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 import { useVentaEnCurso } from '@/ui/VentaEnCursoContext';
 
 export default function ClientesPromotor() {
@@ -38,9 +39,13 @@ export default function ClientesPromotor() {
 
   useFocusEffect(
     useCallback(() => {
-      cargar();
-    }, [cargar])
+      cargar(busqueda);
+    }, [cargar, busqueda])
   );
+
+  // Un cliente que admin (u otro promotor) crea o elimina llega solo
+  // (Realtime) — ver app/promotor/_layout.tsx.
+  useRecargarConDatosNuevos(() => cargar(busqueda));
 
   if (!usuario) return null;
 

@@ -128,20 +128,28 @@ interface FilaClienteRemoto {
 }
 
 /**
- * Descarga los clientes que los promotores registraron en campo — solo el
- * dispositivo de admin la llama (`sync/bajada.ts`): un promotor/bodega ya es
- * la fuente de la fila que él mismo crea. Upsert directo por id: el celular
- * es quien genera el UUID del CLIENTE (R3), sin ids duplicados que
- * reconciliar ahí.
+ * Descarga los clientes — tabla compartida sin dueño visible (cualquier
+ * promotor puede ver y asignar cualquier cliente, ver `listarClientes`), así
+ * que tanto admin como Promotor/Bodega descargan la lista COMPLETA, en las
+ * dos direcciones (uno creado en admin también debe llegar al promotor, y
+ * viceversa — pedido explícito del usuario, 2026-09-26). Upsert directo por
+ * id: el celular es quien genera el UUID del CLIENTE (R3), sin ids
+ * duplicados que reconciliar ahí.
  *
  * `creado_por` sí necesita traducirse: es el id de la PERSONA en el celular
- * que creó el cliente, y ese id puede ser distinto en el dispositivo de
- * admin (mismo problema que ventas/movimientos, ver `resolverUsuarioLocalId`
- * en mapeoRemoto.ts) — la FK local `clientes.creado_por → usuarios(id)`
- * hacía fallar el INSERT en silencio (capturado por el catch por fila) si no
- * se traducía, y el cliente nunca llegaba a verse en admin (bug real,
- * 2026-09-26). Se asume rol PROMOTOR para la búsqueda por nombre — en la
- * práctica es quien siempre crea clientes en campo.
+ * que creó el cliente, y ese id puede ser distinto en este dispositivo
+ * (mismo problema que ventas/movimientos, ver `resolverUsuarioLocalId` en
+ * mapeoRemoto.ts) — la FK local `clientes.creado_por → usuarios(id)` hacía
+ * fallar el INSERT en silencio (capturado por el catch por fila) si no se
+ * traducía, y el cliente nunca llegaba a verse en el otro dispositivo (bug
+ * real, 2026-09-26). Se asume rol PROMOTOR para la búsqueda por nombre — en
+ * la práctica es quien siempre crea clientes en campo (admin también puede,
+ * pero ya tiene su propio id local correcto en su dispositivo).
+ *
+ * También aplica las eliminaciones: un cliente que ya no está en Supabase
+ * pero sigue local se borra aquí — salvo que tenga una subida propia todavía
+ * pendiente (se acaba de crear en ESTE dispositivo y no ha llegado a
+ * Supabase; borrarlo sería perder ese alta).
  */
 export async function descargarClientesNuevos(db: SQLiteDatabase): Promise<number> {
   let cambios = 0;
@@ -191,6 +199,20 @@ export async function descargarClientesNuevos(db: SQLiteDatabase): Promise<numbe
       } catch (errorFila) {
         console.log(`[clientes] no se pudo aplicar "${fila.nombre_completo}":`, mensajeDeError(errorFila));
       }
+    }
+
+    const idsRemotos = new Set(data.map((f) => f.id));
+    const locales = await db.getAllAsync<{ id: string }>('SELECT id FROM clientes');
+    for (const { id } of locales) {
+      if (idsRemotos.has(id)) continue;
+      const pendiente = await db.getFirstAsync<{ n: number }>(
+        `SELECT COUNT(*) as n FROM _sync_pendiente WHERE tabla = 'clientes' AND entidad_id = ? AND completado_ts IS NULL`,
+        [id]
+      );
+      if (pendiente && pendiente.n > 0) continue; // alta propia sin subir todavía — no borrar
+      await db.runAsync('UPDATE ventas SET cliente_id = NULL WHERE cliente_id = ?', [id]);
+      await db.runAsync('DELETE FROM clientes WHERE id = ?', [id]);
+      cambios++;
     }
   } catch (error) {
     console.log('[clientes] no se pudo descargar clientes nuevos:', mensajeDeError(error));

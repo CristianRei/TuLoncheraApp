@@ -511,21 +511,38 @@ clientes          (id UUID PK, nombre_completo, telefono[opcional],
                     (`eliminarCliente`) — antes de borrar, desvincula
                     (`cliente_id = NULL`) cualquier venta que lo tuviera
                     asignado, para no perder esas ventas del historial.
-                    Sincroniza (subida y bajada, `src/db/clientes.ts`,
+                    Sincroniza en las DOS direcciones (`src/db/clientes.ts`,
                     `supabase/migraciones/0019_clientes.sql` — numeración
                     remota independiente de la migración local, coincide por
                     casualidad) desde 2026-09-26, a pedido del usuario: antes
-                    era 100% local y el admin nunca veía un cliente creado en
-                    el celular de otro dispositivo. El promotor sube al crear
-                    (`crearCliente`, sin depender de que haya admin en
-                    sesión — a diferencia de `usuarios`, un cliente no puede
-                    cambiar permisos); admin descarga con `descargarDatosOperativos`
-                    y Realtime (`app/admin/_layout.tsx`), igual que ventas. El
-                    id lo genera el celular y viaja tal cual (upsert directo
-                    por id, sin reconciliar por clave natural: un cliente
-                    nunca viene de una carga inicial). "Eliminar" en admin
-                    borra local y en Supabase (best-effort, mismo patrón que
-                    `eliminarPersonaPermanente`).
+                    era 100% local — ni admin veía uno creado en el celular
+                    de un promotor, ni un promotor veía uno creado en admin.
+                    Es una lista COMPARTIDA sin dueño visible (cualquier
+                    promotor ve/asigna cualquier cliente, `listarClientes`
+                    no filtra por creador), así que admin y Promotor/Bodega
+                    descargan la lista completa entre sí — no solo admin lee
+                    de los demás. Sube al crear (`crearCliente`, sin depender
+                    de que haya admin en sesión — a diferencia de `usuarios`,
+                    un cliente no puede cambiar permisos); se descarga con
+                    `descargarClientesNuevos` (`descargarDatosOperativos`
+                    para admin, `descargarDatosDeAdmin` para Promotor/Bodega)
+                    y Realtime en ambos layouts (`app/admin/_layout.tsx`,
+                    `app/promotor/_layout.tsx`). El id lo genera el celular y
+                    viaja tal cual (upsert directo por id, sin reconciliar
+                    por clave natural: un cliente nunca viene de una carga
+                    inicial) — pero `creado_por` sí se traduce con
+                    `resolverUsuarioLocalId` (mismo problema que en ventas:
+                    la misma persona puede tener ids distintos por
+                    dispositivo; sin traducirlo, la FK local
+                    `clientes.creado_por → usuarios(id)` hacía fallar el
+                    INSERT en silencio y el cliente se perdía — bug real,
+                    2026-09-26). "Eliminar" (solo admin) borra local, en
+                    Supabase (best-effort, mismo patrón que
+                    `eliminarPersonaPermanente`) y esa baja se propaga al
+                    resto de dispositivos en la siguiente bajada
+                    (`descargarClientesNuevos` borra localmente cualquier
+                    cliente que ya no esté en Supabase, salvo que tenga una
+                    subida propia todavía pendiente en ESE dispositivo).
 conteos           (id UUID PK, evento_id[opcional], promotor_id, ts_cliente,
                    estado, firmado_por)
                   ← evento_id opcional y promotor_id agregado en la
@@ -1269,16 +1286,19 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   Admin ve/busca todos los clientes y puede eliminarlos de verdad (DELETE
   real, no `activo=0`: un cliente no es parte del libro de inventario,
   R1/R2 no aplican) — al eliminar uno, sus ventas pasadas se desvinculan
-  (`cliente_id = NULL`) en vez de perderse. **Sincroniza** (desde
-  2026-09-26, `supabase/migraciones/0019_clientes.sql`, a pedido explícito
-  del usuario): antes de esto un cliente registrado en el celular de un
-  promotor nunca llegaba al admin en otro dispositivo — la tabla era 100%
-  local. El promotor sube al crear (`crearCliente`, misma cola de siempre;
-  a diferencia de `usuarios` no depende de que haya admin en sesión, porque
-  un cliente no puede cambiar permisos de nadie), con Realtime
-  (`app/admin/_layout.tsx`) para que llegue casi al instante, igual que una
-  venta. "Eliminar" en admin borra local y en Supabase (best-effort, mismo
-  patrón que `eliminarPersonaPermanente`).
+  (`cliente_id = NULL`) en vez de perderse. **Sincroniza en las DOS
+  direcciones** (desde 2026-09-26, `supabase/migraciones/0019_clientes.sql`,
+  a pedido explícito del usuario): antes de esto la tabla era 100% local —
+  ni admin veía uno creado en el celular de un promotor, ni un promotor veía
+  uno creado en admin. Es una lista compartida sin dueño visible, así que
+  admin y Promotor/Bodega descargan la lista completa entre sí. Sube al
+  crear (`crearCliente`, misma cola de siempre; a diferencia de `usuarios`
+  no depende de que haya admin en sesión, porque un cliente no puede cambiar
+  permisos de nadie), con Realtime en ambos layouts
+  (`app/admin/_layout.tsx`, `app/promotor/_layout.tsx`) para que llegue casi
+  al instante, igual que una venta. "Eliminar" (solo admin) borra local y en
+  Supabase (best-effort, mismo patrón que `eliminarPersonaPermanente`) — esa
+  baja se propaga al resto de dispositivos en la siguiente bajada.
 - **Ventas del turno** (`app/promotor/ventas-turno/`, `listarVentasTurno`
   en `src/db/ventas.ts`): el promotor ve, desde el menú de su pantalla de
   venta, el listado de sus propias ventas del turno abierto (con total y

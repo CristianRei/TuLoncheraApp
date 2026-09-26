@@ -54,7 +54,12 @@ export async function descargarDatosDeAdmin(db: SQLiteDatabase): Promise<number>
   await descargarPuntosNuevos(db);
   const eventos = await descargarEventosNuevos(db);
   const descuentos = await descargarDescuentosNuevos(db);
-  return eventos + descuentos;
+  // Lista compartida sin dueño (cualquier promotor ve/asigna cualquier
+  // cliente): admin descarga la de otros dispositivos en
+  // `descargarDatosOperativos`, y aquí Promotor/Bodega descargan la que
+  // admin (o cualquier otro promotor) haya creado o eliminado.
+  const clientes = await descargarClientesNuevos(db);
+  return eventos + descuentos + clientes;
 }
 
 async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesion): Promise<number> {
