@@ -43,8 +43,14 @@ export async function descargarDatosDeAdmin(db: SQLiteDatabase): Promise<number>
   await descargarUsuariosNuevos(db);
   const categorias = await descargarCategoriasNuevas(db);
   if (categorias) await descargarProductosNuevos(db, categorias);
-  if (!(await descargarEmpresasNuevas(db))) return 0;
-  if (!(await descargarPuntosNuevos(db))) return 0;
+  // Empresas/puntos son solo una descarga adelantada (más rápida que
+  // resolverlos uno por uno) — nunca una dependencia dura: eventos y
+  // descuentos resuelven su propio punto/empresa con `asegurarPuntosLocales`
+  // si hiciera falta. Un fallo aquí (ej. un error transitorio de Postgres, no
+  // necesariamente "sin red") NO debe cortar la bajada de eventos/descuentos:
+  // eso los dejaba sin llegar nunca al celular, aunque Realtime avisara bien.
+  await descargarEmpresasNuevas(db);
+  await descargarPuntosNuevos(db);
   const eventos = await descargarEventosNuevos(db);
   const descuentos = await descargarDescuentosNuevos(db);
   return eventos + descuentos;

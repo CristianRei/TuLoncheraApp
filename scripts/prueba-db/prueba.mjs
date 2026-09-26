@@ -1119,6 +1119,32 @@ console.log('\n== K. Eventos del calendario: admin los planea, el celular del pr
     await sincronizarDatosRemotos(dbPro, { id: laura.id, nombre: laura.nombre, rol: 'PROMOTOR' });
     assert.equal((await dbPro.getFirstAsync('SELECT count(*) n FROM eventos')).n, antes);
   });
+  await paso('un evento con punto YA conocido baja aunque la descarga adelantada de empresas/puntos falle (bug real 2026-09-25: se perdía en silencio)', async () => {
+    // El punto de este evento (`norte`) ya existe en dbPro de eventos
+    // anteriores — no depende de que `asegurarPuntosLocales` lo resuelva.
+    const ev3 = randomUUID();
+    const ahoraIso = new Date().toISOString();
+    await nube.from('eventos').upsert({ id: ev3, empresa_id: falabella.id, punto_id: norte.id, fecha: manana, estado: 'PLANEADO', motivo_cancelacion: null, serie_id: null, creado_por: adminK.id, creado_por_nombre: 'Admin', promotores: [{ promotor_id: laura.id, promotor_nombre: laura.nombre }], hora_inicio: '11:00', hora_fin: '15:00', meta_diaria: null, ts_cliente: ahoraIso, dispositivo_id: dAdm });
+    // Un Supabase que responde bien a todo MENOS empresas/puntos — como pasa
+    // con un error transitorio de Postgres, no solo "sin red" — no debe
+    // impedir que el evento llegue al celular. Antes del fix,
+    // `descargarDatosDeAdmin` cortaba en seco ahí y nunca llamaba a
+    // `descargarEventosNuevos`.
+    const nubeConEmpresasRotas = {
+      ...nube,
+      from(tabla) {
+        if (tabla === 'empresas' || tabla === 'puntos') {
+          return { select: () => ({ returns: async () => { throw new Error('conexión interrumpida'); } }) };
+        }
+        return nube.from(tabla);
+      },
+    };
+    globalThis.__db = dbPro;
+    globalThis.__supabase = nubeConEmpresasRotas;
+    await sincronizarDatosRemotos(dbPro, { id: laura.id, nombre: laura.nombre, rol: 'PROMOTOR' });
+    const f = await dbPro.getFirstAsync(`SELECT id FROM eventos WHERE id = ?`, [ev3]);
+    assert.ok(f, 'el evento debía bajar aunque empresas/puntos fallaran');
+  });
 }
 
 console.log('\n== L. Mensajes: el admin solo guarda el mensaje; el push lo envía Supabase ==');

@@ -127,6 +127,7 @@ export default function CalendarioAdmin() {
   const [detalleEvento, setDetalleEvento] = useState<Evento | null>(null);
   const [modalCancelar, setModalCancelar] = useState(false);
   const [motivoCancelacion, setMotivoCancelacion] = useState('');
+  const [errorCancelar, setErrorCancelar] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   // Buffers del detalle: meta del día (del EVENTO, la comparte el equipo) y
   // horario — se siembran al abrir y se guardan con su botón.
@@ -692,7 +693,10 @@ export default function CalendarioAdmin() {
                   <Pressable
                     style={styles.botonCancelarEvento}
                     disabled={guardando}
-                    onPress={() => setModalCancelar(true)}
+                    onPress={() => {
+                      setErrorCancelar(null);
+                      setModalCancelar(true);
+                    }}
                   >
                     <Text style={styles.botonCancelarEventoTexto}>Cancelar evento</Text>
                   </Pressable>
@@ -719,11 +723,13 @@ export default function CalendarioAdmin() {
               multiline
               editable={!guardando}
             />
+            {errorCancelar && <Text style={styles.errorTexto}>{errorCancelar}</Text>}
             <View style={styles.modalAcciones}>
               <Pressable
                 onPress={() => {
                   setModalCancelar(false);
                   setMotivoCancelacion('');
+                  setErrorCancelar(null);
                 }}
                 disabled={guardando}
               >
@@ -738,6 +744,7 @@ export default function CalendarioAdmin() {
                 onPress={async () => {
                   if (!detalleEvento) return;
                   setGuardando(true);
+                  setErrorCancelar(null);
                   try {
                     const db = await getDb();
                     const dispositivoId = await getDispositivoId(db);
@@ -751,6 +758,8 @@ export default function CalendarioAdmin() {
                     setMotivoCancelacion('');
                     setDetalleEvento(null);
                     await recargar();
+                  } catch (error) {
+                    setErrorCancelar(error instanceof Error ? error.message : 'No se pudo cancelar el evento.');
                   } finally {
                     setGuardando(false);
                   }
