@@ -40,6 +40,7 @@ const MIGRACION_POR_TABLA: Record<string, string> = {
   eventos: '0014_eventos.sql',
   descuentos: '0015_descuentos.sql',
   usuarios: '0018_credenciales_privadas.sql',
+  clientes: '0019_clientes.sql',
 };
 
 function migracionDe(tabla: string): string {

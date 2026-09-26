@@ -21,17 +21,18 @@ export default function AdminLayout() {
   const { usuario } = useSesion();
   const esAdmin = usuario?.rol === 'ADMIN';
 
-  // Ventas de los promotores, cargues que bodega entrega y movimientos de la
-  // bodega llegan solos (Realtime) — ver src/ui/useSincronizacionEnVivo.ts.
-  // Turnos, arqueos de caja y conteos son "solo aviso": el admin los lee
-  // directo de Supabase bajo demanda (turnosRemotos.ts/arqueosRemotos.ts/
-  // tableroPromotores.ts), así que un cambio ahí solo avisa a las pantallas
-  // abiertas, no dispara una descarga.
+  // Ventas de los promotores, cargues que bodega entrega, movimientos de la
+  // bodega y clientes que el promotor registra en campo llegan solos
+  // (Realtime) — ver src/ui/useSincronizacionEnVivo.ts. Turnos, arqueos de
+  // caja y conteos son "solo aviso": el admin los lee directo de Supabase
+  // bajo demanda (turnosRemotos.ts/arqueosRemotos.ts/tableroPromotores.ts),
+  // así que un cambio ahí solo avisa a las pantallas abiertas, no dispara
+  // una descarga.
   useSincronizacionEnVivo(
     esAdmin ? usuario.id : null,
     esAdmin ? 'ADMIN' : null,
     usuario?.nombre ?? '',
-    ['ventas', 'cargues', 'movimientos'],
+    ['ventas', 'cargues', 'movimientos', 'clientes'],
     ['turnos', 'arqueos_caja', 'conteos']
   );
 

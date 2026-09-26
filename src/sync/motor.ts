@@ -7,6 +7,7 @@ import { obtenerArqueoPorId } from '@/db/arqueos';
 import { normalizar as normalizarNombreCategoria, obtenerCategoria } from '@/db/categorias';
 import { getDb } from '@/db/client';
 import { obtenerCargue } from '@/db/cargues';
+import { obtenerClienteParaSync } from '@/db/clientes';
 import { obtenerDescuentoParaSync } from '@/db/descuentos';
 import { obtenerConteo } from '@/db/conteos';
 import { getDispositivoId } from '@/db/dispositivo';
@@ -588,6 +589,26 @@ async function subirFila(
         creado_por: descuento.creadoPor,
         creado_por_nombre: descuento.creadoPorNombre,
         ts_cliente: descuento.tsCliente,
+        dispositivo_id: dispositivoId,
+      });
+      if (error) throw error;
+      return;
+    }
+
+    case 'clientes': {
+      const cliente = await obtenerClienteParaSync(db, tarea.entidad_id);
+      if (!cliente) return; // se eliminó después de encolarse — nada que subir
+      const { error } = await supabase.from('clientes').upsert({
+        id: cliente.id,
+        nombre_completo: cliente.nombreCompleto,
+        telefono: cliente.telefono,
+        direccion: cliente.direccion,
+        ciudad: cliente.ciudad,
+        empresa: cliente.empresa,
+        nota: cliente.nota,
+        creado_por: cliente.creadoPor,
+        creado_por_nombre: cliente.creadoPorNombre,
+        ts_cliente: cliente.tsCliente,
         dispositivo_id: dispositivoId,
       });
       if (error) throw error;

@@ -1,7 +1,11 @@
 import * as Crypto from 'expo-crypto';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { mensajeDeError } from '@/core/errores';
 import type { Cliente } from '@/core/tipos';
+import { encolarSync } from '@/db/syncCola';
+import { getSupabaseClient } from '@/sync/supabaseClient';
+
 import { registrarAccionAuditoria } from './auditoria';
 
 interface FilaCliente {
@@ -58,6 +62,124 @@ export async function obtenerCliente(db: SQLiteDatabase, id: string): Promise<Cl
   return fila ? aCliente(fila) : null;
 }
 
+export interface ClienteParaSync {
+  id: string;
+  nombreCompleto: string;
+  telefono: string | null;
+  direccion: string | null;
+  ciudad: string | null;
+  empresa: string | null;
+  nota: string | null;
+  creadoPor: string;
+  creadoPorNombre: string | null;
+  tsCliente: string;
+}
+
+/** Un cliente con el nombre de quien lo creó, tal como sube a Supabase (src/sync/motor.ts). */
+export async function obtenerClienteParaSync(db: SQLiteDatabase, id: string): Promise<ClienteParaSync | null> {
+  const fila = await db.getFirstAsync<{
+    id: string;
+    nombre_completo: string;
+    telefono: string | null;
+    direccion: string | null;
+    ciudad: string | null;
+    empresa: string | null;
+    nota: string | null;
+    creado_por: string;
+    creado_por_nombre: string | null;
+    ts_cliente: string;
+  }>(
+    `SELECT c.id, c.nombre_completo, c.telefono, c.direccion, c.ciudad, c.empresa, c.nota,
+            c.creado_por, u.nombre as creado_por_nombre, c.ts_cliente
+     FROM clientes c
+     LEFT JOIN usuarios u ON u.id = c.creado_por
+     WHERE c.id = ?`,
+    [id]
+  );
+  if (!fila) return null;
+  return {
+    id: fila.id,
+    nombreCompleto: fila.nombre_completo,
+    telefono: fila.telefono,
+    direccion: fila.direccion,
+    ciudad: fila.ciudad,
+    empresa: fila.empresa,
+    nota: fila.nota,
+    creadoPor: fila.creado_por,
+    creadoPorNombre: fila.creado_por_nombre,
+    tsCliente: fila.ts_cliente,
+  };
+}
+
+interface FilaClienteRemoto {
+  id: string;
+  nombre_completo: string;
+  telefono: string | null;
+  direccion: string | null;
+  ciudad: string | null;
+  empresa: string | null;
+  nota: string | null;
+  creado_por: string;
+  ts_cliente: string;
+  dispositivo_id: string;
+}
+
+/**
+ * Descarga los clientes que los promotores registraron en campo — solo el
+ * dispositivo de admin la llama (`sync/bajada.ts`): un promotor/bodega ya es
+ * la fuente de la fila que él mismo crea. Igual que empresas/puntos, upsert
+ * directo por id: el celular es quien genera el UUID (R3) y no hay carga
+ * inicial que produzca ids distintos por dispositivo que reconciliar.
+ */
+export async function descargarClientesNuevos(db: SQLiteDatabase): Promise<number> {
+  let cambios = 0;
+  try {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('id, nombre_completo, telefono, direccion, ciudad, empresa, nota, creado_por, ts_cliente, dispositivo_id')
+      .returns<FilaClienteRemoto[]>();
+    if (error) throw error;
+
+    for (const fila of data) {
+      try {
+        const previo = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) as n FROM clientes WHERE id = ?', [
+          fila.id,
+        ]);
+        await db.runAsync(
+          `INSERT INTO clientes (id, nombre_completo, telefono, direccion, ciudad, empresa, nota, creado_por, ts_cliente, dispositivo_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             nombre_completo = excluded.nombre_completo,
+             telefono = excluded.telefono,
+             direccion = excluded.direccion,
+             ciudad = excluded.ciudad,
+             empresa = excluded.empresa,
+             nota = excluded.nota`,
+          [
+            fila.id,
+            fila.nombre_completo,
+            fila.telefono,
+            fila.direccion,
+            fila.ciudad,
+            fila.empresa,
+            fila.nota,
+            fila.creado_por,
+            fila.ts_cliente,
+            fila.dispositivo_id,
+          ]
+        );
+        if (!previo || previo.n === 0) cambios++;
+      } catch (errorFila) {
+        console.log(`[clientes] no se pudo aplicar "${fila.nombre_completo}":`, mensajeDeError(errorFila));
+      }
+    }
+  } catch (error) {
+    console.log('[clientes] no se pudo descargar clientes nuevos:', mensajeDeError(error));
+  }
+  return cambios;
+}
+
 export interface DatosCliente {
   nombreCompleto: string;
   telefono?: string | null;
@@ -96,6 +218,7 @@ export async function crearCliente(
     { usuarioId: creadoPor, entidad: 'CLIENTE', entidadId: id, accion: 'CREAR', detalles: { nombre: datos.nombreCompleto } },
     dispositivoId
   );
+  await encolarSync(db, { tabla: 'clientes', entidadId: id, tipoTarea: 'FILA' });
   return {
     id,
     nombreCompleto: datos.nombreCompleto,
@@ -136,4 +259,14 @@ export async function eliminarCliente(
       dispositivoId
     );
   });
+
+  // El DELETE no pasa por la cola de sync (esa asume que la fila local sigue
+  // ahí para poder leerla y subirla) — se intenta borrar en Supabase directo,
+  // best-effort, mismo patrón que `eliminarPersonaPermanente`.
+  try {
+    const supabase = await getSupabaseClient();
+    await supabase.from('clientes').delete().eq('id', id);
+  } catch (error) {
+    console.log('[clientes] no se pudo borrar en remoto:', mensajeDeError(error));
+  }
 }

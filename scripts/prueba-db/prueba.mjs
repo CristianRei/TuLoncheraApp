@@ -742,6 +742,24 @@ console.log('\n== H. Tres dispositivos: admin (computador), bodega y promotor (c
     assert.equal((await dbAdmin.getFirstAsync('SELECT count(*) n FROM ventas')).n, antes + 1);
     assert.equal((await dbAdmin.getFirstAsync('SELECT count(*) n FROM venta_items WHERE venta_id = ?', [id])).n, 1);
   });
+  await paso('Pedro registra un cliente en su celular y llega al admin (pedido del usuario 2026-09-26): sube sin PIN de admin, admin lo descarga', async () => {
+    const { crearCliente } = await imp('db/clientes.ts');
+    establecerAdminDeSesion(null); // crear un cliente no depende de que haya admin en sesión
+    const cliente = await conNube(dbProm, async () => {
+      const c = await crearCliente(dbProm, { nombreCompleto: 'María López', telefono: '3009998877' }, pedro.id, dPro);
+      await drenarColaSync();
+      return c;
+    });
+    establecerAdminDeSesion(adminId);
+    assert.ok(nube.tablas.get('clientes').has(cliente.id), 'el cliente no llegó a Supabase');
+    const remoto = nube.tablas.get('clientes').get(cliente.id);
+    assert.equal(remoto.creado_por_nombre, 'Pedro Promotor');
+    await conNube(dbAdmin, () => sincronizarDatosRemotos(dbAdmin, sesionAdmin));
+    const local = await dbAdmin.getFirstAsync('SELECT nombre_completo, telefono FROM clientes WHERE id = ?', [
+      cliente.id,
+    ]);
+    assert.deepEqual([local?.nombre_completo, local?.telefono], ['María López', '3009998877']);
+  });
   await paso('una línea ENTREGADA no retrocede aunque otro dispositivo suba su copia vieja (trigger de Supabase)', async () => {
     const lineaRemota = [...nube.tablas.get('cargue_lineas').values()][0];
     await nube.from('cargue_lineas').upsert({ ...lineaRemota, estado: 'PENDIENTE', cantidad_entregada: 0 });

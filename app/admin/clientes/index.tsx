@@ -24,6 +24,7 @@ import { CampoFiltro, FilaSelectores, FiltrosAplicados, PanelFiltros } from '@/u
 import { SearchBar } from '@/ui/SearchBar';
 import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
+import { useRecargarConDatosNuevos } from '@/ui/useVersionDatos';
 
 export default function ClientesAdmin() {
   const usuario = useRequiereSesion(['ADMIN']);
@@ -51,9 +52,13 @@ export default function ClientesAdmin() {
 
   useFocusEffect(
     useCallback(() => {
-      cargar();
-    }, [cargar])
+      cargar(busqueda);
+    }, [cargar, busqueda])
   );
+
+  // Un cliente que un promotor registra en campo llega solo (Realtime),
+  // sin que admin tenga que volver a esta pantalla — ver app/admin/_layout.tsx.
+  useRecargarConDatosNuevos(() => cargar(busqueda));
 
   if (!usuario) return null;
 

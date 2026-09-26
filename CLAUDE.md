@@ -20,22 +20,24 @@ Reemplaza a: Loyverse (POS + inventario) y hojas de Excel administrativas.
 **Estado actual: app local-first, con un servidor parcial.** SQLite en el
 dispositivo sigue siendo la fuente de verdad para todo, pero casi todo ya
 sincroniza a Supabase en background: turnos, comprobantes de transferencia,
-mensajes/notificaciones push, y el motor completo de inventario/ventas
+mensajes/notificaciones push, el motor completo de inventario/ventas
 (ventas, movimientos, lotes, cargues, conteos, arqueos de caja — ver ADR 0006
-y sección 10). Eso es todo en dirección de SUBIDA (celular → Supabase). La
-dirección contraria (BAJADA, Supabase → celular) ya cubre personal/PINs,
-catálogo (productos/categorías) y los datos OPERATIVOS: el admin ve las
-ventas de los promotores, bodega ve los cargues que admin planea, y una
-RECARGA hecha en bodega llega al inventario del promotor — con Realtime, casi
-al instante (ver sección 10 y 11) — y también empresas y puntos (sedes) y
-los eventos del calendario (con la meta diaria) y los descuentos (incluidos
-los asignados a un promotor con horario). Las notificaciones push las envía Supabase (trigger con `pg_net`),
+y sección 10) y los clientes finales que el promotor registra en campo. Eso
+es todo en dirección de SUBIDA (celular → Supabase). La dirección contraria
+(BAJADA, Supabase → celular) ya cubre personal/PINs, catálogo (productos/
+categorías) y los datos OPERATIVOS: el admin ve las ventas de los
+promotores, bodega ve los cargues que admin planea, una RECARGA hecha en
+bodega llega al inventario del promotor, y un cliente que registra un
+promotor llega al admin — con Realtime, casi al instante (ver sección 10 y
+11) — y también empresas y puntos (sedes) y los eventos del calendario (con
+la meta diaria) y los descuentos (incluidos los asignados a un promotor con
+horario). Las notificaciones push las envía Supabase (trigger con `pg_net`),
 no el dispositivo del admin. La sincronización de ventas entre celular y
 computador ya la confirmó el usuario con dispositivos reales (2026-09-23); el
 resto está probado con SQLite y Postgres reales de laboratorio (`npm run
 test:db`, `npm run test:sql`). En el Supabase real están aplicadas todas
-las migraciones de `supabase/migraciones/`, de 0001 a 0018 (0011-0018
-aplicadas por el usuario el 2026-09-25) — ver sección 11.
+las migraciones de `supabase/migraciones/`, de 0001 a 0019 (0011-0018
+aplicadas por el usuario el 2026-09-25; 0019 el 2026-09-26) — ver sección 11.
 
 ---
 
@@ -165,7 +167,7 @@ pasa por una única función**, nunca `if (rol === 'admin')` disperso por la UI.
 | Móvil | React Native + Expo, TypeScript, `expo-router` |
 | Escáner | `expo-camera` (`CameraView` + `onBarcodeScanned`) |
 | Datos | `expo-sqlite` (fuente de verdad local, siempre) |
-| Backend | **Supabase, parcial** — de celular a Supabase (subida) sincronizan turnos, comprobantes de transferencia, mensajes/push (sección 10 "Mensajes") y el motor completo de inventario/ventas (ventas, movimientos, lotes, cargues, conteos, arqueos de caja). De Supabase a celular (bajada) sincronizan personal/PINs y catálogo (productos/categorías, sin fotos — sección 11) y los datos operativos (ventas → admin; cargues → bodega y admin; movimientos de inventario → bodega, admin y el promotor dueño), orquestado por `src/sync/bajada.ts`, con **Realtime** de Supabase (`src/sync/realtime.ts`) para que el cambio llegue al instante. Empresas y puntos también bajan (admin → Promotor/Bodega, `supabase/migraciones/0012_empresas_puntos.sql`), y los eventos del calendario con sus promotores y meta diaria (`0014_eventos.sql`, con Realtime), y los descuentos (`0015_descuentos.sql`, con Realtime). |
+| Backend | **Supabase, parcial** — de celular a Supabase (subida) sincronizan turnos, comprobantes de transferencia, mensajes/push (sección 10 "Mensajes"), el motor completo de inventario/ventas (ventas, movimientos, lotes, cargues, conteos, arqueos de caja) y los clientes finales que el promotor registra en campo (`supabase/migraciones/0019_clientes.sql`). De Supabase a celular (bajada) sincronizan personal/PINs y catálogo (productos/categorías, sin fotos — sección 11) y los datos operativos (ventas → admin; cargues → bodega y admin; movimientos de inventario → bodega, admin y el promotor dueño; clientes → admin), orquestado por `src/sync/bajada.ts`, con **Realtime** de Supabase (`src/sync/realtime.ts`) para que el cambio llegue al instante. Empresas y puntos también bajan (admin → Promotor/Bodega, `supabase/migraciones/0012_empresas_puntos.sql`), y los eventos del calendario con sus promotores y meta diaria (`0014_eventos.sql`, con Realtime), y los descuentos (`0015_descuentos.sql`, con Realtime). |
 | Notificaciones push | `expo-notifications` + `expo-device` para registrar el token de cada celular (`src/sync/push.ts`). El envío lo hace **Supabase**: un trigger sobre `mensaje_destinatarios` llama al servicio de Expo Push con `pg_net` (`supabase/migraciones/0013_push_desde_servidor.sql`) — sin servidor propio, y funciona también con el admin en el navegador (antes el dispositivo del admin llamaba a Expo directo y CORS lo bloqueaba en web). Ver sección 10 "Mensajes". |
 | Panel admin | **No existe todavía.** Por ahora, pantallas de admin dentro de la misma app móvil. |
 | Build/distribución | EAS Build (`eas.json`) — perfil `preview` genera un `.apk` Android de distribución interna (compartir directo, sin Play Store); `production` genera el `.aab` para Play Store. Requiere cuenta de Expo (`npx eas-cli login`), proyecto vinculado en `@ooojulians-team/tulonchera`. Publicar en Play Store exige además cuenta de Google Play Developer (~$25 USD pago único); iOS no está configurado en `eas.json` todavía — para probar en iPhone sin pagar, usar Expo Go con el dev server (`npx expo start`), igual que en Android. |
@@ -501,14 +503,29 @@ venta_items       (venta_id, producto_id, cantidad, precio_unitario,
 clientes          (id UUID PK, nombre_completo, telefono[opcional],
                    direccion[opcional], ciudad[opcional], empresa[opcional],
                    nota[opcional], creado_por, ts_cliente, dispositivo_id)
-                  ← en uso desde la 0019. Cliente final que un promotor
-                    registra en campo — no es un actor del sistema (no
-                    inicia sesión, no tiene rol). No es parte del libro de
+                  ← en uso desde la migración local 0019. Cliente final que un
+                    promotor registra en campo — no es un actor del sistema
+                    (no inicia sesión, no tiene rol). No es parte del libro de
                     inventario: R1/R2 no aplican, así que a diferencia de
                     productos/categorías sí admite un DELETE real
                     (`eliminarCliente`) — antes de borrar, desvincula
                     (`cliente_id = NULL`) cualquier venta que lo tuviera
                     asignado, para no perder esas ventas del historial.
+                    Sincroniza (subida y bajada, `src/db/clientes.ts`,
+                    `supabase/migraciones/0019_clientes.sql` — numeración
+                    remota independiente de la migración local, coincide por
+                    casualidad) desde 2026-09-26, a pedido del usuario: antes
+                    era 100% local y el admin nunca veía un cliente creado en
+                    el celular de otro dispositivo. El promotor sube al crear
+                    (`crearCliente`, sin depender de que haya admin en
+                    sesión — a diferencia de `usuarios`, un cliente no puede
+                    cambiar permisos); admin descarga con `descargarDatosOperativos`
+                    y Realtime (`app/admin/_layout.tsx`), igual que ventas. El
+                    id lo genera el celular y viaja tal cual (upsert directo
+                    por id, sin reconciliar por clave natural: un cliente
+                    nunca viene de una carga inicial). "Eliminar" en admin
+                    borra local y en Supabase (best-effort, mismo patrón que
+                    `eliminarPersonaPermanente`).
 conteos           (id UUID PK, evento_id[opcional], promotor_id, ts_cliente,
                    estado, firmado_por)
                   ← evento_id opcional y promotor_id agregado en la
@@ -578,6 +595,7 @@ traslado_lineas   (id UUID PK, traslado_id, producto_id, cantidad_planeada,
 _sync_pendiente   (id UUID PK, tabla[turnos|comprobantes_venta|ventas|
                    movimientos|lotes|cargues|traslados|conteos|arqueos_caja|
                    usuarios|productos|categorias|empresas|puntos|eventos|
+                   descuentos|clientes|
                    intentos_pin_fallidos|desbloqueos_pin|logins_exitosos_pin],
                    entidad_id,
                    tipo_tarea[FILA|FOTO], intentos,
@@ -1251,7 +1269,16 @@ eventos del calendario y descuentos — ver más abajo —, Fase 6 bastante avan
   Admin ve/busca todos los clientes y puede eliminarlos de verdad (DELETE
   real, no `activo=0`: un cliente no es parte del libro de inventario,
   R1/R2 no aplican) — al eliminar uno, sus ventas pasadas se desvinculan
-  (`cliente_id = NULL`) en vez de perderse.
+  (`cliente_id = NULL`) en vez de perderse. **Sincroniza** (desde
+  2026-09-26, `supabase/migraciones/0019_clientes.sql`, a pedido explícito
+  del usuario): antes de esto un cliente registrado en el celular de un
+  promotor nunca llegaba al admin en otro dispositivo — la tabla era 100%
+  local. El promotor sube al crear (`crearCliente`, misma cola de siempre;
+  a diferencia de `usuarios` no depende de que haya admin en sesión, porque
+  un cliente no puede cambiar permisos de nadie), con Realtime
+  (`app/admin/_layout.tsx`) para que llegue casi al instante, igual que una
+  venta. "Eliminar" en admin borra local y en Supabase (best-effort, mismo
+  patrón que `eliminarPersonaPermanente`).
 - **Ventas del turno** (`app/promotor/ventas-turno/`, `listarVentasTurno`
   en `src/db/ventas.ts`): el promotor ve, desde el menú de su pantalla de
   venta, el listado de sus propias ventas del turno abierto (con total y
@@ -1581,6 +1608,11 @@ No asumas respuestas. Si una tarea depende de alguna, pregunta primero.
 - [x] ~~BAJADA de descuentos~~ — **construida el 2026-09-24** (Bloque 5,
       junto con los descuentos por promotor con horario; sección 10 bullet
       "Descuentos", `supabase/migraciones/0015_descuentos.sql`).
+- [x] ~~Sincronización de clientes finales (promotor → admin)~~ —
+      **construida y aplicada el 2026-09-26**, a pedido explícito del
+      usuario: antes eran 100% locales y el admin nunca veía un cliente
+      creado en el celular de otro dispositivo (sección 7 bullet
+      `clientes`, `supabase/migraciones/0019_clientes.sql`).
 - [ ] **Pendiente de la sincronización:** conteos
       de cierre hacia admin (hoy el admin no ve los conteos hechos en el
       celular; las líneas ya suben con `producto_sku`), lotes en movimientos,

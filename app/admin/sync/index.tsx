@@ -31,6 +31,7 @@ const ETIQUETA_TABLA: Record<TablaSync, string> = {
   puntos: 'Punto',
   eventos: 'Evento del calendario',
   descuentos: 'Descuento',
+  clientes: 'Cliente',
   intentos_pin_fallidos: 'Intento fallido de PIN',
   desbloqueos_pin: 'Desbloqueo de PIN',
   logins_exitosos_pin: 'Login exitoso',

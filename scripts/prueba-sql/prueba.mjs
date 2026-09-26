@@ -569,5 +569,36 @@ for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
   });
 }
 
+console.log('\n== 0019 (clientes) encima de 0018, en ambos proyectos ==');
+for (const [nombre, db] of [['nuevo', a], ['con 0003-0008', b]]) {
+  const U = () => crypto.randomUUID();
+  await paso(`0019 aplica sin error y es idempotente (proyecto ${nombre})`, async () => {
+    await db.exec(leer('0019_clientes.sql'));
+    await db.exec(leer('0019_clientes.sql'));
+  });
+  await paso(`como usuario autenticado: un promotor sube un cliente y el admin lo puede leer, editar y borrar (proyecto ${nombre})`, async () => {
+    await db.exec('set role authenticated');
+    try {
+      const id = U(), promotor = U(), disp = U();
+      await db.query(
+        `insert into clientes (id, nombre_completo, telefono, direccion, ciudad, empresa, nota, creado_por, creado_por_nombre, ts_cliente, dispositivo_id)
+         values ($1,'Juan Pérez','3001234567',null,'Bogotá',null,null,$2,'Cristian',now(),$3)`,
+        [id, promotor, disp]
+      );
+      const f = (await db.query(`select nombre_completo, telefono from clientes where id=$1`, [id])).rows[0];
+      assert.equal(f.nombre_completo, 'Juan Pérez');
+      assert.equal(f.telefono, '3001234567');
+      await db.query(`update clientes set nota = 'Cliente frecuente' where id=$1`, [id]);
+      assert.equal((await db.query(`select nota from clientes where id=$1`, [id])).rows[0].nota, 'Cliente frecuente');
+      await db.query(`delete from clientes where id=$1`, [id]);
+      assert.equal((await db.query(`select count(*)::int n from clientes where id=$1`, [id])).rows[0].n, 0);
+    } finally { await db.exec('reset role'); }
+  });
+  await paso(`Realtime habilitado en clientes, para que admin lo vea sin refrescar (proyecto ${nombre})`, async () => {
+    const r = await db.query(`select tablename from pg_publication_tables where pubname='supabase_realtime'`);
+    assert.ok(r.rows.some((x) => x.tablename === 'clientes'), 'no está clientes');
+  });
+}
+
 console.log(fallos === 0 ? '\nSQL OK' : `\n${fallos} FALLA(S) EN EL SQL`);
 process.exit(fallos === 0 ? 0 : 1);

@@ -8,6 +8,7 @@ import {
   descargarVentasNuevas,
 } from '@/db/bajadaOperativa';
 import { descargarCategoriasNuevas } from '@/db/categorias';
+import { descargarClientesNuevos } from '@/db/clientes';
 import { descargarDescuentosNuevos } from '@/db/descuentos';
 import { descargarEmpresasNuevas } from '@/db/empresas';
 import { descargarEventosNuevos, obtenerPuntoVigentePromotor } from '@/db/eventos';
@@ -68,6 +69,7 @@ async function descargarDatosOperativos(db: SQLiteDatabase, sesion: UsuarioSesio
     cambios += await descargarCarguesNuevos(db);
     cambios += await descargarTrasladosNuevos(db);
     cambios += await descargarMovimientosNuevos(db, { tipo: 'BODEGA' });
+    cambios += await descargarClientesNuevos(db);
   } else if (sesion.rol === 'BODEGA') {
     cambios += await descargarCarguesNuevos(db);
     cambios += await descargarTrasladosNuevos(db);
