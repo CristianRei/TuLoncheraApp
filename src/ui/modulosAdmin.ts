@@ -113,4 +113,10 @@ export const MODULOS_ADMIN: ModuloAdmin[] = [
     descripcion: 'Contratar, editar y dar de baja promotores, conductores, bodega y administradores.',
     icono: 'people-outline',
   },
+  {
+    ruta: '/admin/sync',
+    titulo: 'Sincronización',
+    descripcion: 'Qué cambios no han llegado a Supabase (y a los celulares), por qué, y qué hacer.',
+    icono: 'cloud-upload-outline',
+  },
 ];

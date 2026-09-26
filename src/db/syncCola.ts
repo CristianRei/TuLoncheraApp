@@ -101,3 +101,11 @@ export async function listarColaSync(db: SQLiteDatabase): Promise<TareaSyncVista
     completadoTs: fila.completado_ts,
   }));
 }
+
+/** Tareas que ya intentaron subir y fallaron — lo que requiere que alguien haga algo. */
+export async function contarTareasSyncConError(db: SQLiteDatabase): Promise<number> {
+  const fila = await db.getFirstAsync<{ n: number }>(
+    'SELECT COUNT(*) AS n FROM _sync_pendiente WHERE completado_ts IS NULL AND ultimo_error IS NOT NULL'
+  );
+  return fila?.n ?? 0;
+}

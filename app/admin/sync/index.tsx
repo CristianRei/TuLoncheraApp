@@ -2,12 +2,15 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
 
+import { explicarErrorSync } from '@/core/sync';
 import { getDb } from '@/db/client';
 import { listarColaSync, type TablaSync, type TareaSyncVista } from '@/db/syncCola';
 import { obtenerUltimoCiclo, type EstadoUltimoCiclo } from '@/sync/estado';
+import { drenarColaSync } from '@/sync/motor';
 import { ContenedorAncho } from '@/ui/ContenedorAncho';
 import { Encabezado } from '@/ui/Encabezado';
 import { EmptyState } from '@/ui/EmptyState';
+import { FiltroSegmentado } from '@/ui/FiltroSegmentado';
 import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, RADII_ADMIN, TIPOGRAFIA_ADMIN, TEXTO_ADMIN } from '@/ui/tema';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
@@ -50,6 +53,8 @@ export default function DiagnosticoSync() {
   const [tareas, setTareas] = useState<TareaSyncVista[]>([]);
   const [ultimoCiclo, setUltimoCiclo] = useState<EstadoUltimoCiclo | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [filtro, setFiltro] = useState<'PENDIENTES' | 'TODAS'>('PENDIENTES');
+  const [reintentando, setReintentando] = useState(false);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -71,16 +76,43 @@ export default function DiagnosticoSync() {
   if (!usuario) return null;
 
   const pendientes = tareas.filter((t) => !t.completadoTs).length;
+  // Lo que falla primero: es lo único que requiere hacer algo.
+  const visibles = (filtro === 'PENDIENTES' ? tareas.filter((t) => !t.completadoTs) : tareas)
+    .slice()
+    .sort((a, b) => Number(!!b.ultimoError && !b.completadoTs) - Number(!!a.ultimoError && !a.completadoTs));
+
+  async function reintentar() {
+    if (reintentando) return;
+    setReintentando(true);
+    try {
+      await drenarColaSync();
+    } finally {
+      setReintentando(false);
+      await cargar();
+    }
+  }
 
   return (
     <View style={styles.contenedor}>
-      <Encabezado titulo="Sincronización" rutaVolverTexto="Admin" />
+      <Encabezado
+        titulo="Sincronización"
+        rutaVolverTexto="Admin"
+        accion={{ icono: 'refresh', texto: reintentando ? 'Subiendo…' : 'Reintentar', onPress: reintentar }}
+      />
 
       <ContenedorAncho anchoMaximo={ANCHO_ADMIN.lista} llenarAlto>
         <View style={styles.resumen}>
           <Text style={styles.resumenTexto}>
             {pendientes === 0 ? 'Todo sincronizado' : `${pendientes} tarea(s) pendiente(s)`}
           </Text>
+          <FiltroSegmentado
+            opciones={[
+              { valor: 'PENDIENTES' as const, etiqueta: `Pendientes (${pendientes})` },
+              { valor: 'TODAS' as const, etiqueta: 'Todas' },
+            ]}
+            valorActivo={filtro}
+            onCambiar={setFiltro}
+          />
         </View>
 
         {ultimoCiclo && (
@@ -96,11 +128,14 @@ export default function DiagnosticoSync() {
           <View style={styles.centrado}>
             <ActivityIndicator size="large" color={COLORES_ADMIN.vino} />
           </View>
-        ) : tareas.length === 0 ? (
-          <EmptyState icono="cloud-done-outline" mensaje="Nada por sincronizar todavía." />
+        ) : visibles.length === 0 ? (
+          <EmptyState
+            icono="cloud-done-outline"
+            mensaje={filtro === 'PENDIENTES' ? 'No hay nada pendiente: todo llegó a Supabase.' : 'Nada por sincronizar todavía.'}
+          />
         ) : (
           <FlatList
-            data={tareas}
+            data={visibles}
             keyExtractor={(t) => t.id}
             contentContainerStyle={styles.lista}
             renderItem={({ item }) => (
@@ -116,7 +151,13 @@ export default function DiagnosticoSync() {
                   </Text>
                 </View>
                 <Text style={styles.filaDetalle}>Creado: {formatearHora(item.creadoTs)}</Text>
-                {item.ultimoError && !item.completadoTs && <Text style={styles.filaError}>{item.ultimoError}</Text>}
+                {item.ultimoError && !item.completadoTs && (
+                  <View style={styles.explicacion}>
+                    <Text style={styles.explicacionTitulo}>{explicarErrorSync(item.tabla, item.ultimoError).titulo}</Text>
+                    <Text style={styles.explicacionAccion}>{explicarErrorSync(item.tabla, item.ultimoError).accion}</Text>
+                    <Text style={styles.filaError}>Detalle técnico: {item.ultimoError}</Text>
+                  </View>
+                )}
               </View>
             )}
           />
@@ -127,9 +168,23 @@ export default function DiagnosticoSync() {
 }
 
 const styles = StyleSheet.create({
+  explicacion: {
+    marginTop: ESPACIADO_ADMIN.xs,
+    gap: 2,
+  },
+  explicacionTitulo: {
+    ...TEXTO_ADMIN.cuerpo,
+    fontFamily: TIPOGRAFIA_ADMIN.semiNegrita,
+  },
+  explicacionAccion: {
+    ...TEXTO_ADMIN.cuerpo,
+    color: COLORES_ADMIN.vino,
+  },
   contenedor: { flex: 1, backgroundColor: COLORES_ADMIN.background },
   resumen: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: ESPACIADO_ADMIN.md,
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: COLORES_ADMIN.superficieMasBaja,

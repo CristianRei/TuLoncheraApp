@@ -17,6 +17,7 @@ import { ANCHO_ADMIN, COLORES_ADMIN, ESPACIADO_ADMIN, TIPOGRAFIA_ADMIN, ESTADO_A
 import { TarjetaModulo } from '@/ui/TarjetaModulo';
 import { useEsPantallaAncha } from '@/ui/useEsPantallaAncha';
 import { useSesion } from '@/ui/SesionContext';
+import { contarTareasSyncConError } from '@/db/syncCola';
 import { useRequiereSesion } from '@/ui/useRequiereSesion';
 
 interface Indicadores {
@@ -24,6 +25,7 @@ interface Indicadores {
   conteosConDescuadre: number;
   ventasHoy: number;
   notificacionesNoLeidas: number;
+  tareasSyncConError: number;
 }
 
 export default function HomeAdmin() {
@@ -38,17 +40,19 @@ export default function HomeAdmin() {
     const dispositivoId = await getDispositivoId(db);
     await generarNotificaciones(db, dispositivoId);
     const rangoHoy = calcularRangoHoyBogota();
-    const [promotoresConPunto, conteosConDescuadre, resumenHoy, notificacionesNoLeidas] = await Promise.all([
+    const [promotoresConPunto, conteosConDescuadre, resumenHoy, notificacionesNoLeidas, tareasSyncConError] = await Promise.all([
       contarPromotoresConPuntoVigente(db),
       contarConteosConDescuadre(db, rangoHoy),
       obtenerResumenVentas(db, rangoHoy),
       contarNotificacionesNoLeidas(db),
+      contarTareasSyncConError(db),
     ]);
     setIndicadores({
       promotoresConPunto,
       conteosConDescuadre,
       ventasHoy: resumenHoy.cantidadVentas,
       notificacionesNoLeidas,
+      tareasSyncConError,
     });
   }, []);
 
@@ -148,7 +152,9 @@ export default function HomeAdmin() {
                 const badge =
                   modulo.ruta === '/admin/notificaciones' && indicadores && indicadores.notificacionesNoLeidas > 0
                     ? `${indicadores.notificacionesNoLeidas} sin leer`
-                    : modulo.badge;
+                    : modulo.ruta === '/admin/sync' && indicadores && indicadores.tareasSyncConError > 0
+                      ? `${indicadores.tareasSyncConError} con error`
+                      : modulo.badge;
                 return (
                   <TarjetaModulo
                     key={modulo.ruta}
